@@ -3,15 +3,15 @@
 import { useState } from "react"
 import { MessageCircle, ThumbsUp, ThumbsDown, Bookmark } from "lucide-react"
 
-type CategoryType = "정치" | "경제" | "사회" | "국제" | "기업" | "부동산"
+type CategoryType = "\uC815\uCE58" | "\uACBD\uC81C" | "\uC0AC\uD68C" | "\uAD6D\uC81C" | "\uAE30\uC5C5" | "\uBD80\uB3D9\uC0B0"
 
 const categoryStyles: Record<CategoryType, string> = {
-  "정치": "bg-primary/10 text-primary border-primary/20",
-  "경제": "bg-accent/15 text-accent-foreground border-accent/25",
-  "사회": "bg-chart-4/15 text-chart-4 border-chart-4/25",
-  "국제": "bg-chart-1/15 text-chart-1 border-chart-1/25",
-  "기업": "bg-chart-2/15 text-chart-2 border-chart-2/25",
-  "부동산": "bg-destructive/10 text-destructive border-destructive/20",
+  "\uC815\uCE58": "bg-primary/10 text-primary border-primary/20",
+  "\uACBD\uC81C": "bg-accent/15 text-accent-foreground border-accent/25",
+  "\uC0AC\uD68C": "bg-chart-4/15 text-chart-4 border-chart-4/25",
+  "\uAD6D\uC81C": "bg-chart-1/15 text-chart-1 border-chart-1/25",
+  "\uAE30\uC5C5": "bg-chart-2/15 text-chart-2 border-chart-2/25",
+  "\uBD80\uB3D9\uC0B0": "bg-destructive/10 text-destructive border-destructive/20",
 }
 
 interface NewsCardProps {
@@ -92,7 +92,7 @@ export function NewsCard({
                 ? "bg-primary/15 text-primary"
                 : "text-muted-foreground hover:bg-secondary"
             }`}
-            aria-label="좋아요"
+            aria-label={"\uC88B\uC544\uC694"}
           >
             <ThumbsUp className={`w-3.5 h-3.5 ${reaction === "good" ? "fill-primary" : ""}`} />
             <span>{goodCount}</span>
@@ -105,7 +105,7 @@ export function NewsCard({
                 ? "bg-destructive/15 text-destructive"
                 : "text-muted-foreground hover:bg-secondary"
             }`}
-            aria-label="싫어요"
+            aria-label={"\uC2EB\uC5B4\uC694"}
           >
             <ThumbsDown className={`w-3.5 h-3.5 ${reaction === "bad" ? "fill-destructive" : ""}`} />
             <span>{badCount}</span>
@@ -115,7 +115,7 @@ export function NewsCard({
         <div className="flex items-center gap-1">
           <button
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:bg-secondary transition-colors active:scale-95"
-            aria-label="댓글"
+            aria-label={"\uB313\uAE00"}
           >
             <MessageCircle className="w-3.5 h-3.5" />
             <span>{commentCount}</span>
@@ -128,7 +128,7 @@ export function NewsCard({
                 ? "text-primary"
                 : "text-muted-foreground hover:bg-secondary"
             }`}
-            aria-label="저장"
+            aria-label={"\uC800\uC7A5"}
           >
             <Bookmark className={`w-4 h-4 ${isSaved ? "fill-primary" : ""}`} />
           </button>

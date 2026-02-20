@@ -1,11 +1,11 @@
-"use client"
-
 import { Sparkles, ChevronRight, TrendingUp, TrendingDown } from "lucide-react"
+
+const WON_DOLLAR = "\uC6D0/\uB2EC\uB7EC 1,340"
 
 export function HeroBanner() {
   return (
     <section className="px-4 pt-4 pb-2 max-w-lg mx-auto">
-      <button className="w-full group" aria-label="오늘의 모닝 브리핑 보기">
+      <button className="w-full group" aria-label={"\uC624\uB298\uC758 \uBAA8\uB2DD \uBE0C\uB9AC\uD551 \uBCF4\uAE30"}>
         <div className="relative overflow-hidden rounded-2xl bg-primary p-5 text-primary-foreground shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
           {/* Decorative elements */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary-foreground/5 rounded-full -translate-y-8 translate-x-8" />
@@ -21,10 +21,10 @@ export function HeroBanner() {
             </div>
 
             <h2 className="text-lg font-bold text-left mb-1.5 leading-snug text-balance">
-              {"오늘의 모닝 브리핑 (7 AM)"}
+              {"\uC624\uB298\uC758 \uBAA8\uB2DD \uBE0C\uB9AC\uD551 (7 AM)"}
             </h2>
             <p className="text-sm text-primary-foreground/80 text-left mb-4 leading-relaxed">
-              {"코스피 상승 출발, 미국 금리 인하 기대감 확산"}
+              {"\uCF54\uC2A4\uD53C \uC0C1\uC2B9 \uCD9C\uBC1C, \uBBF8\uAD6D \uAE08\uB9AC \uC778\uD558 \uAE30\uB300\uAC10 \uD655\uC0B0"}
             </p>
 
             <div className="flex items-center justify-between">
@@ -35,11 +35,11 @@ export function HeroBanner() {
                 </div>
                 <div className="flex items-center gap-1 text-xs bg-primary-foreground/10 rounded-full px-2 py-1">
                   <TrendingDown className="w-3 h-3" />
-                  <span className="font-medium">원/달러 1,340</span>
+                  <span className="font-medium">{WON_DOLLAR}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1 text-xs font-semibold text-primary-foreground/90 group-hover:translate-x-0.5 transition-transform">
-                <span>읽기</span>
+                <span>{"\uC77D\uAE30"}</span>
                 <ChevronRight className="w-4 h-4" />
               </div>
             </div>
