@@ -1,90 +1,150 @@
 "use client"
 
-import { useState } from "react" // 💡 현재 모드를 기억하는 '단기 기억 장치'
+import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { Zap, Calendar } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
-import { BriefingHero } from "@/components/dukgu/briefing-hero"
-import { MarketSwitcher } from "@/components/dukgu/market-switcher" // 👈 리모컨 추가!
-import { KpiTracker } from "@/components/dukgu/kpi-tracker"
-import { MarketIndexLog } from "@/components/dukgu/market-index-board"
-import { DbriefingSchedule } from "@/components/dukgu/dbriefing-schedule"
-import { BriefingNews } from "@/components/dukgu/briefing-news"
-import { BriefingSummary } from "@/components/dukgu/briefing-summary"
+import { BriefingLogCard } from "@/components/dukgu/briefing-log-card"
+import { BriefingSearchBar } from "@/components/dukgu/briefing-search-bar"
 
 export default function BriefingPage() {
-  // 💡 [뇌] 기본값은 미국("US")으로 시작합니다.
-  const [marketMode, setMarketMode] = useState<"US" | "KR">("US");
+  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [dateRange, setDateRange] = useState({ start: "", end: "" })
 
-  // 💡 [데이터 장부] 모드에 따라 바뀔 글자들을 모아둡니다.
-  const marketContent = {
-    US: {
-      hero: {
-        date: "2026년 2월 21일 (오전)",
-        title: "오늘의 모닝 브리핑\n(미국 증시 패치 노트)",
-        desc: "글로벌 마켓 트래픽과 기술주 업데이트 요약",
-        variant: "morning" as const,
-        emoji: "🚀"
+  const [dailyLogs] = useState([
+    {
+      id: "2026-02-21",
+      date: "2026년 2월 21일(토요일)",
+      morning: { 
+        time: "08:30", 
+        headline: "엔비디아發 훈풍, 나스닥 신고가 경신",
+        indices: [
+          { name: "다우", change: "+0.12%" }, 
+          { name: "나스닥", change: "+1.24%" }, 
+          { name: "S&P500", change: "+0.85%" },
+          { name: "러셀", change: "+1.50%" }
+        ],
+        isReady: true
       },
-      summary: {
-        text: "전일 미국 증시는 AI 수익성 의문으로 기술주 중심의 하락이 발생했습니다. 서버 부하 방어를 위한 관망세가 뚜렷합니다.",
-        quote: "성공한 서비스는 사용자가 원하는 것을 미리 아는 것이다.",
-        author: "스티브 잡스"
+      afternoon: { 
+        time: "16:30", 
+        headline: "코스피 상승 출발, 밸류업 정책 기대감",
+        indices: [
+          { name: "코스피", change: "+0.45%" }, 
+          { name: "코스닥", change: "-0.12%" },
+          { name: "코스피200", change: "+0.32%" }
+        ],
+        isReady: true
       }
     },
-    KR: {
-      hero: {
-        date: "2026년 2월 21일 (오후)",
-        title: "오늘의 클로징 리포트\n(국내 증시 리스크 점검)",
-        desc: "코스피/코스닥 마감 로그 및 다음 배포 일정",
-        variant: "afternoon" as const,
-        emoji: "🐯"
+    {
+      id: "2026-02-20",
+      date: "2026년 2월 20일(금요일)",
+      morning: { 
+        time: "08:25", 
+        headline: "금리 인하 신중론에 국채 금리 반등",
+        indices: [
+          { name: "다우", change: "-0.22%" }, 
+          { name: "나스닥", change: "-0.55%" }, 
+          { name: "S&P500", change: "-0.40%" },
+          { name: "러셀", change: "-1.10%" }
+        ],
+        isReady: true
       },
-      summary: {
-        text: "금일 코스피는 외인들의 트래픽 매도세로 지지선이 소폭 하락했습니다. 환율 변동에 따른 데이터 유실에 주의하세요.",
-        quote: "투자의 제1원칙은 절대로 돈을 잃지 않는 것이다.",
-        author: "워렌 버핏"
+      afternoon: { 
+        time: "16:40", 
+        headline: "외인 매도세에 코스닥 800선 하회",
+        indices: [
+          { name: "코스피", change: "-0.32%" }, 
+          { name: "코스닥", change: "-1.02%" },
+          { name: "코스피200", change: "-0.28%" }
+        ],
+        isReady: true
       }
     }
+  ]);
+
+  const filteredLogs = useMemo(() => {
+    return dailyLogs.filter((log) => {
+      const isWithinRange = (!dateRange.start || log.id >= dateRange.start) && (!dateRange.end || log.id <= dateRange.end);
+      const matchesSearch = log.morning.headline.includes(searchQuery) || log.afternoon.headline.includes(searchQuery);
+      return isWithinRange && matchesSearch;
+    });
+  }, [dailyLogs, dateRange, searchQuery]);
+
+  const goToDetail = (id: string, mode: "US" | "KR", isReady: boolean) => {
+    if (!isReady) {
+      alert("아직 리포트 배포 전이라냥! 조금만 기다려달라냥. 🐾");
+      return;
+    }
+    router.push(`/briefing/${id}?mode=${mode}`);
   };
 
-  const current = marketContent[marketMode];
-
   return (
-    <div className="min-h-dvh bg-slate-50 pb-20">
-      <DetailHeader title={marketMode === "US" ? "Global Briefing" : "K-Market Report"} />
+    <div className="min-h-screen bg-slate-50 pb-32 transition-colors">
+      {/* 🚀 1. 헤더 수정: Root 페이지이므로 showBack={false} 적용 */}
+      <DetailHeader 
+        showBack={false}
+        title={
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-emerald-500 fill-emerald-500" />
+            <span className="text-lg font-black text-slate-900 tracking-tight">브리핑 로그</span>
+          </div>
+        } 
+      />
 
-      <main className="container max-w-md mx-auto px-4 py-6 space-y-8">
+      <main className="max-w-md mx-auto px-5 py-6 space-y-8">
+        {/* 🚀 2. 검색 바 영역: 여백 조정 */}
+        <section className="relative z-20">
+          <BriefingSearchBar 
+            onSearch={setSearchQuery} 
+            onRangeChange={(start, end) => setDateRange({ start, end })} 
+          />
+        </section>
         
-        {/* 🔘 1. 리모컨 배치 */}
-        <MarketSwitcher mode={marketMode} setMode={setMarketMode} />
+        {/* 🚀 3. 로그 리스트 섹션: 자산 페이지와 통일된 헤더 스타일 */}
+        <div className="space-y-8">
+          {filteredLogs.map((day) => (
+            <section key={day.id} className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-emerald-500 rounded-full" />
+                  <h2 className="text-[14px] font-black text-slate-800">{day.date}</h2>
+                </div>
+                <div className="flex items-center gap-1 opacity-40">
+                  <Calendar className="w-3 h-3 text-slate-400" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">History</span>
+                </div>
+              </div>
 
-        {/* 🚀 2. 기획자님의 Hero (상태에 따라 배경색과 글자가 슥슥 바뀜!) */}
-        <BriefingHero 
-          date={current.hero.date}
-          title={current.hero.title}
-          description={current.hero.desc}
-          emoji={current.hero.emoji}
-          variant={current.hero.variant}
-        />
+              <div className="grid gap-3.5">
+                <BriefingLogCard 
+                  type="morning" 
+                  time={day.morning.time} 
+                  headline={day.morning.headline} 
+                  indices={day.morning.indices} 
+                  onClick={() => goToDetail(day.id, "US", day.morning.isReady)}
+                />
+                <BriefingLogCard 
+                  type="afternoon" 
+                  time={day.afternoon.time} 
+                  headline={day.afternoon.headline} 
+                  indices={day.afternoon.indices} 
+                  onClick={() => goToDetail(day.id, "KR", day.afternoon.isReady)}
+                />
+              </div>
+            </section>
+          ))}
 
-        {/* 🔍 3. 핵심 지표 (모드만 넘겨줍니다. 데이터는 부품 내부에서 처리하게 바꿀 거예요) */}
-        <KpiTracker mode={marketMode} />
-
-        {/* 📊 4. 증시 로그 */}
-        <MarketIndexLog mode={marketMode} />
-
-        {/* 📅 5. 배포 일정 */}
-        <DbriefingSchedule mode={marketMode} />
-
-        {/* 📰 6. 뉴스 섹션 */}
-        <BriefingNews mode={marketMode} />
-
-        {/* 📝 7. 요약 및 명언 */}
-        <BriefingSummary 
-          summary={current.summary.text}
-          quote={current.summary.quote}
-          author={current.summary.author}
-        />
-
+          {/* 검색 결과가 없을 때의 피드백 (기획 디테일) */}
+          {filteredLogs.length === 0 && (
+            <div className="py-20 flex flex-col items-center justify-center text-slate-300">
+              <Zap className="w-12 h-12 mb-3 opacity-20" />
+              <p className="text-sm font-bold">검색 결과가 없다냥...</p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   )

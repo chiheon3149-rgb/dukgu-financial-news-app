@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link" // 라우팅을 위해 추가
+import Link from "next/link" 
 import { ChevronRight } from "lucide-react"
 
 export function HeroBanner() {
@@ -53,10 +53,9 @@ export function HeroBanner() {
 
   return (
     <section className="pt-2 pb-2">
-      {/* 💡 div 태그를 Link 컴포넌트로 변경하여 클릭 시 상세 페이지로 이동하도록 설정 */}
-      <Link 
-        href="/briefing" 
-        className={`block relative overflow-hidden rounded-2xl bg-gradient-to-br ${currentData.theme} backdrop-blur-md border border-white/20 p-5 text-white shadow-xl transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
+      {/* 💡 1. 여기를 <Link>에서 평범한 <div>로 바꿨습니다. 이제 배경을 눌러도 이동하지 않습니다! */}
+      <div 
+        className={`block relative overflow-hidden rounded-2xl bg-gradient-to-br ${currentData.theme} backdrop-blur-md border border-white/20 p-5 text-white shadow-xl transition-all duration-500`}
       >
         
         {/* 투명 국기 배경 */}
@@ -74,20 +73,15 @@ export function HeroBanner() {
             </span>
             
             <div className="flex items-center bg-black/20 backdrop-blur-sm rounded-full p-0.5 shadow-inner shrink-0">
+              {/* 💡 2. 배경이 더 이상 <Link>가 아니므로, 귀찮은 e.preventDefault()를 뺐습니다. */}
               <button 
-                onClick={(e) => {
-                  e.preventDefault() // Link 이동을 막고 상태만 변경
-                  setMarket("KR")
-                }}
+                onClick={() => setMarket("KR")}
                 className={`text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold transition-all duration-300 ${market === "KR" ? "bg-white text-blue-700 shadow-md" : "text-white/70 hover:text-white"}`}
               >
                 한국
               </button>
               <button 
-                onClick={(e) => {
-                  e.preventDefault() // Link 이동을 막고 상태만 변경
-                  setMarket("US")
-                }}
+                onClick={() => setMarket("US")}
                 className={`text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold transition-all duration-300 ${market === "US" ? "bg-white text-red-700 shadow-md" : "text-white/70 hover:text-white"}`}
               >
                 미국
@@ -113,15 +107,18 @@ export function HeroBanner() {
               ))}
             </div>
 
-            {/* 💡 버튼 영역은 Link 내부이므로 클릭 이벤트 전파를 막을 필요는 없으나, 시각적 일관성을 유지 */}
-            <div className={`flex items-center gap-1 text-xs font-bold bg-white ${currentData.textColor} px-3.5 py-2 rounded-lg group-hover:bg-gray-100 transition-colors shadow-lg shrink-0`}>
-              <span>읽기</span>
+            {/* 💡 3. 여기에 진짜 <Link>를 달았습니다. 이제 이 버튼을 눌러야만 이동합니다! */}
+            <Link 
+              href="/briefing"
+              className={`group flex items-center gap-1 text-xs font-bold bg-white ${currentData.textColor} px-3.5 py-2 rounded-lg hover:bg-gray-100 transition-all active:scale-95 shadow-lg shrink-0 cursor-pointer`}
+            >
+              <span>리포트읽기</span>
               <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
+            </Link>
           </div>
 
         </div>
-      </Link>
+      </div>
     </section>
   )
 }

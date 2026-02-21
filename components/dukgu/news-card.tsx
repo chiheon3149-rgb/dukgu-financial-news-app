@@ -1,17 +1,15 @@
 "use client"
 
-import { useState } from "react"
-import { MessageCircle, ThumbsUp, ThumbsDown, Bookmark } from "lucide-react"
+// 💡 상태 관리 로직(useState)과 아이콘 수입이 싹 사라졌습니다!
+import { NewsInteractionBar } from "./news-interaction-bar" // 방금 만든 부품 수입
 
-type CategoryType = "\uC815\uCE58" | "\uACBD\uC81C" | "\uC0AC\uD68C" | "\uAD6D\uC81C" | "\uAE30\uC5C5" | "\uBD80\uB3D9\uC0B0"
+type CategoryType = "정치" | "경제" | "사회" | "문화"
 
 const categoryStyles: Record<CategoryType, string> = {
-  "\uC815\uCE58": "bg-primary/10 text-primary border-primary/20",
-  "\uACBD\uC81C": "bg-accent/15 text-accent-foreground border-accent/25",
-  "\uC0AC\uD68C": "bg-chart-4/15 text-chart-4 border-chart-4/25",
-  "\uAD6D\uC81C": "bg-chart-1/15 text-chart-1 border-chart-1/25",
-  "\uAE30\uC5C5": "bg-chart-2/15 text-chart-2 border-chart-2/25",
-  "\uBD80\uB3D9\uC0B0": "bg-destructive/10 text-destructive border-destructive/20",
+  "정치": "bg-primary/10 text-primary border-primary/20",
+  "경제": "bg-accent/15 text-accent-foreground border-accent/25",
+  "사회": "bg-chart-4/15 text-chart-4 border-chart-4/25",
+  "문화": "bg-chart-1/15 text-chart-1 border-chart-1/25",
 }
 
 interface NewsCardProps {
@@ -23,6 +21,7 @@ interface NewsCardProps {
   badCount: number
   commentCount: number
   saved?: boolean
+  tags?: string[] 
 }
 
 export function NewsCard({
@@ -30,110 +29,53 @@ export function NewsCard({
   headline,
   summary,
   timeAgo,
-  goodCount: initialGood,
-  badCount: initialBad,
+  goodCount,
+  badCount,
   commentCount,
-  saved: initialSaved = false,
+  saved,
+  tags = [],
 }: NewsCardProps) {
-  const [reaction, setReaction] = useState<"good" | "bad" | null>(null)
-  const [goodCount, setGoodCount] = useState(initialGood)
-  const [badCount, setBadCount] = useState(initialBad)
-  const [isSaved, setIsSaved] = useState(initialSaved)
-
-  const handleGood = () => {
-    if (reaction === "good") {
-      setReaction(null)
-      setGoodCount((c) => c - 1)
-    } else {
-      if (reaction === "bad") setBadCount((c) => c - 1)
-      setReaction("good")
-      setGoodCount((c) => c + 1)
-    }
-  }
-
-  const handleBad = () => {
-    if (reaction === "bad") {
-      setReaction(null)
-      setBadCount((c) => c - 1)
-    } else {
-      if (reaction === "good") setGoodCount((c) => c - 1)
-      setReaction("bad")
-      setBadCount((c) => c + 1)
-    }
-  }
+  
+  // 💡 복잡했던 좋아요/싫어요 계산 로직이 전부 증발했습니다! 코드가 엄청 깔끔해졌죠.
 
   return (
-    <article className="bg-card border border-border rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between gap-3 mb-2.5">
-        <span
-          className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${categoryStyles[category]}`}
-        >
-          {category}
-        </span>
+    <article className="bg-card border border-border rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full">
+      
+      {/* 상단: 카테고리 + 태그 + 시간 */}
+      <div className="flex items-center justify-between gap-3 mb-2.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${categoryStyles[category]}`}>
+            {category}
+          </span>
+          <div className="flex items-center gap-1">
+            {tags.map((tag, idx) => (
+              <span key={idx} className="text-[11px] font-bold text-blue-500 tracking-tight">
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
         <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
           {timeAgo}
         </span>
       </div>
 
+      {/* 본문 영역 */}
       <h3 className="text-[15px] font-bold text-card-foreground leading-snug mb-1.5 text-pretty">
         {headline}
       </h3>
-      <p className="text-sm text-muted-foreground leading-relaxed mb-3 line-clamp-1">
+      <p className="text-sm text-muted-foreground leading-relaxed mb-4 line-clamp-2">
         {summary}
       </p>
 
-      {/* Interaction Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-border">
-        <div className="flex items-center gap-1">
-          <button
-            onClick={handleGood}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95 ${
-              reaction === "good"
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:bg-secondary"
-            }`}
-            aria-label={"\uC88B\uC544\uC694"}
-          >
-            <ThumbsUp className={`w-3.5 h-3.5 ${reaction === "good" ? "fill-primary" : ""}`} />
-            <span>{goodCount}</span>
-          </button>
-
-          <button
-            onClick={handleBad}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95 ${
-              reaction === "bad"
-                ? "bg-destructive/15 text-destructive"
-                : "text-muted-foreground hover:bg-secondary"
-            }`}
-            aria-label={"\uC2EB\uC5B4\uC694"}
-          >
-            <ThumbsDown className={`w-3.5 h-3.5 ${reaction === "bad" ? "fill-destructive" : ""}`} />
-            <span>{badCount}</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <button
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:bg-secondary transition-colors active:scale-95"
-            aria-label={"\uB313\uAE00"}
-          >
-            <MessageCircle className="w-3.5 h-3.5" />
-            <span>{commentCount}</span>
-          </button>
-
-          <button
-            onClick={() => setIsSaved(!isSaved)}
-            className={`p-1.5 rounded-full transition-colors active:scale-95 ${
-              isSaved
-                ? "text-primary"
-                : "text-muted-foreground hover:bg-secondary"
-            }`}
-            aria-label={"\uC800\uC7A5"}
-          >
-            <Bookmark className={`w-4 h-4 ${isSaved ? "fill-primary" : ""}`} />
-          </button>
-        </div>
-      </div>
+      {/* 💡 하단 영역: 길고 긴 버튼 코드 대신, 딱 한 줄로 부품을 끼워 넣습니다. */}
+      <NewsInteractionBar 
+        initialGood={goodCount} 
+        initialBad={badCount} 
+        commentCount={commentCount} 
+        initialSaved={saved} 
+      />
+      
     </article>
   )
 }

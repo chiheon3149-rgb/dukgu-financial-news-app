@@ -1,76 +1,117 @@
-import { NewsCard } from "./news-card"
-import { Clock } from "lucide-react"
+"use client"
 
-const newsData = [
-  {
-    category: "\uACBD\uC81C" as const,
-    headline: "\uD55C\uAD6D\uC740\uD589, \uAE30\uC900\uAE08\uB9AC \uB3D9\uACB0\u2026 \u2018\uCD94\uAC00 \uC778\uD558 \uC5EC\uC9C0 \uB0A8\uACA8\u2019",
-    summary: "\uD55C\uAD6D\uC740\uD589\uC774 \uAE30\uC900\uAE08\uB9AC\uB97C 3.0%\uB85C \uB3D9\uACB0\uD558\uBA70 \uD5A5\uD6C4 \uACBD\uAE30 \uD750\uB984\uC744 \uC9C0\uCF1C\uBCF4\uACA0\uB2E4\uACE0 \uBC1D\uD614\uB2E4.",
-    timeAgo: "1\uC2DC\uAC04 \uC804",
-    goodCount: 128,
-    badCount: 15,
-    commentCount: 34,
-  },
-  {
-    category: "\uAD6D\uC81C" as const,
-    headline: "\uBBF8 \uC5F0\uC900 \uC758\uC0AC\uB85D \uACF5\uAC1C\u2026 \uAE08\uB9AC \uC778\uD558 \uC2DC\uADF8\uB110 \uAC15\uD654",
-    summary: "\uC5F0\uBC29\uC900\uBE44\uC81C\uB3C4\uAC00 \uC62C\uD574 \uD558\uBC18\uAE30 \uAE08\uB9AC \uC778\uD558 \uAC00\uB2A5\uC131\uC744 \uC2DC\uC0AC\uD558\uBA70 \uAE00\uB85C\uBC8C \uC2DC\uC7A5\uC774 \uBC18\uC0C9\uD588\uB2E4.",
-    timeAgo: "2\uC2DC\uAC04 \uC804",
-    goodCount: 256,
-    badCount: 22,
-    commentCount: 67,
-  },
-  {
-    category: "\uAE30\uC5C5" as const,
-    headline: "\uC0BC\uC131\uC804\uC790, AI \uBC18\uB3C4\uCCB4 \uC218\uC8FC 2\uC870\uC6D0 \uB3CC\uD30C",
-    summary: "\uC0BC\uC131\uC804\uC790\uAC00 \uAE00\uB85C\uBC8C AI \uAE30\uC5C5\uB4E4\uB85C\uBD80\uD130 HBM \uBC18\uB3C4\uCCB4 \uB300\uADDC\uBAA8 \uC218\uC8FC\uC5D0 \uC131\uACF5\uD588\uB2E4.",
-    timeAgo: "3\uC2DC\uAC04 \uC804",
-    goodCount: 512,
-    badCount: 8,
-    commentCount: 89,
-  },
-  {
-    category: "\uC815\uCE58" as const,
-    headline: "\uC815\uBD80, \uD558\uBC18\uAE30 \uCD94\uACBD \uD3B8\uC131 \uAC80\uD1A0 \uCC29\uC218",
-    summary: "\uACBD\uAE30 \uB454\uD654\uC5D0 \uB300\uC751\uD574 \uC815\uBD80\uAC00 \uD558\uBC18\uAE30 \uCD94\uAC00\uACBD\uC815\uC608\uC0B0 \uD3B8\uC131\uC744 \uACF5\uC2DD \uAC80\uD1A0\uD558\uAE30 \uC2DC\uC791\uD588\uB2E4.",
-    timeAgo: "4\uC2DC\uAC04 \uC804",
-    goodCount: 87,
-    badCount: 45,
-    commentCount: 123,
-  },
-  {
-    category: "\uBD80\uB3D9\uC0B0" as const,
-    headline: "\uC11C\uC6B8 \uC544\uD30C\uD2B8 \uB9E4\uB9E4\uAC00, 3\uC8FC \uC5F0\uC18D \uC0C1\uC2B9\uC138 \uC774\uC5B4\uAC00",
-    summary: "\uAC15\uB0A8 3\uAD6C\uB97C \uC911\uC2EC\uC73C\uB85C \uC11C\uC6B8 \uC544\uD30C\uD2B8 \uB9E4\uB9E4\uAC00\uAC00 3\uC8FC \uC5F0\uC18D \uC624\uB984\uC138\uB97C \uAE30\uB85D\uD588\uB2E4.",
-    timeAgo: "5\uC2DC\uAC04 \uC804",
-    goodCount: 64,
-    badCount: 98,
-    commentCount: 201,
-  },
-  {
-    category: "\uC0AC\uD68C" as const,
-    headline: "MZ\uC138\uB300 \u2018\uCEE4\uD53C\uAC12 \uD22C\uC790\u2019 \uD2B8\uB80C\uB4DC \uD655\uC0B0",
-    summary: "\uC6D4 \uCEE4\uD53C \uC9C0\uCD9C \uB300\uC2E0 \uC18C\uC561 \uD22C\uC790\uB97C \uC2DC\uC791\uD558\uB294 20-30\uB300\uAC00 \uAE09\uC99D\uD558\uACE0 \uC788\uB2E4.",
-    timeAgo: "6\uC2DC\uAC04 \uC804",
-    goodCount: 342,
-    badCount: 12,
-    commentCount: 156,
-  },
+import { useState, useEffect, useRef } from "react"
+// 💡 이동 수단인 Link를 불러옵니다!
+import Link from "next/link" 
+import { NewsCard } from "./news-card"
+import { Clock, RefreshCw, Loader2 } from "lucide-react"
+
+const initialNewsData = [
+  { category: "경제" as const, tags: ["#금리동결", "#한국은행"], headline: "한국은행, 기준금리 3.0% 동결… ‘추가 인하 여지’", summary: "향후 경기 흐름을 지켜보며 통화 정책을 유연하게 가져가겠다고 밝혔다.", timeAgo: "10분 전", goodCount: 128, badCount: 15, commentCount: 34 },
+  { category: "경제" as const, tags: ["#미연준", "#나스닥"], headline: "미 연준 의사록 공개… 올해 하반기 금리 인하 시그널", summary: "연방준비제도의 금리 인하 가능성 시사에 글로벌 증시가 일제히 반등했다.", timeAgo: "25분 전", goodCount: 256, badCount: 22, commentCount: 67 },
+  { category: "경제" as const, tags: ["#삼성전자", "#HBM"], headline: "삼성전자, HBM AI 반도체 수주 2조원 돌파", summary: "글로벌 AI 빅테크 기업들로부터 차세대 메모리 반도체 대규모 수주에 성공했다.", timeAgo: "1시간 전", goodCount: 512, badCount: 8, commentCount: 89 },
+  { category: "정치" as const, tags: ["#추경예산", "#민생안정"], headline: "정부, 민생 안정 위한 하반기 추경 편성 공식 검토", summary: "경기 둔화 방어 및 소상공인 지원을 위해 추가경정예산 편성에 착수했다.", timeAgo: "1시간 전", goodCount: 87, badCount: 45, commentCount: 123 },
+  { category: "사회" as const, tags: ["#부동산", "#강남3구"], headline: "서울 아파트 매매가, 강남 3구 중심으로 3주 연속 상승", summary: "거래량이 전월 대비 20% 증가하며 바닥을 다졌다는 분석이 나오고 있다.", timeAgo: "2시간 전", goodCount: 64, badCount: 98, commentCount: 201 },
+  { category: "문화" as const, tags: ["#MZ세대", "#재테크"], headline: "MZ세대 ‘커피값으로 주식 산다’… 소액 투자 열풍", summary: "월 5만 원 미만의 소액으로 우량주를 모아가는 2030 투자자가 급증했다.", timeAgo: "2시간 전", goodCount: 342, badCount: 12, commentCount: 156 },
+  { category: "경제" as const, tags: ["#오픈AI", "#인공지능"], headline: "오픈AI, 새로운 추론 모델 '오리온' 다음 달 깜짝 공개", summary: "인간의 논리적 사고를 모방한 차세대 AI 모델 출시가 임박했다는 소식이다.", timeAgo: "3시간 전", goodCount: 890, badCount: 5, commentCount: 412 },
+  { category: "경제" as const, tags: ["#코스피", "#외국인순매수"], headline: "코스피, 외국인 '바이 코리아'에 2,700선 안착 시도", summary: "반도체와 자동차 대형주를 중심으로 외국인 순매수가 5거래일째 이어졌다.", timeAgo: "3시간 전", goodCount: 156, badCount: 42, commentCount: 88 },
+  { category: "경제" as const, tags: ["#환율", "#무역수지"], headline: "원·달러 환율, 수출 호조에 1,320원대 하향 안정세", summary: "무역수지 흑자 폭이 커지면서 환율 변동성이 눈에 띄게 줄어들고 있다.", timeAgo: "4시간 전", goodCount: 92, badCount: 11, commentCount: 45 },
+  { category: "경제" as const, tags: ["#현대차", "#IPO"], headline: "현대차, 인도법인 IPO 흥행 성공… 글로벌 공략 가속", summary: "인도 증시 상장을 통해 확보한 자금으로 현지 전기차 공장을 증설한다.", timeAgo: "4시간 전", goodCount: 421, badCount: 33, commentCount: 189 },
 ]
 
 export function NewsFeed() {
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [displayNews, setDisplayNews] = useState(initialNewsData)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const observerTarget = useRef<HTMLDivElement>(null)
+
+  const handleRefresh = () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true)
+    setTimeout(() => {
+      setDisplayNews(initialNewsData)
+      setIsRefreshing(false)
+    }, 1000)
+  }
+
+  const loadMoreNews = () => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+
+    setTimeout(() => {
+      const categories = ["정치", "경제", "사회", "문화"] as const;
+      
+      const moreNews = Array.from({ length: 10 }).map((_, i) => ({
+        category: categories[Math.floor(Math.random() * categories.length)],
+        tags: ["#속보", "#단독"],
+        headline: `[속보] DUKGU 실시간 업데이트 뉴스 ${displayNews.length + i + 1}보`,
+        summary: "방금 전 백엔드(서버)에서 새롭게 도착한 따끈따끈한 뉴스입니다. 데이터가 끊임없이 이어집니다.",
+        timeAgo: `${displayNews.length + i + 1}시간 전`,
+        goodCount: Math.floor(Math.random() * 500),
+        badCount: Math.floor(Math.random() * 50),
+        commentCount: Math.floor(Math.random() * 200),
+      }));
+
+      setDisplayNews(prev => [...prev, ...moreNews]);
+      setIsLoadingMore(false);
+    }, 1500);
+  }
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore) {
+          loadMoreNews()
+        }
+      },
+      { threshold: 1.0 }
+    )
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current)
+    }
+
+    return () => observer.disconnect()
+  }, [isLoadingMore])
+
   return (
     <section className="px-4 pb-24 max-w-lg mx-auto">
-      <div className="flex items-center gap-2 mb-3 mt-2">
-        <Clock className="w-4 h-4 text-muted-foreground" />
-        <h2 className="text-sm font-semibold text-muted-foreground">{"\uC2E4\uC2DC\uAC04 \uB274\uC2A4"}</h2>
-        <div className="flex-1 h-px bg-border" />
+      <div className="flex items-center justify-between mb-5 mt-4 px-1">
+        <div className="flex items-center gap-2">
+          <Clock className="w-5 h-5 text-slate-800" />
+          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
+            실시간 뉴스
+          </h2>
+        </div>
+        
+        <button 
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors active:opacity-70 disabled:opacity-50"
+        >
+          <span>업데이트</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+        </button>
       </div>
 
       <div className="flex flex-col gap-3">
-        {newsData.map((news, index) => (
-          <NewsCard key={index} {...news} />
+        {displayNews.map((news, index) => (
+          /* 💡 핵심 수정: 각 NewsCard를 Link로 감싸서 해당 id(여기서는 index) 주소로 보내줍니다! */
+          <Link key={index} href={`/news/${index + 1}`} className="block">
+            <NewsCard {...news} />
+          </Link>
         ))}
+      </div>
+
+      <div ref={observerTarget} className="w-full py-8 flex justify-center items-center">
+        {isLoadingMore ? (
+          <div className="flex flex-col items-center gap-2 text-slate-400">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+            <span className="text-xs font-medium">이전 10개 뉴스 불러오는 중...</span>
+          </div>
+        ) : (
+          <div className="h-10 opacity-0">센서 대기 중</div> 
+        )}
       </div>
     </section>
   )
