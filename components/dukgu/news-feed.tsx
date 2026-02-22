@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-// 💡 이동 수단인 Link를 불러옵니다!
-import Link from "next/link" 
+import { useEffect, useRef } from "react"
+import Link from "next/link"
 import { NewsCard } from "./news-card"
 import { Clock, RefreshCw, Loader2 } from "lucide-react"
 
