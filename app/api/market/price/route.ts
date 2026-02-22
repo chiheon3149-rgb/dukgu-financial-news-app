@@ -3,17 +3,27 @@ import { NextRequest, NextResponse } from "next/server"
 // =============================================================================
 // 📡 /api/market/price?tickers=AAPL,NVDA,005930.KS
 //
-// 왜 API Route를 프록시로 쓰는가?
-// Yahoo Finance API를 브라우저에서 직접 호출하면 CORS 정책으로 막힙니다.
-// Next.js 서버를 중간에 두면 서버↔서버 통신이므로 CORS 문제가 없고,
-// 향후 유료 API 키로 교체할 때도 키가 클라이언트에 노출되지 않습니다.
+// 흐름:
+//   1. Yahoo Finance API 호출 시도
+//   2. 실패(네트워크 차단, 429 등) → Mock 데이터로 폴백
 //
-// 향후 교체: 이 파일의 fetchFromYahoo 함수 내부만 교체하면
-//           프론트엔드 코드를 건드리지 않고 데이터 소스를 바꿀 수 있습니다.
-//           (예: Alpha Vantage, Finnhub, 한국투자증권 OpenAPI 등)
+// 운영 환경에서는 실제 시세가 내려오고,
+// 개발 환경처럼 외부 네트워크가 막혀 있으면 Mock 시세로 자동 대체됩니다.
 // =============================================================================
 
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote"
+
+// 개발 / 네트워크 차단 환경용 Mock 시세
+const MOCK_PRICES: Record<string, { price: number; changeRate: number; currency: "KRW" | "USD" }> = {
+  "AAPL":       { price: 227.52,   changeRate:  1.23, currency: "USD" },
+  "NVDA":       { price: 137.80,   changeRate:  2.81, currency: "USD" },
+  "MSFT":       { price: 415.32,   changeRate: -0.54, currency: "USD" },
+  "QQQ":        { price: 488.90,   changeRate:  0.97, currency: "USD" },
+  "SCHD":       { price: 29.15,    changeRate:  0.22, currency: "USD" },
+  "QYLD":       { price: 16.82,    changeRate: -0.12, currency: "USD" },
+  "005930.KS":  { price: 62800,    changeRate:  0.48, currency: "KRW" },
+  "035720.KS":  { price: 44500,    changeRate: -1.11, currency: "KRW" },
+}
 
 async function fetchFromYahoo(tickers: string[]) {
   const symbols = tickers.join(",")
@@ -21,20 +31,30 @@ async function fetchFromYahoo(tickers: string[]) {
 
   const res = await fetch(url, {
     headers: {
-      // Yahoo Finance는 브라우저처럼 보이는 User-Agent를 요구합니다
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
       "Accept": "application/json",
     },
-    // 30초 캐시: 같은 티커를 여러 컴포넌트에서 동시에 요청해도 서버에 한 번만 갑니다
     next: { revalidate: 30 },
   })
 
-  if (!res.ok) {
-    throw new Error(`Yahoo Finance 응답 오류: ${res.status}`)
-  }
-
+  if (!res.ok) throw new Error(`Yahoo Finance 응답 오류: ${res.status}`)
   const json = await res.json()
   return json?.quoteResponse?.result ?? []
+}
+
+function buildMockQuotes(tickers: string[]) {
+  return tickers.map((ticker) => {
+    const mock = MOCK_PRICES[ticker] ?? { price: 100, changeRate: 0, currency: "USD" as const }
+    return {
+      ticker,
+      currentPrice: mock.price,
+      currency: mock.currency,
+      changeRate: mock.changeRate,
+      changeStatus: mock.changeRate > 0 ? "up" : mock.changeRate < 0 ? "down" : "same",
+      fetchedAt: new Date().toISOString(),
+      isMock: true, // 개발자 확인용 플래그
+    }
+  })
 }
 
 export async function GET(req: NextRequest) {
@@ -48,29 +68,21 @@ export async function GET(req: NextRequest) {
   const tickers = tickersParam.split(",").map((t) => t.trim()).filter(Boolean)
 
   try {
-    const quotes = await fetchFromYahoo(tickers)
-
-    // 프론트엔드가 사용하기 편한 형태로 정제합니다
-    const result = quotes.map((q: any) => ({
+    const raw = await fetchFromYahoo(tickers)
+    const quotes = raw.map((q: any) => ({
       ticker: q.symbol,
       currentPrice: q.regularMarketPrice ?? 0,
       currency: (q.currency ?? "USD") as "KRW" | "USD",
       changeRate: q.regularMarketChangePercent ?? 0,
       changeStatus:
-        (q.regularMarketChangePercent ?? 0) > 0
-          ? "up"
-          : (q.regularMarketChangePercent ?? 0) < 0
-          ? "down"
-          : "same",
+        (q.regularMarketChangePercent ?? 0) > 0 ? "up" :
+        (q.regularMarketChangePercent ?? 0) < 0 ? "down" : "same",
       fetchedAt: new Date().toISOString(),
     }))
-
-    return NextResponse.json({ quotes: result })
+    return NextResponse.json({ quotes })
   } catch (err) {
-    console.error("[market/price] 오류:", err)
-    return NextResponse.json(
-      { error: "시세 조회에 실패했습니다. 잠시 후 다시 시도해 주세요." },
-      { status: 502 }
-    )
+    // 외부 API 실패 시 Mock으로 폴백 — 개발 환경에서 페이지가 빈 화면이 되는 것을 방지
+    console.warn("[market/price] Yahoo Finance 실패, Mock 데이터로 폴백:", err)
+    return NextResponse.json({ quotes: buildMockQuotes(tickers), source: "mock" })
   }
 }

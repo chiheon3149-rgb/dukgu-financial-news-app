@@ -7,7 +7,7 @@ import { DetailHeader } from "@/components/dukgu/detail-header"
 import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
 import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
 import { DukguAiSummary } from "@/components/dukgu/dukgu-ai-summary"
-import { CommentSection } from "@/components/dukgu/comment-section"
+import { NewsCommentSection } from "@/components/dukgu/news-comment-section"
 
 export default function NewsDetailPage({ params }: { params: { id: string } }) {
   // 💡 북마크 저장 상태 관리
@@ -109,7 +109,7 @@ export default function NewsDetailPage({ params }: { params: { id: string } }) {
           commentCount={newsDetail.stats.comment}
         />
 
-        <CommentSection count={newsDetail.stats.comment} />
+        <NewsCommentSection newsId={params.id} />
       </main>
     </div>
   )
