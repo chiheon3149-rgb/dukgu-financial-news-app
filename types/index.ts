@@ -350,3 +350,84 @@ export interface InquiryMessage {
   /** 운영자 답변 (있을 경우) */
   reply?: string
 }
+
+
+// -----------------------------------------------------------------------------
+// 🏘️ 커뮤니티 (Community)
+// -----------------------------------------------------------------------------
+
+export type CommunityCategory = "free" | "economy"
+
+/** 게시글 단일 아이템 */
+export interface CommunityPost {
+  id: string
+  category: CommunityCategory
+  /** 해시태그 배열 (예: ["금리", "연준"]) */
+  tags: string[]
+  title: string
+  content: string
+  /** 작성자 정보 (스냅샷 — 유저가 닉네임 변경해도 게시글은 유지) */
+  authorId: string
+  authorNickname: string
+  authorEmoji: string
+  authorLevel: number
+  publishedAt: string
+  /** ISO 8601 상대 표시용 */
+  timeAgo: string
+  likeCount: number
+  dislikeCount: number
+  commentCount: number
+  /** 삭제된 게시글 여부 (소프트 딜리트) */
+  isDeleted: boolean
+}
+
+/** 게시글 댓글 */
+export interface CommunityComment {
+  id: string
+  postId: string
+  authorId: string
+  authorNickname: string
+  authorEmoji: string
+  authorLevel: number
+  content: string
+  publishedAt: string
+  timeAgo: string
+  likeCount: number
+  dislikeCount: number
+  /** 신고 횟수 */
+  reportCount: number
+  /** 관리자에 의해 삭제된 경우 → "신고에 의해 삭제된 댓글입니다." 표시 */
+  isRemovedByAdmin: boolean
+}
+
+/** 댓글 신고 사유 */
+export type CommentReportReason =
+  | "spam"
+  | "hate"
+  | "sexual"
+  | "violence"
+  | "misinformation"
+  | "other"
+
+/** 댓글 신고 레코드 */
+export interface CommentReport {
+  commentId: string
+  postId: string
+  reason: CommentReportReason
+  detail?: string
+  reportedAt: string
+}
+
+// -----------------------------------------------------------------------------
+// 👥 팔로우 (Follow)
+// -----------------------------------------------------------------------------
+
+export interface FollowRelation {
+  followerId: string
+  followingId: string
+  followedAt: string
+  /** 팔로잉 유저 정보 스냅샷 */
+  targetNickname: string
+  targetEmoji: string
+  targetLevel: number
+}
