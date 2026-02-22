@@ -3,12 +3,12 @@
 import { useState } from "react"
 import { ArrowLeft, Check, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { useUserProfile } from "@/hooks/use-user-profile"
+import { useUser } from "@/context/user-context"
 
 const AVATAR_OPTIONS = ["🐶", "🐱", "🐻", "🦊", "🐼", "🐯", "🦁", "🐸", "🐧", "🦉", "🐺", "🦝"]
 
 export default function EditProfilePage() {
-  const { profile, updateNickname, updateAvatar } = useUserProfile()
+  const { profile, updateNickname, updateAvatar } = useUser()
   const [nickname, setNickname] = useState(profile?.nickname ?? "")
   const [selectedAvatar, setSelectedAvatar] = useState(profile?.avatarEmoji ?? "🐶")
   const [isSaving, setIsSaving] = useState(false)

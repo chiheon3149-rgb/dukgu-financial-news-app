@@ -6,7 +6,7 @@ import { Suspense } from "react"
 import Link from "next/link"
 import { BookMarked, ThumbsUp, ThumbsDown, Zap, ArrowLeft } from "lucide-react"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
-import { useUserProfile } from "@/hooks/use-user-profile"
+import { useUser } from "@/context/user-context"
 
 // =============================================================================
 // 🔖 /mypage/saved — 저장/반응/XP 통합 페이지 (탭 전환)
@@ -31,7 +31,7 @@ function SavedContent() {
   const searchParams = useSearchParams()
   const tab = searchParams.get("tab") ?? "saved"
   const { savedArticles, reactions } = useSavedArticles()
-  const { profile } = useUserProfile()
+  const { profile } = useUser()
 
   const tabs = [
     { key: "saved",     label: "북마크",    icon: <BookMarked className="w-3.5 h-3.5" />, count: savedArticles.length },

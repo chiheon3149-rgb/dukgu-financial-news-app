@@ -2,25 +2,11 @@
 
 import Link from "next/link"
 import { NoticeDropdown } from "@/components/dukgu/notice-dropdown"
-import { useUserProfile } from "@/hooks/use-user-profile"
+import { useUser } from "@/context/user-context"
 import { XpLevelBadge } from "@/components/dukgu/xp-level-badge"
 
-// =============================================================================
-// 🏠 StickyHeader
-//
-// 변경 사항:
-//   - 하드코딩된 dicebear 이미지 아바타 → useUserProfile의 avatarEmoji로 교체
-//   - 레벨 배지(Lv.2 하드코딩) → currentLevel.level 동적 반영
-//   - 마이페이지에서 아이콘 변경 시 여기도 즉시 반영됩니다.
-//
-// 설계 포인트:
-//   useUserProfile은 Mock 상태를 메모리에 들고 있습니다.
-//   현재는 새로고침 하면 초기화되지만, Supabase 연결 후에는 DB에서 불러와서
-//   영구적으로 유지됩니다.
-// =============================================================================
-
 export function StickyHeader() {
-  const { profile, currentLevel } = useUserProfile()
+  const { profile, currentLevel } = useUser()
 
   return (
     <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
@@ -35,17 +21,13 @@ export function StickyHeader() {
         <div className="flex items-center gap-3">
           <NoticeDropdown />
 
-          {/* 아바타 + 레벨 뱃지 — 마이페이지 설정과 동기화됩니다 */}
           <Link
             href="/mypage"
             className="flex items-center gap-2 hover:opacity-80 active:scale-95 transition-all"
           >
-            {/* 이모지 아바타 */}
             <div className="w-8 h-8 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center text-lg ring-2 ring-primary/10">
               {profile?.avatarEmoji ?? "🐶"}
             </div>
-
-            {/* 레벨 뱃지 */}
             <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
               {currentLevel.icon} Lv.{currentLevel.level}
             </span>

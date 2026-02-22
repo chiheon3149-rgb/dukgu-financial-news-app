@@ -6,7 +6,7 @@ import { ThumbsUp, ThumbsDown, User } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommentSection } from "@/components/dukgu/comment-section"
 import { useCommunity } from "@/hooks/use-community"
-import { useUserProfile } from "@/hooks/use-user-profile"
+import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
 
 const CATEGORY_LABEL: Record<CommunityCategory, string> = { free: "자유", economy: "경제" }
@@ -14,7 +14,7 @@ const CATEGORY_LABEL: Record<CommunityCategory, string> = { free: "자유", econ
 export default function CommunityPostPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { posts, getComments, reactPost, addComment, reportComment } = useCommunity()
-  const { profile, currentLevel } = useUserProfile()
+  const { profile, currentLevel } = useUser()
 
   const post = posts.find((p) => p.id === params.id)
   const comments = getComments(params.id)

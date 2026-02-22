@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { X, Plus } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { useCommunity } from "@/hooks/use-community"
-import { useUserProfile } from "@/hooks/use-user-profile"
+import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
 
 const PRESET_TAGS = ["금리", "주식", "ETF", "환율", "부동산", "코인", "절약", "재테크", "경제", "일상"]
@@ -13,7 +13,7 @@ const PRESET_TAGS = ["금리", "주식", "ETF", "환율", "부동산", "코인",
 export default function NewPostPage() {
   const router = useRouter()
   const { createPost } = useCommunity()
-  const { profile, currentLevel } = useUserProfile()
+  const { profile, currentLevel } = useUser()
 
   const [category, setCategory] = useState<CommunityCategory>("free")
   const [title, setTitle] = useState("")

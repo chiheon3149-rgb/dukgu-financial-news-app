@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { XpLevelBadge } from "@/components/dukgu/xp-level-badge"
 import { MyPageQuizBanner } from "@/components/dukgu/mypage-quiz-banner"
-import { useUserProfile } from "@/hooks/use-user-profile"
+import { useUser } from "@/context/user-context"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
 import { useFollow } from "@/hooks/use-follow"
 import { LEVEL_TABLE } from "@/lib/mock/user"
@@ -41,7 +41,7 @@ function MenuRow({
 
 export default function MyPage() {
   const router = useRouter()
-  const { profile, currentLevel, nextLevel, levelProgress } = useUserProfile()
+  const { profile, currentLevel, nextLevel, levelProgress } = useUser()
   const { savedArticles, reactions } = useSavedArticles()
   const { following, followers } = useFollow()
   const [showLevelMap, setShowLevelMap] = useState(false)

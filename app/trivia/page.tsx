@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Lightbulb, Trophy, AlertCircle, Sparkles, Bone, Zap, CheckCircle, XCircle, Lock } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { XpLevelBadge } from "@/components/dukgu/xp-level-badge"
-import { useUserProfile } from "@/hooks/use-user-profile"
+import { useUser } from "@/context/user-context"
 import {
   useWeeklyQuiz,
   QUIZ_CATEGORIES,
@@ -25,7 +25,7 @@ type Step = "select" | "quiz" | "result"
 
 export default function TriviaPage() {
   const router = useRouter()
-  const { profile, currentLevel, nextLevel, levelProgress } = useUserProfile()
+  const { profile, currentLevel, nextLevel, levelProgress } = useUser()
   const { weekKey, results, correctCount, isAllClear, getQuestion, submitAnswer } = useWeeklyQuiz()
 
   const [step, setStep] = useState<Step>("select")

@@ -15,6 +15,7 @@ import { MOCK_NEWS } from "@/lib/mock/news"
 // =============================================================================
 
 const PAGE_SIZE = 10
+const MAX_MOCK_ITEMS = 50
 
 interface UseNewsFeedReturn {
   news: NewsItem[]
@@ -29,7 +30,6 @@ export function useNewsFeed(): UseNewsFeedReturn {
   const [news, setNews] = useState<NewsItem[]>(MOCK_NEWS.slice(0, PAGE_SIZE))
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  // Mock 데이터 기준: 전체 100개가 있다고 가정
   const [hasMore, setHasMore] = useState(true)
 
   const refresh = useCallback(async () => {
@@ -54,26 +54,33 @@ export function useNewsFeed(): UseNewsFeedReturn {
       await new Promise((r) => setTimeout(r, 1200))
 
       const categories = ["정치", "경제", "사회", "문화"] as const
-      const moreNews: NewsItem[] = Array.from({ length: PAGE_SIZE }, (_, i) => ({
-        id: `news-extra-${news.length + i + 1}`,
-        category: categories[Math.floor(Math.random() * categories.length)],
-        tags: ["#속보"],
-        headline: `[속보] 실시간 업데이트 뉴스 ${news.length + i + 1}보`,
-        summary: "서버에서 새롭게 도착한 뉴스입니다.",
-        timeAgo: `${news.length + i + 1}시간 전`,
-        publishedAt: new Date().toISOString(),
-        goodCount: Math.floor(Math.random() * 500),
-        badCount: Math.floor(Math.random() * 50),
-        commentCount: Math.floor(Math.random() * 200),
-      }))
 
-      setNews((prev) => [...prev, ...moreNews])
-      // Mock 환경에서는 5페이지(50개) 이후 종료
-      if (news.length + PAGE_SIZE >= 50) setHasMore(false)
+      // ✅ 버그 수정: setNews의 함수형 업데이트로 항상 최신 prev를 참조
+      setNews((prev) => {
+        const moreNews: NewsItem[] = Array.from({ length: PAGE_SIZE }, (_, i) => ({
+          id: `news-extra-${prev.length + i + 1}`,
+          category: categories[Math.floor(Math.random() * categories.length)],
+          tags: ["#속보"],
+          headline: `[속보] 실시간 업데이트 뉴스 ${prev.length + i + 1}보`,
+          summary: "서버에서 새롭게 도착한 뉴스입니다.",
+          timeAgo: `${prev.length + i + 1}시간 전`,
+          publishedAt: new Date().toISOString(),
+          goodCount: Math.floor(Math.random() * 500),
+          badCount: Math.floor(Math.random() * 50),
+          commentCount: Math.floor(Math.random() * 200),
+        }))
+
+        const next = [...prev, ...moreNews]
+
+        // ✅ 버그 수정: prev 기준으로 판단해서 항상 정확한 값 참조
+        if (next.length >= MAX_MOCK_ITEMS) setHasMore(false)
+
+        return next
+      })
     } finally {
       setIsLoadingMore(false)
     }
-  }, [isLoadingMore, hasMore, news.length])
+  }, [isLoadingMore, hasMore])
 
   return { news, isLoading, isLoadingMore, hasMore, fetchNextPage, refresh }
 }

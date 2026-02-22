@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { useUserProfile } from "./use-user-profile"
+import { useUser } from "@/context/user-context"
 
 // =============================================================================
 // 🎮 useWeeklyQuiz
@@ -112,7 +112,7 @@ const STORAGE_KEY = "dukgu_quiz_results"
 
 export function useWeeklyQuiz(): UseWeeklyQuizReturn {
   const weekKey = useMemo(() => getCurrentWeekKey(), [])
-  const { addXp } = useUserProfile()
+  const { addXp } = useUser()
 
   // localStorage에서 이번 주차 결과만 꺼냅니다
   const [results, setResults] = useState<WeekResults>(() => {
