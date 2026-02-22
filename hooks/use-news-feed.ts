@@ -1,21 +1,17 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import type { NewsItem } from "@/types"
-import { MOCK_NEWS } from "@/lib/mock/news"
+import { supabase } from "@/lib/supabase"
 
 // =============================================================================
-// 📰 useNewsFeed 훅
+// 📰 useNewsFeed 훅 — Supabase 연동 버전
 //
-// 역할: 뉴스 피드 데이터의 로딩, 페이지네이션, 새로고침을 담당합니다.
-// 컴포넌트는 이 훅이 데이터를 어디서 가져오는지 알 필요가 없습니다.
-//
-// 🔄 Supabase 전환 시: fetchNextPage, refresh 내부의 Mock 로직만
-//    Supabase client 호출로 교체하면 됩니다. 컴포넌트 코드는 변경 불필요.
+// Supabase의 news 테이블에서 뉴스를 가져옵니다.
+// 최신순으로 정렬되며, 스크롤 시 10개씩 추가로 불러옵니다.
 // =============================================================================
 
 const PAGE_SIZE = 10
-const MAX_MOCK_ITEMS = 50
 
 interface UseNewsFeedReturn {
   news: NewsItem[]
@@ -26,61 +22,106 @@ interface UseNewsFeedReturn {
   refresh: () => Promise<void>
 }
 
+// Supabase 데이터를 NewsItem 형식으로 변환
+function toNewsItem(row: any): NewsItem {
+  return {
+    id: row.id,
+    category: row.category,
+    tags: row.tags ?? [],
+    headline: row.headline,
+    summary: row.summary,
+    timeAgo: getTimeAgo(row.published_at),
+    publishedAt: row.published_at,
+    goodCount: row.good_count ?? 0,
+    badCount: row.bad_count ?? 0,
+    commentCount: row.comment_count ?? 0,
+  }
+}
+
+// "n분 전", "n시간 전" 형식으로 변환
+function getTimeAgo(publishedAt: string): string {
+  const diff = Date.now() - new Date(publishedAt).getTime()
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  if (days > 0) return `${days}일 전`
+  if (hours > 0) return `${hours}시간 전`
+  if (minutes > 0) return `${minutes}분 전`
+  return "방금 전"
+}
+
 export function useNewsFeed(): UseNewsFeedReturn {
-  const [news, setNews] = useState<NewsItem[]>(MOCK_NEWS.slice(0, PAGE_SIZE))
-  const [isLoading, setIsLoading] = useState(false)
+  const [news, setNews] = useState<NewsItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
+  const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(null)
 
+  // 최초 마운트 시 자동 로딩
+  useEffect(() => {
+    supabase
+      .from("news")
+      .select("*")
+      .order("published_at", { ascending: false })
+      .limit(PAGE_SIZE)
+      .then(({ data, error }) => {
+        if (error) { console.error("[useNewsFeed] 초기 로딩 실패:", error); return }
+        const items = (data ?? []).map(toNewsItem)
+        setNews(items)
+        setLastPublishedAt(items.at(-1)?.publishedAt ?? null)
+        setHasMore(items.length === PAGE_SIZE)
+        setIsLoading(false)
+      })
+  }, [])
+
+  // 새로고침
   const refresh = useCallback(async () => {
     if (isLoading) return
     setIsLoading(true)
     try {
-      // 🔄 TODO: await supabase.from('news').select('*').order('published_at', { ascending: false }).limit(PAGE_SIZE)
-      await new Promise((r) => setTimeout(r, 800)) // 네트워크 시뮬레이션
-      setNews(MOCK_NEWS.slice(0, PAGE_SIZE))
-      setHasMore(true)
+      const { data, error } = await supabase
+        .from("news")
+        .select("*")
+        .order("published_at", { ascending: false })
+        .limit(PAGE_SIZE)
+
+      if (error) throw error
+
+      const items = (data ?? []).map(toNewsItem)
+      setNews(items)
+      setLastPublishedAt(items.at(-1)?.publishedAt ?? null)
+      setHasMore(items.length === PAGE_SIZE)
+    } catch (e) {
+      console.error("[useNewsFeed] 새로고침 실패:", e)
     } finally {
       setIsLoading(false)
     }
   }, [isLoading])
 
+  // 다음 페이지 (무한스크롤)
   const fetchNextPage = useCallback(async () => {
-    if (isLoadingMore || !hasMore) return
+    if (isLoadingMore || !hasMore || !lastPublishedAt) return
     setIsLoadingMore(true)
     try {
-      // 🔄 TODO: cursor 기반 pagination으로 교체
-      // await supabase.from('news').select('*').lt('published_at', lastItem.publishedAt).limit(PAGE_SIZE)
-      await new Promise((r) => setTimeout(r, 1200))
+      const { data, error } = await supabase
+        .from("news")
+        .select("*")
+        .order("published_at", { ascending: false })
+        .lt("published_at", lastPublishedAt)
+        .limit(PAGE_SIZE)
 
-      const categories = ["정치", "경제", "사회", "문화"] as const
+      if (error) throw error
 
-      // ✅ 버그 수정: setNews의 함수형 업데이트로 항상 최신 prev를 참조
-      setNews((prev) => {
-        const moreNews: NewsItem[] = Array.from({ length: PAGE_SIZE }, (_, i) => ({
-          id: `news-extra-${prev.length + i + 1}`,
-          category: categories[Math.floor(Math.random() * categories.length)],
-          tags: ["#속보"],
-          headline: `[속보] 실시간 업데이트 뉴스 ${prev.length + i + 1}보`,
-          summary: "서버에서 새롭게 도착한 뉴스입니다.",
-          timeAgo: `${prev.length + i + 1}시간 전`,
-          publishedAt: new Date().toISOString(),
-          goodCount: Math.floor(Math.random() * 500),
-          badCount: Math.floor(Math.random() * 50),
-          commentCount: Math.floor(Math.random() * 200),
-        }))
-
-        const next = [...prev, ...moreNews]
-
-        // ✅ 버그 수정: prev 기준으로 판단해서 항상 정확한 값 참조
-        if (next.length >= MAX_MOCK_ITEMS) setHasMore(false)
-
-        return next
-      })
+      const items = (data ?? []).map(toNewsItem)
+      setNews((prev) => [...prev, ...items])
+      setLastPublishedAt(items.at(-1)?.publishedAt ?? null)
+      setHasMore(items.length === PAGE_SIZE)
+    } catch (e) {
+      console.error("[useNewsFeed] 다음 페이지 로딩 실패:", e)
     } finally {
       setIsLoadingMore(false)
     }
-  }, [isLoadingMore, hasMore])
+  }, [isLoadingMore, hasMore, lastPublishedAt])
 
   return { news, isLoading, isLoadingMore, hasMore, fetchNextPage, refresh }
 }
