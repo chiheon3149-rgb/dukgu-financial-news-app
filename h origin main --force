@@ -1,0 +1,6 @@
+[33m0896efb[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m ui 전체업데이트
+[33m0ff7095[m Update UI
+[33mbefc70a[m feat: init project with next.js and tailwindcss -init project with next.js and tailwindcss -setup basic layout and components -add home page and news page -add briefing page and history page -add notice page and notice detail page -add news detail page -add basic styling and responsive design -add AI disclaimer and summary components - add asset allocation chart and history summary components- -add comment section and date range picker components -add notice banner and dropdown components -add search bar and market switcher components -add hero banner and market index board components
+[33m78e8a35[m refactor: update tsconfig.json for improved TypeScript configuration
+[33m6d7b008[m fix: resolve hydration mismatch with Korean text encoding\n\nConvert Korean strings to Unicode escape sequences and convert\nnon-interactive components to Server Components.
+[33m4272de3[m Initial commit from v0
