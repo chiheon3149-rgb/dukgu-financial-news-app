@@ -1,22 +1,15 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react"
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react"
 import type { UserProfile, XpEvent, XpSource } from "@/types"
-import { MOCK_USER, LEVEL_TABLE, getLevelMeta } from "@/lib/mock/user"
+import { LEVEL_TABLE, getLevelMeta } from "@/lib/mock/user"
+import { supabase } from "@/lib/supabase"
 
 // =============================================================================
-// 👤 UserContext — 유저 정보 전역 상태
+// 👤 UserContext — 실제 Supabase Auth 연동 버전
 //
-// 이 파일을 만든 이유:
-//   useUserProfile을 여러 컴포넌트에서 각각 호출하면
-//   컴포넌트마다 "각자의 유저 정보"를 따로 들고 있게 됩니다.
-//   그래서 마이페이지에서 아바타를 바꿔도 헤더가 안 바뀌는 버그가 생겼어요.
-//
-//   이 Context를 쓰면 앱 전체가 "하나의 유저 정보"를 공유합니다.
-//   마이페이지에서 바꾸면 헤더도 즉시 반영돼요 ✅
-//
-// 🔄 Supabase 전환 시:
-//   MOCK_USER 초기값을 supabase.auth.getUser() 결과로 교체하면 됩니다.
+// 로그인한 유저 정보를 Supabase에서 가져와서 앱 전체에 공유합니다.
+// 마이페이지에서 바꾸면 헤더도 즉시 반영됩니다 ✅
 // =============================================================================
 
 export interface XpResult {
@@ -38,10 +31,92 @@ interface UserContextValue {
 
 const UserContext = createContext<UserContextValue | null>(null)
 
-// ─── Provider: app/layout.tsx에 감싸주면 됩니다 ───────────────────────────
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<UserProfile | null>(MOCK_USER)
-  const [isLoading] = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // 로그인한 유저 정보 불러오기
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) {
+          setProfile(null)
+          setIsLoading(false)
+          return
+        }
+
+        // profiles 테이블에서 유저 정보 불러오기
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single()
+
+        if (profileData) {
+          // 기존 프로필 있으면 불러오기
+          const { data: xpData } = await supabase
+            .from("xp_events")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("earned_at", { ascending: false })
+
+          setProfile({
+            id: user.id,
+            nickname: profileData.nickname,
+            email: user.email ?? "",
+            joinedAt: profileData.joined_at,
+            avatarEmoji: profileData.avatar_emoji ?? "🐶",
+            totalXp: profileData.total_xp ?? 0,
+            xpHistory: (xpData ?? []).map((e: any) => ({
+              id: e.id,
+              source: e.source,
+              amount: e.amount,
+              label: e.label,
+              earnedAt: e.earned_at,
+            })),
+          })
+        } else {
+          // 처음 로그인 — profiles 테이블에 새 유저 생성
+          const nickname = user.user_metadata?.name ?? user.email?.split("@")[0] ?? "새 유저"
+          const newProfile = {
+            id: user.id,
+            nickname,
+            email: user.email ?? "",
+            avatar_emoji: "🐶",
+            total_xp: 0,
+            joined_at: new Date().toISOString(),
+          }
+
+          await supabase.from("profiles").insert(newProfile)
+
+          setProfile({
+            id: user.id,
+            nickname,
+            email: user.email ?? "",
+            joinedAt: newProfile.joined_at,
+            avatarEmoji: "🐶",
+            totalXp: 0,
+            xpHistory: [],
+          })
+        }
+      } catch (e) {
+        console.error("[UserContext] 유저 로딩 실패:", e)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadUser()
+
+    // 로그인/로그아웃 상태 변경 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      loadUser()
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   const currentLevel = useMemo(
     () => getLevelMeta(profile?.totalXp ?? 0),
@@ -82,6 +157,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           label,
           earnedAt: new Date().toISOString(),
         }
+
+        // Supabase에도 저장
+        supabase.from("xp_events").insert({
+          user_id: prev.id,
+          source,
+          amount,
+          label,
+          earned_at: event.earnedAt,
+        })
+        supabase.from("profiles").update({ total_xp: newTotalXp }).eq("id", prev.id)
+
         return { ...prev, totalXp: newTotalXp, xpHistory: [event, ...prev.xpHistory] }
       })
 
@@ -91,11 +177,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   )
 
   const updateNickname = useCallback((nickname: string) => {
-    setProfile((prev) => (prev ? { ...prev, nickname } : prev))
+    setProfile((prev) => {
+      if (!prev) return prev
+      supabase.from("profiles").update({ nickname }).eq("id", prev.id)
+      return { ...prev, nickname }
+    })
   }, [])
 
   const updateAvatar = useCallback((emoji: string) => {
-    setProfile((prev) => (prev ? { ...prev, avatarEmoji: emoji } : prev))
+    setProfile((prev) => {
+      if (!prev) return prev
+      supabase.from("profiles").update({ avatar_emoji: emoji }).eq("id", prev.id)
+      return { ...prev, avatarEmoji: emoji }
+    })
   }, [])
 
   return (
@@ -116,7 +210,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ─── Hook: 컴포넌트에서 useUser()로 호출하면 됩니다 ──────────────────────
 export function useUser(): UserContextValue {
   const ctx = useContext(UserContext)
   if (!ctx) throw new Error("useUser는 UserProvider 안에서만 사용할 수 있습니다.")
