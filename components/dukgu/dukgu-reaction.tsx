@@ -15,7 +15,13 @@ interface DukguReactionProps {
 export function DukguReaction({ initialGood, initialBad, viewCount, commentCount, newsId }: DukguReactionProps) {
   const [good, setGood] = useState(initialGood)
   const [bad, setBad] = useState(initialBad)
-  const [userReaction, setUserReaction] = useState<"good" | "bad" | null>(null)
+  const reactionKey = newsId ? `news_reaction_${newsId}` : null
+
+  // localStorage에서 이전 반응 복원
+  const [userReaction, setUserReaction] = useState<"good" | "bad" | null>(() => {
+    if (typeof window === "undefined" || !reactionKey) return null
+    return localStorage.getItem(reactionKey) as "good" | "bad" | null
+  })
 
   const total = good + bad
   const goodPercent = total === 0 ? 50 : Math.round((good / total) * 100)
@@ -28,6 +34,7 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
     setGood(newGood)
     if (userReaction === "bad") setBad(newBad)
     setUserReaction("good")
+    if (reactionKey) localStorage.setItem(reactionKey, "good")
     if (newsId) {
       await supabase.from("news").update({ good_count: newGood, bad_count: newBad }).eq("id", newsId)
     }
@@ -40,6 +47,7 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
     setBad(newBad)
     if (userReaction === "good") setGood(newGood)
     setUserReaction("bad")
+    if (reactionKey) localStorage.setItem(reactionKey, "bad")
     if (newsId) {
       await supabase.from("news").update({ good_count: newGood, bad_count: newBad }).eq("id", newsId)
     }

@@ -41,6 +41,8 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params)
   const [news, setNews] = useState<NewsDetail | null | undefined>(undefined)
   const [isBookmarked, setIsBookmarked] = useState(false)
+  const [liveViewCount, setLiveViewCount] = useState(0)
+  const [liveCommentCount, setLiveCommentCount] = useState(0)
 
   useEffect(() => {
     const load = async () => {
@@ -50,8 +52,10 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
         .eq("id", id)
         .single()
       setNews(data ?? null)
-      // 조회수 증가
       if (data) {
+        // 조회수 증가 후 +1 반영
+        setLiveViewCount((data.view_count ?? 0) + 1)
+        setLiveCommentCount(data.comment_count ?? 0)
         await supabase.rpc("increment_news_view_count", { target_news_id: id })
       }
     }
@@ -169,12 +173,12 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
         <DukguReaction
           initialGood={news.good_count}
           initialBad={news.bad_count}
-          viewCount={news.view_count}
-          commentCount={news.comment_count}
+          viewCount={liveViewCount}
+          commentCount={liveCommentCount}
           newsId={news.id}
         />
 
-        <NewsCommentSection newsId={id} />
+        <NewsCommentSection newsId={id} onCountChange={setLiveCommentCount} />
       </main>
     </div>
   )

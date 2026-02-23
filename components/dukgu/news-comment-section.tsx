@@ -48,7 +48,7 @@ interface ReportModalState {
   detail: string
 }
 
-export function NewsCommentSection({ newsId }: { newsId: string }) {
+export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; onCountChange?: (count: number) => void }) {
   const { profile } = useUser()
   const [comments, setComments] = useState<NewsComment[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -90,7 +90,11 @@ export function NewsCommentSection({ newsId }: { newsId: string }) {
       .select()
       .single()
     if (data) {
-      setComments(prev => [...prev, { ...data, timeAgo: "방금 전" }])
+      setComments(prev => {
+        const next = [...prev, { ...data, timeAgo: "방금 전" }]
+        onCountChange?.(next.length)
+        return next
+      })
       await supabase.rpc("increment_news_comment_count", { target_news_id: newsId })
     }
     setInputText("")
@@ -105,7 +109,11 @@ export function NewsCommentSection({ newsId }: { newsId: string }) {
   const deleteComment = async (id: string) => {
     if (!window.confirm("댓글을 삭제하시겠습니까?")) return
     await supabase.from("news_comments").delete().eq("id", id)
-    setComments(prev => prev.filter(c => c.id !== id))
+    setComments(prev => {
+      const next = prev.filter(c => c.id !== id)
+      onCountChange?.(next.length)
+      return next
+    })
     await supabase.rpc("decrement_news_comment_count", { target_news_id: newsId })
     setOpenMenuId(null)
   }
