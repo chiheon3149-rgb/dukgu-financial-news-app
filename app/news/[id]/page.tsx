@@ -50,6 +50,10 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
         .eq("id", id)
         .single()
       setNews(data ?? null)
+      // 조회수 증가
+      if (data) {
+        await supabase.rpc("increment_news_view_count", { target_news_id: id })
+      }
     }
     load()
   }, [id])
@@ -167,6 +171,7 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
           initialBad={news.bad_count}
           viewCount={news.view_count}
           commentCount={news.comment_count}
+          newsId={news.id}
         />
 
         <NewsCommentSection newsId={id} />

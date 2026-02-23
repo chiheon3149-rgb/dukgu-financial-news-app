@@ -2,16 +2,17 @@
 
 import { useState } from "react"
 import { Eye, MessageCircle } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 interface DukguReactionProps {
   initialGood: number
   initialBad: number
   viewCount: number
   commentCount: number
+  newsId?: string
 }
 
-export function DukguReaction({ initialGood, initialBad, viewCount, commentCount }: DukguReactionProps) {
-  // 💡 에러가 났던 변수들이 바로 여기 'DukguReaction' 함수 안에 정의되어 있어야 합니다!
+export function DukguReaction({ initialGood, initialBad, viewCount, commentCount, newsId }: DukguReactionProps) {
   const [good, setGood] = useState(initialGood)
   const [bad, setBad] = useState(initialBad)
   const [userReaction, setUserReaction] = useState<"good" | "bad" | null>(null)
@@ -20,18 +21,28 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
   const goodPercent = total === 0 ? 50 : Math.round((good / total) * 100)
   const badPercent = total === 0 ? 50 : 100 - goodPercent
 
-  const handleGood = () => {
+  const handleGood = async () => {
     if (userReaction === "good") return
-    setGood(c => c + 1)
-    if (userReaction === "bad") setBad(c => c - 1)
+    const newGood = good + 1
+    const newBad = userReaction === "bad" ? bad - 1 : bad
+    setGood(newGood)
+    if (userReaction === "bad") setBad(newBad)
     setUserReaction("good")
+    if (newsId) {
+      await supabase.from("news").update({ good_count: newGood, bad_count: newBad }).eq("id", newsId)
+    }
   }
 
-  const handleBad = () => {
+  const handleBad = async () => {
     if (userReaction === "bad") return
-    setBad(c => c + 1)
-    if (userReaction === "good") setGood(c => c - 1)
+    const newBad = bad + 1
+    const newGood = userReaction === "good" ? good - 1 : good
+    setBad(newBad)
+    if (userReaction === "good") setGood(newGood)
     setUserReaction("bad")
+    if (newsId) {
+      await supabase.from("news").update({ good_count: newGood, bad_count: newBad }).eq("id", newsId)
+    }
   }
 
   return (
@@ -42,9 +53,8 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
       </div>
 
       <div className="flex items-center justify-center gap-8">
-        {/* 좋아요 (꽉 찬 그릇) */}
         <div className="flex flex-col items-center gap-2">
-          <button 
+          <button
             onClick={handleGood}
             className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "good" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
           >
@@ -56,15 +66,13 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
           </div>
         </div>
 
-        {/* 게이지 바 */}
         <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden flex shadow-inner mt-2">
           <div className="bg-blue-500 h-full transition-all duration-500" style={{ width: `${goodPercent}%` }} />
           <div className="bg-red-400 h-full transition-all duration-500" style={{ width: `${badPercent}%` }} />
         </div>
 
-        {/* 싫어요 (빈 그릇) */}
         <div className="flex flex-col items-center gap-2">
-          <button 
+          <button
             onClick={handleBad}
             className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "bad" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
           >
