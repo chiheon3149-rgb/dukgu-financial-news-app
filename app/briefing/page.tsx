@@ -17,7 +17,7 @@ import { useBriefingLogs } from "@/hooks/use-briefing-logs"
 
 export default function BriefingPage() {
   const router = useRouter()
-  const { logs, setSearchQuery, setDateRange } = useBriefingLogs()
+  const { logs, isLoading, setSearchQuery, setDateRange } = useBriefingLogs()
 
   const goToDetail = (id: string, mode: "US" | "KR", isReady: boolean) => {
     if (!isReady) {
@@ -48,7 +48,14 @@ export default function BriefingPage() {
         </section>
 
         <div className="space-y-8">
-          {logs.map((day) => (
+          {isLoading && (
+            <div className="py-20 flex flex-col items-center justify-center text-slate-300">
+              <Zap className="w-12 h-12 mb-3 opacity-20 animate-pulse" />
+              <p className="text-sm font-bold">브리핑 로그 불러오는 중...</p>
+            </div>
+          )}
+
+          {!isLoading && logs.map((day) => (
             <section key={day.id} className="space-y-4">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
@@ -82,7 +89,7 @@ export default function BriefingPage() {
             </section>
           ))}
 
-          {logs.length === 0 && (
+          {!isLoading && logs.length === 0 && (
             <div className="py-20 flex flex-col items-center justify-center text-slate-300">
               <Zap className="w-12 h-12 mb-3 opacity-20" />
               <p className="text-sm font-bold">검색 결과가 없다냥...</p>

@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, Send, ChevronDown, CheckCircle, MessageSquare } from "lucide-react"
 import Link from "next/link"
-import type { InquiryCategory } from "@/types"
-import { MOCK_INQUIRIES } from "@/lib/mock/user"
+import type { InquiryCategory, InquiryMessage } from "@/types"
+import { supabase } from "@/lib/supabase"
+import { useUser } from "@/context/user-context"
 
 // =============================================================================
 // 📬 /mypage/inquiry — 문의하기 페이지
@@ -29,7 +30,20 @@ const STATUS_CONFIG = {
   resolved:  { label: "답변완료", color: "bg-emerald-50 text-emerald-600" },
 }
 
+function mapRow(r: any): InquiryMessage {
+  return {
+    id: r.id,
+    category: r.category as InquiryCategory,
+    title: r.title,
+    body: r.body,
+    submittedAt: r.submitted_at,
+    status: r.status ?? "pending",
+    reply: r.reply ?? undefined,
+  }
+}
+
 export default function InquiryPage() {
+  const { profile } = useUser()
   const [tab, setTab] = useState<"write" | "history">("write")
   const [category, setCategory] = useState<InquiryCategory>("feature")
   const [title, setTitle] = useState("")
@@ -37,7 +51,23 @@ export default function InquiryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [inquiries] = useState(MOCK_INQUIRIES)
+  const [inquiries, setInquiries] = useState<InquiryMessage[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+
+  const fetchInquiries = async (email: string) => {
+    setIsLoadingHistory(true)
+    const { data } = await supabase
+      .from("inquiries")
+      .select("id, category, title, body, status, reply, submitted_at")
+      .eq("user_email", email)
+      .order("submitted_at", { ascending: false })
+    if (data) setInquiries(data.map(mapRow))
+    setIsLoadingHistory(false)
+  }
+
+  useEffect(() => {
+    if (profile?.email) fetchInquiries(profile.email)
+  }, [profile?.email])
 
   const handleSubmit = async () => {
     if (!title.trim() || !body.trim()) {
@@ -56,6 +86,7 @@ export default function InquiryPage() {
       if (!res.ok) throw new Error(data.error)
       setIsSubmitted(true)
       setTitle(""); setBody("")
+      if (profile?.email) await fetchInquiries(profile.email)
     } catch (e: any) {
       setSubmitError(e.message ?? "전송에 실패했습니다.")
     } finally {
@@ -161,7 +192,12 @@ export default function InquiryPage() {
 
         {/* ── 탭: 내 문의 내역 ── */}
         {tab === "history" && (
-          inquiries.length === 0 ? (
+          isLoadingHistory ? (
+            <div className="py-24 flex flex-col items-center text-slate-300">
+              <MessageSquare className="w-10 h-10 mb-3 opacity-20 animate-pulse" />
+              <p className="text-sm font-bold">불러오는 중...</p>
+            </div>
+          ) : inquiries.length === 0 ? (
             <div className="py-24 flex flex-col items-center text-slate-300">
               <MessageSquare className="w-10 h-10 mb-3 opacity-20" />
               <p className="text-sm font-bold">아직 문의 내역이 없습니다</p>
