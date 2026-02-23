@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react"
-import type { CryptoHolding, CryptoStats, CryptoTradeRecord } from "@/types"
-import { MOCK_CRYPTO_HOLDINGS } from "@/lib/mock/crypto"
+import type { CryptoStats } from "@/types"
+import { useCryptoPortfolioContext } from "@/context/crypto-portfolio-context"
+import type { CryptoHolding, CryptoTradeRecord } from "@/types"
 
 // =============================================================================
 // 🪙 useCryptoPortfolio
 //
-// 코인 보유 목록과 실시간 시세를 관리합니다.
+// CryptoPortfolioContext에서 holdings를 가져와 실시간 시세와 합산합니다.
 // =============================================================================
 
 export interface CryptoQuote {
@@ -59,36 +60,23 @@ export function calcCryptoStats(holding: CryptoHolding): CryptoStats {
 
 const POLL_INTERVAL_MS = 30_000
 
-interface UseCryptoPortfolioReturn {
-  rows: CryptoRow[]
-  totalValueUsd: number
-  isLoadingPrices: boolean
-  priceError: string | null
-  addHolding: (holding: CryptoHolding) => void
-  removeHolding: (symbol: string) => void
-  addTrade: (symbol: string, trade: Omit<CryptoTradeRecord, "id">) => void
-  removeTrade: (symbol: string, tradeId: string) => void
-}
-
-export function useCryptoPortfolio(): UseCryptoPortfolioReturn {
-  const [holdings, setHoldings] = useState<CryptoHolding[]>(MOCK_CRYPTO_HOLDINGS)
+export function useCryptoPortfolio() {
+  const { holdings, addHolding, removeHolding, addTrade, removeTrade } = useCryptoPortfolioContext()
   const [quotes, setQuotes] = useState<Record<string, CryptoQuote>>({})
-  const [isLoadingPrices, setIsLoadingPrices] = useState(true)
+  const [isLoadingPrices, setIsLoadingPrices] = useState(false)
   const [priceError, setPriceError] = useState<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const symbols = holdings.map((h) => h.symbol)
+  const symbolsKey = holdings.map((h) => h.symbol).join(",")
 
   const fetchQuotes = useCallback(async () => {
-    if (symbols.length === 0) return
+    if (!symbolsKey) return
     try {
-      const res = await fetch(`/api/market/crypto?symbols=${symbols.join(",")}`)
+      const res = await fetch(`/api/market/crypto?symbols=${symbolsKey}`)
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
       const map: Record<string, CryptoQuote> = {}
-      for (const q of data.quotes) {
-        map[q.symbol] = q
-      }
+      for (const q of data.quotes) map[q.symbol] = q
       setQuotes(map)
       setPriceError(null)
     } catch {
@@ -96,14 +84,15 @@ export function useCryptoPortfolio(): UseCryptoPortfolioReturn {
     } finally {
       setIsLoadingPrices(false)
     }
-  }, [symbols.join(",")])
+  }, [symbolsKey])
 
   useEffect(() => {
+    if (!symbolsKey) return
     setIsLoadingPrices(true)
     fetchQuotes()
     intervalRef.current = setInterval(fetchQuotes, POLL_INTERVAL_MS)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [fetchQuotes])
+  }, [fetchQuotes, symbolsKey])
 
   const rows = useMemo<CryptoRow[]>(() => {
     return holdings.map((holding) => {
@@ -121,37 +110,6 @@ export function useCryptoPortfolio(): UseCryptoPortfolioReturn {
     () => rows.reduce((acc, r) => acc + r.currentValueUsd, 0),
     [rows]
   )
-
-  const addHolding = (holding: CryptoHolding) => {
-    setHoldings((prev) => {
-      if (prev.some((h) => h.symbol === holding.symbol)) return prev
-      return [...prev, holding]
-    })
-  }
-
-  const removeHolding = (symbol: string) => {
-    setHoldings((prev) => prev.filter((h) => h.symbol !== symbol))
-  }
-
-  const addTrade = (symbol: string, trade: Omit<CryptoTradeRecord, "id">) => {
-    setHoldings((prev) =>
-      prev.map((h) =>
-        h.symbol === symbol
-          ? { ...h, trades: [...h.trades, { ...trade, id: `ct-${Date.now()}` }] }
-          : h
-      )
-    )
-  }
-
-  const removeTrade = (symbol: string, tradeId: string) => {
-    setHoldings((prev) =>
-      prev.map((h) =>
-        h.symbol === symbol
-          ? { ...h, trades: h.trades.filter((t) => t.id !== tradeId) }
-          : h
-      )
-    )
-  }
 
   return { rows, totalValueUsd, isLoadingPrices, priceError, addHolding, removeHolding, addTrade, removeTrade }
 }

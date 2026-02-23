@@ -4,7 +4,15 @@ import { useState, useMemo, useEffect } from "react"
 import { Plus, Trash2, ChevronDown, RefreshCw, Loader2, TrendingUp, TrendingDown } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import type { GoldHolding, TradeType } from "@/types"
-import { MOCK_GOLD_HOLDINGS } from "@/lib/mock/stocks"
+
+const STORAGE_KEY = "dukgu:gold-holdings"
+function loadGold(): GoldHolding[] {
+  if (typeof window === "undefined") return []
+  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : [] } catch { return [] }
+}
+function saveGold(items: GoldHolding[]) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)) } catch {}
+}
 
 // =============================================================================
 // 🥇 /assets/gold — 금 보유현황 페이지
@@ -28,7 +36,7 @@ const PAGE_SIZE = 10
 const today = new Date().toISOString().split("T")[0]
 
 export default function GoldPage() {
-  const [holdings, setHoldings] = useState<GoldHolding[]>(MOCK_GOLD_HOLDINGS)
+  const [holdings, setHoldings] = useState<GoldHolding[]>(() => loadGold())
   const [quote, setQuote] = useState<GoldQuote | null>(null)
   const [isLoadingPrice, setIsLoadingPrice] = useState(true)
   const [priceError, setPriceError] = useState<string | null>(null)
@@ -102,11 +110,20 @@ export default function GoldPage() {
       alert("날짜, 가격, 수량을 올바르게 입력해 주세요.")
       return
     }
-    setHoldings((prev) => [
-      ...prev,
-      { id: `g-${Date.now()}`, date: formDate, pricePerGram: p, grams: g, type: formType, memo: formMemo || undefined },
-    ])
+    setHoldings((prev) => {
+      const updated = [...prev, { id: `g-${Date.now()}`, date: formDate, pricePerGram: p, grams: g, type: formType, memo: formMemo || undefined }]
+      saveGold(updated)
+      return updated
+    })
     setFormPrice(""); setFormGrams(""); setFormMemo(""); setIsFormOpen(false)
+  }
+
+  const handleRemoveRecord = (id: string) => {
+    setHoldings((prev) => {
+      const updated = prev.filter((x) => x.id !== id)
+      saveGold(updated)
+      return updated
+    })
   }
 
   const fmt = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}원`
@@ -266,7 +283,7 @@ export default function GoldPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="text-[13px] font-black text-slate-700">{fmt(h.pricePerGram * h.grams)}</p>
-                  <button onClick={() => setHoldings((prev) => prev.filter((x) => x.id !== h.id))}
+                  <button onClick={() => handleRemoveRecord(h.id)}
                     className="opacity-0 group-hover:opacity-100 p-1.5 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

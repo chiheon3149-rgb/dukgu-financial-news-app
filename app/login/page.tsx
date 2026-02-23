@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { supabase } from "@/lib/supabase"
 
@@ -17,6 +18,14 @@ const USE_IMAGE_LOGO = false  // 로고 이미지 준비되면 true로 변경
 const LOGO_PATH = "/logo.png" // public/ 폴더 기준 경로
 
 export default function LoginPage() {
+  const [loginError, setLoginError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const err = params.get("error")
+    if (err) setLoginError(decodeURIComponent(err))
+  }, [])
+
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -66,6 +75,13 @@ export default function LoginPage() {
           매일 아침, 당신을 위한 금융 뉴스 브리핑
         </p>
       </div>
+
+      {/* 에러 메시지 */}
+      {loginError && (
+        <div className="w-full max-w-sm mb-2 px-4 py-3 bg-rose-50 border border-rose-100 rounded-2xl">
+          <p className="text-[12px] font-bold text-rose-500 text-center">{loginError}</p>
+        </div>
+      )}
 
       {/* 로그인 버튼 */}
       <div className="w-full max-w-sm space-y-3">

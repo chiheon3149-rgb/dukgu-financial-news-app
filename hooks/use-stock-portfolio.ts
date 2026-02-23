@@ -1,9 +1,16 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo } from "react"
 import type { StockHolding, PortfolioStats, MarketQuote } from "@/types"
-import { MOCK_STOCK_HOLDINGS } from "@/lib/mock/stocks"
+import { useStockPortfolioContext } from "@/context/stock-portfolio-context"
 import { useMarketPrice } from "./use-market-price"
+
+// =============================================================================
+// 📈 useStockPortfolio
+//
+// StockPortfolioContext에서 holdings를 가져와 실시간 시세와 합산합니다.
+// 주식 목록 페이지(/assets/stocks)에서 사용합니다.
+// =============================================================================
 
 export function calcPortfolioStats(holding: StockHolding): PortfolioStats {
   const sorted = [...holding.trades].sort(
@@ -42,18 +49,8 @@ export interface StockRow {
   returnRate: number
 }
 
-interface UseStockPortfolioReturn {
-  rows: StockRow[]
-  totalValueUsd: number
-  isLoadingPrices: boolean
-  priceError: string | null
-  /** StockHolding 전체를 받습니다 (trades, dividends 포함) */
-  addHolding: (holding: StockHolding) => void
-  removeHolding: (ticker: string) => void
-}
-
-export function useStockPortfolio(usdToKrwRate = 1360): UseStockPortfolioReturn {
-  const [holdings, setHoldings] = useState<StockHolding[]>(MOCK_STOCK_HOLDINGS)
+export function useStockPortfolio(usdToKrwRate = 1360) {
+  const { holdings, addHolding, removeHolding } = useStockPortfolioContext()
 
   const tickers = holdings.map((h) => h.ticker)
   const { quotes, isLoading: isLoadingPrices, error: priceError } = useMarketPrice(tickers)
@@ -80,17 +77,6 @@ export function useStockPortfolio(usdToKrwRate = 1360): UseStockPortfolioReturn 
       return acc + valueInUsd
     }, 0)
   }, [rows, usdToKrwRate])
-
-  const addHolding = (holding: StockHolding) => {
-    setHoldings((prev) => {
-      if (prev.some((h) => h.ticker === holding.ticker)) return prev
-      return [...prev, holding]
-    })
-  }
-
-  const removeHolding = (ticker: string) => {
-    setHoldings((prev) => prev.filter((h) => h.ticker !== ticker))
-  }
 
   return { rows, totalValueUsd, isLoadingPrices, priceError, addHolding, removeHolding }
 }

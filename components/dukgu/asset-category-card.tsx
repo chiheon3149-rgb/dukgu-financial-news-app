@@ -2,7 +2,7 @@
 // 이 컴포넌트는 props를 받아 화면에 그리는 역할만 합니다.
 // 데이터가 어디서 오는지, 상태가 어떻게 관리되는지 전혀 알지 못합니다.
 
-import { TrendingUp, TrendingDown, Landmark, Coins, Bitcoin, ChevronRight, type LucideIcon } from "lucide-react"
+import { TrendingUp, TrendingDown, Landmark, Coins, Bitcoin, Banknote, Building2, ScrollText, Package, ChevronRight, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import type { AssetCategory } from "@/types"
 import { ASSET_THEMES } from "@/lib/constants/asset-themes"
@@ -20,6 +20,10 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Landmark,
   Coins,
   Bitcoin,
+  Banknote,
+  Building2,
+  ScrollText,
+  Package,
 }
 
 interface AssetCategoryCardProps {
