@@ -238,6 +238,43 @@ export interface GoldHolding {
 
 
 // -----------------------------------------------------------------------------
+// 🪙 코인 (Crypto)
+// -----------------------------------------------------------------------------
+
+/** 단일 코인 매매 기록 */
+export interface CryptoTradeRecord {
+  id: string
+  /** YYYY-MM-DD */
+  date: string
+  type: TradeType
+  /** 매매 당시 단가 (USD) */
+  price: number
+  /** 수량 (소수점 가능) */
+  quantity: number
+  memo?: string
+}
+
+/** 보유 코인 한 종목 전체 */
+export interface CryptoHolding {
+  /** Yahoo Finance 심볼 (예: BTC-USD, ETH-USD) */
+  symbol: string
+  /** 표시 이름 (예: 비트코인) */
+  name: string
+  /** 코인 단위 (예: BTC) */
+  unit: string
+  trades: CryptoTradeRecord[]
+}
+
+/** 코인 포트폴리오 계산 결과 */
+export interface CryptoStats {
+  totalQuantity: number
+  avgCostPrice: number
+  totalInvested: number
+  realizedPnl: number
+}
+
+
+// -----------------------------------------------------------------------------
 // 🏠 부동산 (Real Estate)
 // -----------------------------------------------------------------------------
 

@@ -4,8 +4,12 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Zap, Wallet, Users, User } from "lucide-react"
 
+const HIDDEN_PATHS = ["/login", "/auth"]
+
 export function BottomNav() {
   const pathname = usePathname()
+
+  if (HIDDEN_PATHS.some((p) => pathname.startsWith(p))) return null
 
   const navItems = [
     { name: "홈",      path: "/",          icon: Home   },
