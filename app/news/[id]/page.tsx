@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react" // 💡 상태 관리를 위해 추가
+import { useState, use } from "react"
 import Link from "next/link"
 import { Home, ExternalLink, Clock, Globe, Bookmark } from "lucide-react" // 💡 Bookmark 아이콘 추가
 import { DetailHeader } from "@/components/dukgu/detail-header"
@@ -9,8 +9,8 @@ import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
 import { DukguAiSummary } from "@/components/dukgu/dukgu-ai-summary"
 import { NewsCommentSection } from "@/components/dukgu/news-comment-section"
 
-export default function NewsDetailPage({ params }: { params: { id: string } }) {
-  // 💡 북마크 저장 상태 관리
+export default function NewsDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const [isBookmarked, setIsBookmarked] = useState(false);
 
   const newsDetail = {
@@ -109,7 +109,7 @@ export default function NewsDetailPage({ params }: { params: { id: string } }) {
           commentCount={newsDetail.stats.comment}
         />
 
-        <NewsCommentSection newsId={params.id} />
+        <NewsCommentSection newsId={id} />
       </main>
     </div>
   )

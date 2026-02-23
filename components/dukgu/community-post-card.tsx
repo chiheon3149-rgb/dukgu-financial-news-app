@@ -1,14 +1,16 @@
 "use client"
 
 import Link from "next/link"
-import { ThumbsUp, ThumbsDown, MessageCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ThumbsUp, ThumbsDown, MessageCircle, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import type { CommunityPost } from "@/types"
 import { useState } from "react"
 
 interface CommunityPostCardProps {
   post: CommunityPost
   onReact: (postId: string, type: "like" | "dislike") => void
-  /** 프로필 클릭 시 콜백 (커뮤니티 → 상대 프로필로 이동) */
+  onDelete?: (postId: string) => Promise<void>
+  currentUserId?: string
   onProfileClick?: (authorId: string) => void
 }
 
@@ -22,9 +24,13 @@ const CATEGORY_COLOR: Record<CommunityPost["category"], string> = {
   economy: "bg-emerald-50 text-emerald-700",
 }
 
-export function CommunityPostCard({ post, onReact, onProfileClick }: CommunityPostCardProps) {
+export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onProfileClick }: CommunityPostCardProps) {
+  const router = useRouter()
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(null)
   const [counts, setCounts] = useState({ like: post.likeCount, dislike: post.dislikeCount })
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const isMyPost = !!currentUserId && post.authorId === currentUserId
 
   const handleReact = (type: "like" | "dislike") => {
     if (reaction === type) return
@@ -36,8 +42,23 @@ export function CommunityPostCard({ post, onReact, onProfileClick }: CommunityPo
     onReact(post.id, type)
   }
 
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!window.confirm("게시글을 삭제하시겠습니까?")) return
+    setMenuOpen(false)
+    try {
+      await onDelete?.(post.id)
+    } catch {
+      alert("삭제 중 오류가 발생했습니다.")
+    }
+  }
+
   return (
-    <article className="bg-white rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+    <article
+      className="bg-white rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-all group overflow-hidden"
+      onClick={() => setMenuOpen(false)}
+    >
       {/* 작성자 정보 */}
       <div className="px-5 pt-4 pb-3 flex items-center justify-between">
         <button
@@ -53,10 +74,42 @@ export function CommunityPostCard({ post, onReact, onProfileClick }: CommunityPo
           </div>
         </button>
 
-        {/* 카테고리 뱃지 */}
-        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${CATEGORY_COLOR[post.category]}`}>
-          {CATEGORY_LABEL[post.category]}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* 카테고리 뱃지 */}
+          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${CATEGORY_COLOR[post.category]}`}>
+            {CATEGORY_LABEL[post.category]}
+          </span>
+
+          {/* 내 글 메뉴 */}
+          {isMyPost && (
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={(e) => { e.preventDefault(); setMenuOpen((v) => !v) }}
+                className="p-1 text-slate-300 hover:text-slate-500 transition-colors"
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-7 bg-white border border-slate-100 shadow-xl rounded-2xl py-1.5 z-20 min-w-[110px] animate-in fade-in-0 zoom-in-95 duration-100">
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); router.push(`/community/${post.id}/edit`) }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-50 text-left"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    수정하기
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-[11px] font-bold text-rose-500 hover:bg-rose-50 text-left"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    삭제하기
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 본문 — 클릭 시 상세 페이지로 이동 */}
@@ -67,8 +120,6 @@ export function CommunityPostCard({ post, onReact, onProfileClick }: CommunityPo
         <p className="text-[12px] text-slate-500 line-clamp-2 leading-relaxed font-medium">
           {post.content}
         </p>
-
-        {/* 태그 */}
         {post.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {post.tags.map((tag) => (

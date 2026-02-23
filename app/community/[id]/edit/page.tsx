@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { X, Plus } from "lucide-react"
+import { X, Plus, Loader2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
@@ -10,10 +10,13 @@ import type { CommunityCategory } from "@/types"
 
 const PRESET_TAGS = ["금리", "주식", "ETF", "환율", "부동산", "코인", "절약", "재테크", "경제", "일상"]
 
-export default function NewPostPage() {
+export default function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
-  const { createPost } = useCommunity()
-  const { profile, currentLevel } = useUser()
+  const { posts, isLoading, updatePost } = useCommunity(id)
+  const { profile } = useUser()
+
+  const post = posts.find((p) => p.id === id)
 
   const [category, setCategory] = useState<CommunityCategory>("free")
   const [title, setTitle] = useState("")
@@ -21,6 +24,18 @@ export default function NewPostPage() {
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [initialized, setInitialized] = useState(false)
+
+  // 게시글 로드 완료 후 폼 초기화
+  useEffect(() => {
+    if (post && !initialized) {
+      setCategory(post.category)
+      setTitle(post.title)
+      setContent(post.content)
+      setTags(post.tags)
+      setInitialized(true)
+    }
+  }, [post, initialized])
 
   const addTag = (tag: string) => {
     const clean = tag.replace(/^#/, "").trim()
@@ -42,20 +57,29 @@ export default function NewPostPage() {
     if (!title.trim() || !content.trim() || isSubmitting) return
     setIsSubmitting(true)
     try {
-      const newPost = await createPost({
-        category,
-        title: title.trim(),
-        content: content.trim(),
-        tags,
-        authorId: profile?.id ?? "user-001",
-        authorNickname: profile?.nickname ?? "나",
-        authorEmoji: profile?.avatarEmoji ?? "🐶",
-        authorLevel: currentLevel.level,
-      })
-      router.replace(`/community/${newPost.id}`)
-    } finally {
+      await updatePost(id, { title: title.trim(), content: content.trim(), tags, category })
+      router.replace(`/community/${id}`)
+    } catch {
+      alert("수정 중 오류가 발생했습니다.")
       setIsSubmitting(false)
     }
+  }
+
+  // 내 글이 아니면 접근 차단
+  if (!isLoading && post && profile && post.authorId !== profile.id) {
+    router.replace(`/community/${id}`)
+    return null
+  }
+
+  if (isLoading || !initialized) {
+    return (
+      <div className="min-h-dvh bg-slate-50">
+        <DetailHeader title="게시글 수정" />
+        <div className="flex items-center justify-center h-40 text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
+        </div>
+      </div>
+    )
   }
 
   const isValid = title.trim().length > 0 && content.trim().length > 0
@@ -63,7 +87,7 @@ export default function NewPostPage() {
   return (
     <div className="min-h-dvh bg-slate-50 pb-24">
       <DetailHeader
-        title="게시글 작성"
+        title="게시글 수정"
         rightElement={
           <button
             onClick={handleSubmit}
@@ -74,7 +98,7 @@ export default function NewPostPage() {
                 : "bg-slate-100 text-slate-300"
             }`}
           >
-            {isSubmitting ? "등록 중..." : "등록"}
+            {isSubmitting ? "저장 중..." : "저장"}
           </button>
         }
       />
@@ -85,12 +109,12 @@ export default function NewPostPage() {
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">카테고리</p>
           <div className="flex gap-2">
-            {([["free", "자유"], ["economy", "경제"]] as [CommunityCategory, string][]).map(([id, label]) => (
+            {([["free", "자유"], ["economy", "경제"]] as [CommunityCategory, string][]).map(([val, label]) => (
               <button
-                key={id}
-                onClick={() => setCategory(id)}
+                key={val}
+                onClick={() => setCategory(val)}
                 className={`flex-1 py-2.5 rounded-2xl text-[13px] font-black transition-all active:scale-95 ${
-                  category === id
+                  category === val
                     ? "bg-emerald-500 text-white shadow-sm"
                     : "bg-slate-50 text-slate-500 border border-slate-100"
                 }`}
@@ -106,8 +130,6 @@ export default function NewPostPage() {
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">
             태그 ({tags.length}/5)
           </p>
-
-          {/* 선택된 태그 */}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
               {tags.map((tag) => (
@@ -122,8 +144,6 @@ export default function NewPostPage() {
               ))}
             </div>
           )}
-
-          {/* 태그 직접 입력 */}
           <div className="relative mb-3">
             <span className="absolute left-3 top-2.5 text-[13px] text-slate-300">#</span>
             <input
@@ -140,8 +160,6 @@ export default function NewPostPage() {
               <Plus className="w-4 h-4" />
             </button>
           </div>
-
-          {/* 프리셋 태그 */}
           <div className="flex flex-wrap gap-1.5">
             {PRESET_TAGS.filter((t) => !tags.includes(t)).map((tag) => (
               <button
@@ -164,19 +182,16 @@ export default function NewPostPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="제목을 입력하세요"
               maxLength={100}
               className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-4 text-[14px] font-bold focus:outline-none focus:border-emerald-200 transition-all"
             />
             <p className="text-right text-[10px] font-bold text-slate-300 mt-1">{title.length}/100</p>
           </div>
-
           <div>
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">내용</p>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="내용을 자유롭게 작성해 주세요"
               maxLength={2000}
               rows={8}
               className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-4 text-[13px] font-medium focus:outline-none focus:border-emerald-200 transition-all resize-none"

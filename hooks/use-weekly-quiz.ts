@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useUser } from "@/context/user-context"
+import { supabase } from "@/lib/supabase"
 
 // =============================================================================
 // 🎮 useWeeklyQuiz
@@ -137,6 +138,30 @@ export function useWeeklyQuiz(): UseWeeklyQuizReturn {
     }
   }, [results, weekKey])
 
+  // Supabase에서 이번 주 결과 불러오기 (기기 변경 시 동기화)
+  useEffect(() => {
+    const loadFromSupabase = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data } = await supabase
+        .from("quiz_results")
+        .select("category, correct")
+        .eq("user_id", user.id)
+        .eq("week_key", weekKey)
+
+      if (!data || data.length === 0) return
+
+      const remote: WeekResults = {}
+      data.forEach((row) => {
+        remote[row.category as QuizCategory] = { solved: true, correct: row.correct }
+      })
+      // Supabase 결과로 병합 (원격이 권위 있는 소스)
+      setResults((prev) => ({ ...prev, ...remote }))
+    }
+    loadFromSupabase()
+  }, [weekKey])
+
   const correctCount = Object.values(results).filter((r) => r?.correct).length
   const isAllClear = correctCount === QUIZ_CATEGORIES.length
 
@@ -172,6 +197,19 @@ export function useWeeklyQuiz(): UseWeeklyQuizReturn {
         }
 
         return next
+      })
+
+      // Supabase에 결과 저장 (fire-and-forget)
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return
+        supabase.from("quiz_results").upsert({
+          id: `${user.id}-${weekKey}-${cat}`,
+          user_id: user.id,
+          week_key: weekKey,
+          category: cat,
+          correct,
+          answered_at: new Date().toISOString(),
+        })
       })
 
       return { correct, leveledUp }

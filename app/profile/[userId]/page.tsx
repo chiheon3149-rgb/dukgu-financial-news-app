@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, use } from "react"
 import { useRouter } from "next/navigation"
 import { Lock, TrendingUp, TrendingDown, UserPlus, UserMinus } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
@@ -27,19 +27,20 @@ const MOCK_PUBLIC_PORTFOLIOS: Record<string, { ticker: string; name: string; ret
   ],
 }
 
-export default function UserProfilePage({ params }: { params: { userId: string } }) {
+export default function UserProfilePage({ params }: { params: Promise<{ userId: string }> }) {
+  const { userId } = use(params)
   const router = useRouter()
   const { isFollowing, toggleFollow } = useFollow()
 
-  const targetUser = MOCK_COMMUNITY_USERS.find((u) => u.id === params.userId)
+  const targetUser = MOCK_COMMUNITY_USERS.find((u) => u.id === userId)
   const levelMeta = useMemo(
     () => LEVEL_TABLE.find((l) => l.level === (targetUser?.level ?? 1)) ?? LEVEL_TABLE[0],
     [targetUser?.level]
   )
 
-  const following = isFollowing(params.userId)
+  const following = isFollowing(userId)
   const canViewPortfolio = following && (targetUser?.portfolioPublic ?? false)
-  const portfolio = MOCK_PUBLIC_PORTFOLIOS[params.userId] ?? []
+  const portfolio = MOCK_PUBLIC_PORTFOLIOS[userId] ?? []
 
   if (!targetUser) {
     return (

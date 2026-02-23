@@ -1,13 +1,14 @@
-import { createClient } from "@supabase/supabase-js"
+import { createBrowserClient } from "@supabase/ssr"
 
 // =============================================================================
-// 🔌 Supabase 클라이언트
+// 🔌 Supabase 클라이언트 (브라우저용)
 //
+// createBrowserClient: 세션을 localStorage가 아닌 쿠키에 저장합니다.
+// 미들웨어(서버)와 동일한 쿠키를 공유하므로 SSR 세션 유지가 됩니다.
 // 앱 전체에서 이 파일 하나만 import해서 사용합니다.
-// .env.local 의 값을 자동으로 읽어옵니다.
 // =============================================================================
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)

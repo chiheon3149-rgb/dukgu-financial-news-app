@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { use, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ThumbsUp, ThumbsDown, User } from "lucide-react"
+import { ThumbsUp, ThumbsDown, User, Loader2, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommentSection } from "@/components/dukgu/comment-section"
 import { useCommunity } from "@/hooks/use-community"
@@ -11,16 +11,21 @@ import type { CommunityCategory } from "@/types"
 
 const CATEGORY_LABEL: Record<CommunityCategory, string> = { free: "자유", economy: "경제" }
 
-export default function CommunityPostPage({ params }: { params: { id: string } }) {
+export default function CommunityPostPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
-  const { posts, getComments, reactPost, addComment, reportComment } = useCommunity()
+  const { posts, isLoading, getComments, reactPost, addComment, reportComment, deletePost } = useCommunity(id)
   const { profile, currentLevel } = useUser()
 
-  const post = posts.find((p) => p.id === params.id)
-  const comments = getComments(params.id)
+  const post = posts.find((p) => p.id === id)
+  const comments = getComments(id)
 
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(null)
   const [counts, setCounts] = useState({ like: post?.likeCount ?? 0, dislike: post?.dislikeCount ?? 0 })
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const isMyPost = !!profile && post?.authorId === profile.id
 
   const handleReact = (type: "like" | "dislike") => {
     if (reaction === type || !post) return
@@ -30,6 +35,29 @@ export default function CommunityPostPage({ params }: { params: { id: string } }
     }))
     setReaction(type)
     reactPost(post.id, type)
+  }
+
+  const handleDelete = async () => {
+    if (!post || !window.confirm("게시글을 삭제하시겠습니까?")) return
+    setIsDeleting(true)
+    try {
+      await deletePost(post.id)
+      router.replace("/community")
+    } catch {
+      alert("삭제 중 오류가 발생했습니다.")
+      setIsDeleting(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-dvh bg-slate-50 pb-24">
+        <DetailHeader title="게시글" />
+        <div className="flex items-center justify-center h-40 text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
+        </div>
+      </div>
+    )
   }
 
   if (!post) {
@@ -48,8 +76,41 @@ export default function CommunityPostPage({ params }: { params: { id: string } }
     : { id: "user-001", nickname: "나", emoji: "🐶", level: 1 }
 
   return (
-    <div className="min-h-dvh bg-white pb-24">
-      <DetailHeader title={CATEGORY_LABEL[post.category] + " 게시판"} />
+    <div className="min-h-dvh bg-white pb-24" onClick={() => setMenuOpen(false)}>
+      <DetailHeader
+        title={CATEGORY_LABEL[post.category] + " 게시판"}
+        rightElement={
+          isMyPost ? (
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
+                disabled={isDeleting}
+              >
+                <MoreVertical className="w-4.5 h-4.5 text-slate-500" />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-9 bg-white border border-slate-100 shadow-xl rounded-2xl py-1.5 z-30 min-w-[120px] animate-in fade-in-0 zoom-in-95 duration-100">
+                  <button
+                    onClick={() => { setMenuOpen(false); router.push(`/community/${post.id}/edit`) }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 text-left"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    수정하기
+                  </button>
+                  <button
+                    onClick={() => { setMenuOpen(false); handleDelete() }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-rose-500 hover:bg-rose-50 text-left"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    삭제하기
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : undefined
+        }
+      />
 
       <main className="max-w-md mx-auto px-5 py-6">
         {/* 작성자 */}

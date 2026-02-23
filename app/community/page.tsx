@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, PenSquare, Users } from "lucide-react"
+import { Search, PenSquare, Users, Loader2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommunityPostCard } from "@/components/dukgu/community-post-card"
 import { useCommunity } from "@/hooks/use-community"
+import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
 
 const TABS: { id: CommunityCategory | "all"; label: string }[] = [
@@ -16,7 +17,8 @@ const TABS: { id: CommunityCategory | "all"; label: string }[] = [
 
 export default function CommunityPage() {
   const router = useRouter()
-  const { filteredPosts, activeCategory, setActiveCategory, searchQuery, setSearchQuery, reactPost } = useCommunity()
+  const { filteredPosts, isLoading, activeCategory, setActiveCategory, searchQuery, setSearchQuery, reactPost, deletePost } = useCommunity()
+  const { profile } = useUser()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   return (
@@ -79,16 +81,23 @@ export default function CommunityPage() {
 
         {/* 게시글 목록 */}
         <div className="space-y-3">
-          {filteredPosts.map((post) => (
+          {isLoading && (
+            <div className="flex items-center justify-center py-16 text-slate-300">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          )}
+          {!isLoading && filteredPosts.map((post) => (
             <CommunityPostCard
               key={post.id}
               post={post}
               onReact={reactPost}
+              onDelete={deletePost}
+              currentUserId={profile?.id}
               onProfileClick={(authorId) => router.push(`/profile/${authorId}`)}
             />
           ))}
 
-          {filteredPosts.length === 0 && (
+          {!isLoading && filteredPosts.length === 0 && (
             <div className="py-20 text-center text-slate-300">
               <Users className="w-10 h-10 mx-auto mb-3 opacity-20" />
               <p className="text-sm font-bold">게시글이 없습니다</p>
