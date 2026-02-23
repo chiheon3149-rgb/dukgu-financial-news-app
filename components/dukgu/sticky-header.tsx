@@ -26,7 +26,7 @@ export function StickyHeader() {
             className="flex items-center gap-2 hover:opacity-80 active:scale-95 transition-all"
           >
             <div className="w-8 h-8 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center text-lg ring-2 ring-primary/10">
-              {profile?.avatarEmoji ?? "🐶"}
+              {profile?.avatarEmoji ?? "🐱"}
             </div>
             <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
               {currentLevel.icon} Lv.{currentLevel.level}

@@ -10,7 +10,7 @@ export const MOCK_USER: UserProfile = {
   nickname: "덕구팬",
   email: "user@dukgu.app",
   joinedAt: "2025-11-01T00:00:00+09:00",
-  avatarEmoji: "🐶",
+  avatarEmoji: "🐱",
   totalXp: 185,
   xpHistory: [
     { id: "xp-001", source: "quiz_correct", amount: 50, label: "경제 퀴즈 정답", earnedAt: "2026-02-22T10:00:00+09:00" },

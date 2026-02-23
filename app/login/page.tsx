@@ -1,11 +1,20 @@
 "use client"
 
+import Image from "next/image"
 import { supabase } from "@/lib/supabase"
 
 // =============================================================================
 // 🔐 로그인 페이지
 // 구글 / 카카오 소셜 로그인만 지원합니다.
+//
+// 로고 교체 방법:
+//   1. public/logo.png (또는 .svg) 파일을 추가하세요.
+//   2. LOGO_PATH 상수를 해당 경로로 변경하세요.
+//   3. USE_IMAGE_LOGO를 true로 바꾸면 이미지 로고가 활성화됩니다.
 // =============================================================================
+
+const USE_IMAGE_LOGO = false  // 로고 이미지 준비되면 true로 변경
+const LOGO_PATH = "/logo.png" // public/ 폴더 기준 경로
 
 export default function LoginPage() {
   const handleGoogleLogin = async () => {
@@ -29,10 +38,29 @@ export default function LoginPage() {
   return (
     <div className="min-h-dvh bg-slate-50 flex flex-col items-center justify-center px-6">
 
-      {/* 로고 */}
+      {/* 로고 영역 — 이미지 준비 시 USE_IMAGE_LOGO를 true로 변경 */}
       <div className="mb-10 text-center">
-        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">
-          🐶 DUKGU
+        {USE_IMAGE_LOGO ? (
+          <div className="flex justify-center mb-3">
+            <Image
+              src={LOGO_PATH}
+              alt="DUKGU 로고"
+              width={120}
+              height={120}
+              className="object-contain"
+              priority
+            />
+          </div>
+        ) : (
+          <div className="flex justify-center mb-3">
+            <div className="w-24 h-24 rounded-[28px] bg-emerald-50 border-2 border-emerald-100 flex items-center justify-center shadow-sm">
+              <span className="text-5xl select-none">🐱</span>
+            </div>
+          </div>
+        )}
+
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-1.5">
+          DUKGU
         </h1>
         <p className="text-sm font-medium text-slate-500">
           매일 아침, 당신을 위한 금융 뉴스 브리핑

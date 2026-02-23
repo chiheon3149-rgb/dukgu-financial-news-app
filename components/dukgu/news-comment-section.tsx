@@ -44,7 +44,7 @@ const INITIAL_NEWS_COMMENTS: NewsComment[] = [
   { id: "nc-002", authorNickname: "고등어대장", authorEmoji: "🐟", authorLevel: 1, content: "금리 동결이라 대출 이자는 그대로겠네요...", timeAgo: "12분 전", likeCount: 2,  dislikeCount: 1, reportCount: 0, isRemovedByAdmin: false },
 ]
 
-const MY_USER = { id: "user-001", nickname: "나", emoji: "🐶", level: 2 }
+const MY_USER = { id: "user-001", nickname: "나", emoji: "🐱", level: 2 }
 
 interface ReportModalState {
   commentId: string

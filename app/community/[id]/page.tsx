@@ -73,7 +73,7 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
 
   const currentUser = profile
     ? { id: profile.id, nickname: profile.nickname, emoji: profile.avatarEmoji, level: currentLevel.level }
-    : { id: "user-001", nickname: "나", emoji: "🐶", level: 1 }
+    : { id: "user-001", nickname: "나", emoji: "🐱", level: 1 }
 
   return (
     <div className="min-h-dvh bg-white pb-24" onClick={() => setMenuOpen(false)}>

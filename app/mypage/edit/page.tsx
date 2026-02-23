@@ -10,7 +10,7 @@ const AVATAR_OPTIONS = ["🐶", "🐱", "🐻", "🦊", "🐼", "🐯", "🦁", 
 export default function EditProfilePage() {
   const { profile, updateNickname, updateAvatar } = useUser()
   const [nickname, setNickname] = useState(profile?.nickname ?? "")
-  const [selectedAvatar, setSelectedAvatar] = useState(profile?.avatarEmoji ?? "🐶")
+  const [selectedAvatar, setSelectedAvatar] = useState(profile?.avatarEmoji ?? "🐱")
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 

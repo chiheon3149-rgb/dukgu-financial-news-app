@@ -70,7 +70,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             nickname: profileData.nickname,
             email: user.email ?? "",
             joinedAt: profileData.joined_at,
-            avatarEmoji: profileData.avatar_emoji ?? "🐶",
+            avatarEmoji: profileData.avatar_emoji ?? "🐱",
             totalXp: profileData.total_xp ?? 0,
             xpHistory: (xpData ?? []).map((e: any) => ({
               id: e.id,
@@ -87,7 +87,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             id: user.id,
             nickname,
             email: user.email ?? "",
-            avatar_emoji: "🐶",
+            avatar_emoji: "🐱",
             total_xp: 0,
             joined_at: new Date().toISOString(),
           }
@@ -99,7 +99,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             nickname,
             email: user.email ?? "",
             joinedAt: newProfile.joined_at,
-            avatarEmoji: "🐶",
+            avatarEmoji: "🐱",
             totalXp: 0,
             xpHistory: [],
           })

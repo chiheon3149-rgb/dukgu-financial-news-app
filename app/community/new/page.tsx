@@ -49,7 +49,7 @@ export default function NewPostPage() {
         tags,
         authorId: profile?.id ?? "user-001",
         authorNickname: profile?.nickname ?? "나",
-        authorEmoji: profile?.avatarEmoji ?? "🐶",
+        authorEmoji: profile?.avatarEmoji ?? "🐱",
         authorLevel: currentLevel.level,
       })
       router.replace(`/community/${newPost.id}`)
