@@ -53,6 +53,7 @@ export function TickerBar() {
   const [indices, setIndices] = useState<IndexQuote[]>([])
   const [source, setSource] = useState<"live" | "mock">("mock")
   const [hasData, setHasData] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [fresh, setFresh] = useState(false)
 
   // ref로 관리 → fetchIndices의 deps 없이 stable 유지
@@ -63,10 +64,17 @@ export function TickerBar() {
   const fetchIndices = useCallback(async () => {
     try {
       const res = await fetch("/api/market/indices", { cache: "no-store" })
-      if (!res.ok) return
+      if (!res.ok) {
+        if (!hasDataRef.current) setFailed(true)
+        return
+      }
       const data = await res.json()
-      if (!data.indices?.length) return
+      if (!data.indices?.length) {
+        if (!hasDataRef.current) setFailed(true)
+        return
+      }
 
+      setFailed(false)
       setIndices(data.indices)
       setSource(data.source ?? "mock")
 
@@ -80,7 +88,7 @@ export function TickerBar() {
         setHasData(true)
       }
     } catch {
-      // 실패 시 기존 데이터 유지
+      if (!hasDataRef.current) setFailed(true)
     }
   }, []) // deps 없음 — ref로 상태 추적하므로 stable
 
@@ -116,6 +124,8 @@ export function TickerBar() {
       document.removeEventListener("visibilitychange", handleVisibility)
     }
   }, [fetchIndices, startPolling, stopPolling])
+
+  if (failed) return null
 
   if (!hasData) {
     return <div className="h-8 bg-slate-50 border-b border-slate-100 animate-pulse" />
