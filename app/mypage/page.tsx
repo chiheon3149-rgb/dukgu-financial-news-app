@@ -13,6 +13,7 @@ import { PolicyModal, type PolicyType } from "@/components/dukgu/policy-modal"
 import { useUser } from "@/context/user-context"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
 import { useFollow } from "@/hooks/use-follow"
+import { supabase } from "@/lib/supabase"
 import { LEVEL_TABLE } from "@/lib/mock/user"
 
 function MenuRow({
@@ -48,6 +49,11 @@ export default function MyPage() {
   const [showLevelMap, setShowLevelMap] = useState(false)
   const [showFollowList, setShowFollowList] = useState<"following" | "followers" | null>(null)
   const [openPolicy, setOpenPolicy] = useState<PolicyType | null>(null)
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/login")
+  }
 
   // 포트폴리오 공개 설정 (로컬 상태 — Supabase 연결 시 profiles 테이블로 이전)
   const [portfolioPublic, setPortfolioPublic] = useState(false)
@@ -241,7 +247,10 @@ export default function MyPage() {
           <MenuRow icon={<Settings className="w-4 h-4" />}      label="회원정보 수정"     href="/mypage/edit"                                                  color="text-slate-500" />
         </section>
 
-        <button className="w-full py-3.5 flex items-center justify-center gap-2 text-slate-400 hover:text-rose-400 transition-colors">
+        <button
+          onClick={handleLogout}
+          className="w-full py-3.5 flex items-center justify-center gap-2 text-slate-400 hover:text-rose-400 transition-colors active:scale-95"
+        >
           <LogOut className="w-4 h-4" />
           <span className="text-[13px] font-bold">로그아웃</span>
         </button>

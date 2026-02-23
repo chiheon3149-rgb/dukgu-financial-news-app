@@ -19,17 +19,27 @@ const SAMPLE_NOTICES = [
   { id: 3, title: "[업데이트] 미국/한국 브리핑 모드 추가", isNew: false },
 ]
 
+const NOTICES_READ_KEY = "dukgu:notices-read"
+
 export function NoticeDropdown() {
   const [isOpen, setIsOpen] = useState(false)
-  const [hasUnread, setHasUnread] = useState(
-    SAMPLE_NOTICES.some((n) => n.isNew)
-  )
+  // localStorage에서 읽음 상태 초기화 → 페이지 이동 후에도 유지됨
+  const [hasUnread, setHasUnread] = useState<boolean>(() => {
+    if (typeof window === "undefined") return SAMPLE_NOTICES.some((n) => n.isNew)
+    try {
+      const readAt = localStorage.getItem(NOTICES_READ_KEY)
+      return !readAt && SAMPLE_NOTICES.some((n) => n.isNew)
+    } catch {
+      return SAMPLE_NOTICES.some((n) => n.isNew)
+    }
+  })
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // 열리는 순간 읽음 처리
+  // 열리는 순간 읽음 처리 + localStorage 영속화
   const handleOpen = () => {
     setIsOpen(true)
     setHasUnread(false)
+    try { localStorage.setItem(NOTICES_READ_KEY, Date.now().toString()) } catch {}
   }
 
   // 데스크톱: 팝업 바깥 클릭 시 닫기

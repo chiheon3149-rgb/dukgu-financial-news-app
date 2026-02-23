@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { TrendingUp, TrendingDown, Plus, RefreshCw, AlertCircle, Loader2 } from "lucide-react"
+import { TrendingUp, TrendingDown, Plus, RefreshCw, AlertCircle, Loader2, Trash2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { AddTickerSheet } from "@/components/dukgu/add-ticker-sheet"
 import { useStockPortfolio } from "@/hooks/use-stock-portfolio"
 import type { StockHolding } from "@/types"
 
 export default function StocksPage() {
-  const { rows, isLoadingPrices, priceError, addHolding } = useStockPortfolio()
+  const { rows, isLoadingPrices, priceError, addHolding, removeHolding } = useStockPortfolio()
   const [isTickerSheetOpen, setIsTickerSheetOpen] = useState(false)
 
   // AddTickerSheet은 ticker/name/currency만 반환 → trades, dividends를 빈 배열로 채워 전달
@@ -80,48 +80,60 @@ export default function StocksPage() {
               const isDown = returnRate < 0
 
               return (
-                <Link
-                  key={holding.ticker}
-                  href={`/assets/stocks/${encodeURIComponent(holding.ticker)}`}
-                  className="flex items-center justify-between p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all group active:scale-[0.98]"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${
-                      isUp ? "bg-rose-50" : isDown ? "bg-blue-50" : "bg-slate-50"
-                    }`}>
-                      {isUp ? (
-                        <TrendingUp className="w-5 h-5 text-rose-500" />
-                      ) : isDown ? (
-                        <TrendingDown className="w-5 h-5 text-blue-500" />
-                      ) : (
-                        <span className="text-lg font-black text-slate-400">−</span>
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-[15px] font-black text-slate-800">{holding.ticker}</p>
-                        <span className="text-[9px] font-bold text-slate-300 uppercase">{holding.currency}</span>
-                      </div>
-                      <p className="text-[11px] font-bold text-slate-400 truncate max-w-[120px]">{holding.name}</p>
-                    </div>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <p className="text-[14px] font-black text-slate-800">
-                      {isLoadingPrices ? (
-                        <span className="text-slate-200 animate-pulse">----</span>
-                      ) : holding.currency === "KRW"
-                        ? `${currentPrice.toLocaleString("ko-KR")}원`
-                        : `$${currentPrice.toFixed(2)}`}
-                    </p>
-                    <div className="flex items-center justify-end gap-1">
-                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
-                        isUp ? "text-rose-500 bg-rose-50" : isDown ? "text-blue-500 bg-blue-50" : "text-slate-400 bg-slate-50"
+                <div key={holding.ticker} className="relative group">
+                  <Link
+                    href={`/assets/stocks/${encodeURIComponent(holding.ticker)}`}
+                    className="flex items-center justify-between p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all active:scale-[0.98] pr-14"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${
+                        isUp ? "bg-rose-50" : isDown ? "bg-blue-50" : "bg-slate-50"
                       }`}>
-                        {returnRate >= 0 ? "+" : ""}{returnRate.toFixed(2)}%
-                      </span>
+                        {isUp ? (
+                          <TrendingUp className="w-5 h-5 text-rose-500" />
+                        ) : isDown ? (
+                          <TrendingDown className="w-5 h-5 text-blue-500" />
+                        ) : (
+                          <span className="text-lg font-black text-slate-400">−</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[15px] font-black text-slate-800">{holding.ticker}</p>
+                          <span className="text-[9px] font-bold text-slate-300 uppercase">{holding.currency}</span>
+                        </div>
+                        <p className="text-[11px] font-bold text-slate-400 truncate max-w-[120px]">{holding.name}</p>
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                    <div className="text-right space-y-1">
+                      <p className="text-[14px] font-black text-slate-800">
+                        {isLoadingPrices ? (
+                          <span className="text-slate-200 animate-pulse">----</span>
+                        ) : holding.currency === "KRW"
+                          ? `${currentPrice.toLocaleString("ko-KR")}원`
+                          : `$${currentPrice.toFixed(2)}`}
+                      </p>
+                      <div className="flex items-center justify-end gap-1">
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                          isUp ? "text-rose-500 bg-rose-50" : isDown ? "text-blue-500 bg-blue-50" : "text-slate-400 bg-slate-50"
+                        }`}>
+                          {returnRate >= 0 ? "+" : ""}{returnRate.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                  {/* 삭제 버튼 (hover 시 표시) */}
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`${holding.ticker} 종목을 삭제하시겠습니까?`)) {
+                        removeHolding(holding.ticker)
+                      }
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all z-10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               )
             })}
           </div>

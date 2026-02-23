@@ -84,6 +84,7 @@ interface UseCommunityReturn {
   setSearchQuery: (q: string) => void
   filteredPosts: CommunityPost[]
   getComments: (postId: string) => CommunityComment[]
+  reportPost: (postId: string) => Promise<void>
   createPost: (
     data: Omit<CommunityPost, "id" | "publishedAt" | "timeAgo" | "likeCount" | "dislikeCount" | "commentCount" | "isDeleted">
   ) => Promise<CommunityPost>
