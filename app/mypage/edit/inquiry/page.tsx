@@ -1,18 +1,18 @@
 "use client"
 
-import { useState } from "react"
-import { ArrowLeft, Send, ChevronDown, CheckCircle, MessageSquare } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, Send, CheckCircle, MessageSquare, Loader2 } from "lucide-react"
 import Link from "next/link"
-import type { InquiryCategory } from "@/types"
-import { MOCK_INQUIRIES } from "@/lib/mock/user"
+import type { InquiryCategory, InquiryMessage } from "@/types"
+import { useUser } from "@/context/user-context"
 
 // =============================================================================
 // 📬 /mypage/inquiry — 문의하기 페이지
 //
 // 작동 방식:
 // 1. 유저가 카테고리, 제목, 내용을 작성하고 전송
-// 2. POST /api/inquiry 로 전송 → 서버 로그 저장 + (선택) 이메일 발송
-// 3. 내 문의 내역 탭에서 접수/검토중/답변완료 상태 확인 가능
+// 2. POST /api/inquiry → Supabase inquiries 테이블에 저장
+// 3. 내 문의 내역 탭 → GET /api/inquiry → 실제 DB 데이터 표시
 // =============================================================================
 
 const CATEGORIES: { key: InquiryCategory; label: string; emoji: string }[] = [
@@ -30,6 +30,7 @@ const STATUS_CONFIG = {
 }
 
 export default function InquiryPage() {
+  const { profile } = useUser()
   const [tab, setTab] = useState<"write" | "history">("write")
   const [category, setCategory] = useState<InquiryCategory>("feature")
   const [title, setTitle] = useState("")
@@ -37,7 +38,30 @@ export default function InquiryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [inquiries] = useState(MOCK_INQUIRIES)
+
+  const [inquiries, setInquiries] = useState<InquiryMessage[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+
+  // 내 문의 탭으로 전환 시 데이터 로드
+  useEffect(() => {
+    if (tab !== "history") return
+    const load = async () => {
+      setIsLoadingHistory(true)
+      setHistoryError(null)
+      try {
+        const res = await fetch("/api/inquiry")
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error)
+        setInquiries(data.inquiries ?? [])
+      } catch (e: any) {
+        setHistoryError(e.message ?? "문의 목록을 불러오지 못했습니다.")
+      } finally {
+        setIsLoadingHistory(false)
+      }
+    }
+    load()
+  }, [tab])
 
   const handleSubmit = async () => {
     if (!title.trim() || !body.trim()) {
@@ -50,12 +74,18 @@ export default function InquiryPage() {
       const res = await fetch("/api/inquiry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, title: title.trim(), body: body.trim() }),
+        body: JSON.stringify({
+          category,
+          title: title.trim(),
+          body: body.trim(),
+          userNickname: profile?.nickname,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setIsSubmitted(true)
-      setTitle(""); setBody("")
+      setTitle("")
+      setBody("")
     } catch (e: any) {
       setSubmitError(e.message ?? "전송에 실패했습니다.")
     } finally {
@@ -152,7 +182,7 @@ export default function InquiryPage() {
               <button onClick={handleSubmit} disabled={isSubmitting || !title.trim() || !body.trim()}
                 className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-[20px] text-[14px] font-black transition-all active:scale-[0.98] flex items-center justify-center gap-2">
                 {isSubmitting
-                  ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 전송 중...</>
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> 전송 중...</>
                   : <><Send className="w-4 h-4" /> 문의 전송</>}
               </button>
             </div>
@@ -161,7 +191,16 @@ export default function InquiryPage() {
 
         {/* ── 탭: 내 문의 내역 ── */}
         {tab === "history" && (
-          inquiries.length === 0 ? (
+          isLoadingHistory ? (
+            <div className="py-24 flex flex-col items-center text-slate-300">
+              <Loader2 className="w-8 h-8 animate-spin mb-3" />
+              <p className="text-sm font-bold">문의 내역을 불러오는 중...</p>
+            </div>
+          ) : historyError ? (
+            <div className="py-24 flex flex-col items-center text-rose-400">
+              <p className="text-sm font-bold">{historyError}</p>
+            </div>
+          ) : inquiries.length === 0 ? (
             <div className="py-24 flex flex-col items-center text-slate-300">
               <MessageSquare className="w-10 h-10 mb-3 opacity-20" />
               <p className="text-sm font-bold">아직 문의 내역이 없습니다</p>

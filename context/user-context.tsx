@@ -180,20 +180,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     []
   )
 
+  // 로컬 상태만 업데이트 — 실제 Supabase 저장은 mypage/edit/page.tsx에서 처리
   const updateNickname = useCallback((nickname: string) => {
-    setProfile((prev) => {
-      if (!prev) return prev
-      supabase.from("profiles").update({ nickname }).eq("id", prev.id)
-      return { ...prev, nickname }
-    })
+    setProfile((prev) => (prev ? { ...prev, nickname } : prev))
   }, [])
 
   const updateAvatar = useCallback((emoji: string) => {
-    setProfile((prev) => {
-      if (!prev) return prev
-      supabase.from("profiles").update({ avatar_emoji: emoji }).eq("id", prev.id)
-      return { ...prev, avatarEmoji: emoji }
-    })
+    setProfile((prev) => (prev ? { ...prev, avatarEmoji: emoji } : prev))
   }, [])
 
   return (

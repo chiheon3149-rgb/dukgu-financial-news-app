@@ -4,6 +4,7 @@ import { useState } from "react"
 import { ArrowLeft, Check, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/context/user-context"
+import { supabase } from "@/lib/supabase"
 
 const AVATAR_OPTIONS = ["🐶", "🐱", "🐻", "🦊", "🐼", "🐯", "🦁", "🐸", "🐧", "🦉", "🐺", "🦝"]
 
@@ -13,17 +14,31 @@ export default function EditProfilePage() {
   const [selectedAvatar, setSelectedAvatar] = useState(profile?.avatarEmoji ?? "🐱")
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const handleSave = async () => {
-    if (!nickname.trim() || nickname.length > 12) return
+    if (!nickname.trim() || nickname.length > 12 || !profile) return
     setIsSaving(true)
-    // 🔄 Supabase 전환 시: await supabase.from('profiles').update({ nickname, avatar_emoji: selectedAvatar }).eq('id', userId)
-    await new Promise((r) => setTimeout(r, 600))
-    updateNickname(nickname.trim())
-    updateAvatar(selectedAvatar)
-    setIsSaving(false)
-    setIsSaved(true)
-    setTimeout(() => setIsSaved(false), 2000)
+    setSaveError(null)
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          nickname: nickname.trim(),
+          avatar_emoji: selectedAvatar,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", profile.id)
+      if (error) throw error
+      updateNickname(nickname.trim())
+      updateAvatar(selectedAvatar)
+      setIsSaved(true)
+      setTimeout(() => setIsSaved(false), 2000)
+    } catch {
+      setSaveError("저장에 실패했습니다. 다시 시도해 주세요.")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const isChanged = nickname !== profile?.nickname || selectedAvatar !== profile?.avatarEmoji
@@ -106,6 +121,10 @@ export default function EditProfilePage() {
             )}
           </div>
         </section>
+
+        {saveError && (
+          <p className="text-[12px] font-bold text-rose-500 text-center px-1">{saveError}</p>
+        )}
 
         {/* 계정 정보 (읽기 전용) */}
         <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-5 space-y-3">
