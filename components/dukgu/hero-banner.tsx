@@ -23,6 +23,7 @@ interface BriefingRow {
   headline: string
   indices: IndexSummary[] | null
   is_ready: boolean | null
+  content: { summary?: string } | null
 }
 
 const THEME = {
@@ -64,7 +65,7 @@ export function HeroBanner() {
     const load = async () => {
       const { data } = await supabase
         .from("briefings")
-        .select("id, type, headline, indices, is_ready")
+        .select("id, type, headline, indices, is_ready, content")
         .eq("date", getTodayStr())
 
       const m = data?.find((r: any) => r.type === "morning") ?? null
@@ -138,15 +139,17 @@ export function HeroBanner() {
             </div>
           </div>
 
-          {/* 헤드라인 + 지수 요약 */}
+          {/* 헤드라인 + AI 요약 */}
           {currentBriefing ? (
-            <div>
-              <h2 className="text-lg font-extrabold text-left leading-tight drop-shadow-md mb-1.5 line-clamp-2">
+            <div className="flex flex-col gap-2">
+              {/* 제목: 한 줄, 넘치면 폰트 축소 */}
+              <h2 className="text-[15px] font-extrabold text-left leading-tight drop-shadow-md truncate">
                 {currentBriefing.headline}
               </h2>
-              {indices.length > 0 && (
-                <p className="text-xs text-white/85 leading-relaxed line-clamp-1 drop-shadow-sm font-medium">
-                  {indices.map(i => `${i.name} ${i.change}`).join("  ·  ")}
+              {/* AI 요약: 최대 3줄 */}
+              {currentBriefing.content?.summary && (
+                <p className="text-[11px] text-white/85 leading-relaxed line-clamp-3 drop-shadow-sm">
+                  {currentBriefing.content.summary}
                 </p>
               )}
             </div>
@@ -154,12 +157,12 @@ export function HeroBanner() {
             <p className="text-sm font-bold text-white/70 py-2">브리핑 준비 중...</p>
           )}
 
-          {/* 지수 태그 + 리포트읽기 버튼 */}
-          <div className="flex items-end justify-between mt-1">
-            <div className="flex gap-1.5 flex-wrap">
+          {/* #태그 3개(한 줄) + 리포트읽기 버튼 */}
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <div className="flex gap-1.5 overflow-hidden min-w-0 flex-1">
               {indices.slice(0, 3).map(idx => (
-                <span key={idx.name} className="text-[10px] sm:text-xs px-2 py-1 bg-black/15 backdrop-blur-sm border border-white/10 rounded-md font-semibold text-white/90">
-                  {idx.name} {idx.change}
+                <span key={idx.name} className="text-[10px] px-2 py-1 bg-black/15 backdrop-blur-sm border border-white/10 rounded-md font-semibold text-white/90 whitespace-nowrap shrink-0">
+                  #{idx.name}
                 </span>
               ))}
             </div>
