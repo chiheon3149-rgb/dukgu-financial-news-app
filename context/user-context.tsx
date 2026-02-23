@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react"
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from "react"
 import type { UserProfile, XpEvent, XpSource } from "@/types"
 import { LEVEL_TABLE, getLevelMeta } from "@/lib/mock/user"
 import { supabase } from "@/lib/supabase"
@@ -34,16 +34,19 @@ const UserContext = createContext<UserContextValue | null>(null)
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const isLoadingRef = useRef(false)
 
   // 로그인한 유저 정보 불러오기
   useEffect(() => {
     const loadUser = async () => {
+      // 동시 호출 방지 (onAuthStateChange가 마운트 직후 중복 호출하는 문제 차단)
+      if (isLoadingRef.current) return
+      isLoadingRef.current = true
       try {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
           setProfile(null)
-          setIsLoading(false)
           return
         }
 
@@ -105,6 +108,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         console.error("[UserContext] 유저 로딩 실패:", e)
       } finally {
         setIsLoading(false)
+        isLoadingRef.current = false
       }
     }
 
