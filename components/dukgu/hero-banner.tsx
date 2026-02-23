@@ -1,116 +1,172 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link" 
+import Link from "next/link"
 import { ChevronRight } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import type { IndexSummary } from "@/types"
+
+// =============================================================================
+// 🏠 HeroBanner
+//
+// 오늘 날짜의 briefings 테이블에서 오전(morning)/오후(afternoon) 데이터를 가져와
+// 미국(US) / 한국(KR) 라디오 버튼으로 전환해 보여줍니다.
+//
+// - morning → 미국(US) 버튼
+// - afternoon → 한국(KR) 버튼
+// - 오늘 데이터가 없으면 섹션 자체를 숨깁니다.
+// =============================================================================
+
+interface BriefingRow {
+  id: string
+  type: string
+  headline: string
+  indices: IndexSummary[] | null
+  is_ready: boolean | null
+}
+
+const THEME = {
+  US: {
+    theme: "from-red-400/80 to-red-600/80 shadow-red-500/30",
+    flag: "🇺🇸",
+    textColor: "text-red-700",
+    briefingType: "오전브리핑",
+  },
+  KR: {
+    theme: "from-blue-500/80 to-blue-700/80 shadow-blue-500/30",
+    flag: "🇰🇷",
+    textColor: "text-blue-700",
+    briefingType: "오후브리핑",
+  },
+}
+
+function getTodayStr(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, "0")
+  const d = String(now.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
+function getDateLabel(): string {
+  const now = new Date()
+  const days = ["일", "월", "화", "수", "목", "금", "토"]
+  return `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일(${days[now.getDay()]}요일)`
+}
 
 export function HeroBanner() {
-  const [market, setMarket] = useState<"KR" | "US" | null>(null)
-  const [currentDateStr, setCurrentDateStr] = useState("")
+  const [market, setMarket] = useState<"US" | "KR" | null>(null)
+  const [morning, setMorning] = useState<BriefingRow | null | undefined>(undefined)
+  const [afternoon, setAfternoon] = useState<BriefingRow | null | undefined>(undefined)
+  const [dateLabel] = useState(getDateLabel)
 
   useEffect(() => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth() + 1
-    const date = now.getDate()
-    const days = ['일', '월', '화', '수', '목', '금', '토']
-    const dayOfWeek = days[now.getDay()]
+    const load = async () => {
+      const { data } = await supabase
+        .from("briefings")
+        .select("id, type, headline, indices, is_ready")
+        .eq("date", getTodayStr())
 
-    setCurrentDateStr(`${year}년 ${month}월 ${date}일(${dayOfWeek}요일)`)
+      const m = data?.find((r: any) => r.type === "morning") ?? null
+      const a = data?.find((r: any) => r.type === "afternoon") ?? null
+      setMorning(m)
+      setAfternoon(a)
 
-    const currentHour = now.getHours()
-    if (currentHour >= 7 && currentHour < 16) {
-      setMarket("US")
-    } else {
-      setMarket("KR")
+      // 시간 기반 기본 선택 (7~15시 → 미국, 나머지 → 한국), 없으면 반대쪽으로 폴백
+      const hour = new Date().getHours()
+      const preferUS = hour >= 7 && hour < 16
+      if (preferUS) {
+        setMarket(m ? "US" : a ? "KR" : null)
+      } else {
+        setMarket(a ? "KR" : m ? "US" : null)
+      }
     }
+    load()
   }, [])
 
-  const data = {
-    KR: {
-      title: "코스피 상승출발, 밸류업 훈풍",
-      summary: "외국인 투자자들의 강한 매수세가 이어지며 2,680선 돌파를 시도하고 있습니다. 금융주 중심으로 강세가 뚜렷합니다.",
-      tags: ["#코스피", "#밸류업", "#외인매수"],
-      theme: "from-blue-500/80 to-blue-700/80 shadow-blue-500/30",
-      flag: "🇰🇷",
-      textColor: "text-blue-700",
-      briefingType: "오후브리핑" 
-    },
-    US: {
-      title: "나스닥 상승, 금리인하 기대감",
-      summary: "미 연준(Fed)의 조기 금리 인하 기대감이 확산되며 기술주 중심으로 강한 상승 마감했습니다.",
-      tags: ["#나스닥", "#금리인하", "#엔비디아"],
-      theme: "from-red-400/80 to-red-600/80 shadow-red-500/30",
-      flag: "🇺🇸",
-      textColor: "text-red-700",
-      briefingType: "오전브리핑"
-    }
+  // fetch 완료 전 스켈레톤
+  if (morning === undefined || afternoon === undefined) {
+    return <section className="pt-2 pb-2 h-48 animate-pulse bg-muted rounded-2xl" />
   }
 
-  if (!market) return <section className="pt-2 pb-2 h-48 animate-pulse bg-muted rounded-2xl"></section>
+  // 오늘 데이터 없음 → 섹션 숨김
+  if (!morning && !afternoon) return null
+  if (!market) return null
 
-  const currentData = data[market]
+  const currentBriefing = market === "US" ? morning : afternoon
+  const theme = THEME[market]
+  const indices = currentBriefing?.indices ?? []
 
   return (
     <section className="pt-2 pb-2">
-      {/* 💡 1. 여기를 <Link>에서 평범한 <div>로 바꿨습니다. 이제 배경을 눌러도 이동하지 않습니다! */}
-      <div 
-        className={`block relative overflow-hidden rounded-2xl bg-gradient-to-br ${currentData.theme} backdrop-blur-md border border-white/20 p-5 text-white shadow-xl transition-all duration-500`}
+      <div
+        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${theme.theme} backdrop-blur-md border border-white/20 p-5 text-white shadow-xl transition-all duration-500`}
       >
-        
         {/* 투명 국기 배경 */}
-        <div className="absolute -bottom-6 -right-4 text-[130px] opacity-[0.15] pointer-events-none select-none transition-all duration-500 transform rotate-12">
-          {currentData.flag}
+        <div className="absolute -bottom-6 -right-4 text-[130px] opacity-[0.15] pointer-events-none select-none transition-all duration-500 rotate-12">
+          {theme.flag}
         </div>
-        
+
         <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-        
+
         <div className="relative z-10 flex flex-col gap-4">
-          
+
+          {/* 날짜 + 라디오 버튼 */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-semibold text-white/90 drop-shadow-sm truncate mr-2">
-              {currentDateStr} 오늘의 {currentData.briefingType}
+              {dateLabel} 오늘의 {theme.briefingType}
             </span>
-            
             <div className="flex items-center bg-black/20 backdrop-blur-sm rounded-full p-0.5 shadow-inner shrink-0">
-              {/* 💡 2. 배경이 더 이상 <Link>가 아니므로, 귀찮은 e.preventDefault()를 뺐습니다. */}
-              <button 
-                onClick={() => setMarket("KR")}
-                className={`text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold transition-all duration-300 ${market === "KR" ? "bg-white text-blue-700 shadow-md" : "text-white/70 hover:text-white"}`}
-              >
-                한국
-              </button>
-              <button 
-                onClick={() => setMarket("US")}
-                className={`text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold transition-all duration-300 ${market === "US" ? "bg-white text-red-700 shadow-md" : "text-white/70 hover:text-white"}`}
+              <button
+                onClick={() => morning && setMarket("US")}
+                disabled={!morning}
+                className={`text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold transition-all duration-300 ${
+                  market === "US" ? "bg-white text-red-700 shadow-md" : "text-white/70 hover:text-white"
+                } ${!morning ? "opacity-40 cursor-not-allowed" : ""}`}
               >
                 미국
+              </button>
+              <button
+                onClick={() => afternoon && setMarket("KR")}
+                disabled={!afternoon}
+                className={`text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold transition-all duration-300 ${
+                  market === "KR" ? "bg-white text-blue-700 shadow-md" : "text-white/70 hover:text-white"
+                } ${!afternoon ? "opacity-40 cursor-not-allowed" : ""}`}
+              >
+                한국
               </button>
             </div>
           </div>
 
-          <div>
-            <h2 className="text-lg font-extrabold text-left leading-tight truncate drop-shadow-md mb-1.5">
-              {currentData.title}
-            </h2>
-            <p className="text-xs text-white/85 leading-relaxed line-clamp-2 drop-shadow-sm font-medium">
-              {currentData.summary}
-            </p>
-          </div>
+          {/* 헤드라인 + 지수 요약 */}
+          {currentBriefing ? (
+            <div>
+              <h2 className="text-lg font-extrabold text-left leading-tight drop-shadow-md mb-1.5 line-clamp-2">
+                {currentBriefing.headline}
+              </h2>
+              {indices.length > 0 && (
+                <p className="text-xs text-white/85 leading-relaxed line-clamp-1 drop-shadow-sm font-medium">
+                  {indices.map(i => `${i.name} ${i.change}`).join("  ·  ")}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm font-bold text-white/70 py-2">브리핑 준비 중...</p>
+          )}
 
+          {/* 지수 태그 + 리포트읽기 버튼 */}
           <div className="flex items-end justify-between mt-1">
             <div className="flex gap-1.5 flex-wrap">
-              {currentData.tags.map(tag => (
-                <span key={tag} className="text-[10px] sm:text-xs px-2 py-1 bg-black/15 backdrop-blur-sm border border-white/10 rounded-md font-semibold text-white/90">
-                  {tag}
+              {indices.slice(0, 3).map(idx => (
+                <span key={idx.name} className="text-[10px] sm:text-xs px-2 py-1 bg-black/15 backdrop-blur-sm border border-white/10 rounded-md font-semibold text-white/90">
+                  {idx.name} {idx.change}
                 </span>
               ))}
             </div>
 
-            {/* 💡 3. 여기에 진짜 <Link>를 달았습니다. 이제 이 버튼을 눌러야만 이동합니다! */}
-            <Link 
+            <Link
               href="/briefing"
-              className={`group flex items-center gap-1 text-xs font-bold bg-white ${currentData.textColor} px-3.5 py-2 rounded-lg hover:bg-gray-100 transition-all active:scale-95 shadow-lg shrink-0 cursor-pointer`}
+              className={`group flex items-center gap-1 text-xs font-bold bg-white ${theme.textColor} px-3.5 py-2 rounded-lg hover:bg-gray-100 transition-all active:scale-95 shadow-lg shrink-0 cursor-pointer`}
             >
               <span>리포트읽기</span>
               <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
