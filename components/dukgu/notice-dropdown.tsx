@@ -80,8 +80,8 @@ export function NoticeDropdown() {
               - 모바일: fixed로 화면 중앙 하단 표시
               - 데스크톱: absolute right-0 팝업 */}
           <div className="
-            fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50
-            sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:translate-y-0 sm:translate-x-0 sm:mt-2 sm:w-72
+            fixed left-4 right-4 top-16 z-50
+            sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:w-72 sm:mt-2
             bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden
             animate-in fade-in slide-in-from-top-2 duration-200
           ">

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 // 📡 /api/market/indices
 //
 // 주요 글로벌 지수 시세를 Yahoo Finance에서 가져옵니다.
-// 실패 시 Mock 데이터로 자동 폴백합니다.
+// 실패 시 502 에러를 반환합니다 (목업 폴백 없음).
 //
 // 지원 지수 (SYMBOLS 배열에 추가하면 자동 확장):
 //   ^DJI     — 다우존스 산업평균
@@ -50,15 +50,6 @@ const YAHOO_HEADERS = {
   "Referer": "https://finance.yahoo.com/",
 }
 
-const MOCK_INDICES: IndexQuote[] = [
-  { symbol: "^DJI",  name: "다우존스",  price: 43461.21, change:  305.12, changeRate:  0.71, changeStatus: "up"   },
-  { symbol: "^NDX",  name: "나스닥100", price: 21340.50, change: -180.30, changeRate: -0.84, changeStatus: "down" },
-  { symbol: "^GSPC", name: "S&P500",   price:  5963.10, change:   42.15, changeRate:  0.71, changeStatus: "up"   },
-  { symbol: "^RUT",  name: "러셀2000", price:  2210.45, change:  -12.30, changeRate: -0.55, changeStatus: "down" },
-  { symbol: "^KS11", name: "코스피",   price:  2535.20, change:   18.40, changeRate:  0.73, changeStatus: "up"   },
-  { symbol: "^KQ11", name: "코스닥",   price:   720.15, change:   -3.25, changeRate: -0.45, changeStatus: "down" },
-  { symbol: "KRW=X", name: "USD/KRW", price:  1432.50, change:    2.30, changeRate:  0.16, changeStatus: "up"   },
-]
 
 function mapResult(q: any): IndexQuote {
   const rate: number = q.regularMarketChangePercent ?? 0
@@ -104,7 +95,7 @@ export async function GET() {
     const indices = await fetchIndices()
     return NextResponse.json({ indices, source: "live", fetchedAt: new Date().toISOString() })
   } catch (err) {
-    console.warn("[market/indices] Yahoo Finance 실패, Mock 폴백:", err)
-    return NextResponse.json({ indices: MOCK_INDICES, source: "mock", fetchedAt: new Date().toISOString() })
+    console.warn("[market/indices] Yahoo Finance 실패:", err)
+    return NextResponse.json({ indices: [], source: "error", fetchedAt: new Date().toISOString() }, { status: 502 })
   }
 }
