@@ -30,24 +30,28 @@ function toNewsItem(row: any): NewsItem {
     tags: row.tags ?? [],
     headline: row.headline,
     summary: row.summary,
-    timeAgo: getTimeAgo(row.published_at),
-    publishedAt: row.published_at,
+    timeAgo: formatTime(row.created_at ?? row.published_at),
+    publishedAt: row.created_at ?? row.published_at,
     goodCount: row.good_count ?? 0,
     badCount: row.bad_count ?? 0,
     commentCount: row.comment_count ?? 0,
   }
 }
 
-// "n분 전", "n시간 전" 형식으로 변환
-function getTimeAgo(publishedAt: string): string {
-  const diff = Date.now() - new Date(publishedAt).getTime()
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
-  if (days > 0) return `${days}일 전`
-  if (hours > 0) return `${hours}시간 전`
-  if (minutes > 0) return `${minutes}분 전`
-  return "방금 전"
+// 실제 시각 표시: 오늘이면 "HH:MM", 아니면 "MM/DD HH:MM"
+function formatTime(dateStr: string): string {
+  const d = new Date(dateStr)
+  const now = new Date()
+  const h = String(d.getHours()).padStart(2, "0")
+  const min = String(d.getMinutes()).padStart(2, "0")
+  const isToday =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  if (isToday) return `${h}:${min}`
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${m}/${day} ${h}:${min}`
 }
 
 export function useNewsFeed(): UseNewsFeedReturn {
@@ -55,20 +59,20 @@ export function useNewsFeed(): UseNewsFeedReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
-  const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(null)
+  const [lastCreatedAt, setLastCreatedAt] = useState<string | null>(null)
 
   // 최초 마운트 시 자동 로딩
   useEffect(() => {
     supabase
       .from("news")
       .select("*")
-      .order("published_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(PAGE_SIZE)
       .then(({ data, error }) => {
         if (error) { console.error("[useNewsFeed] 초기 로딩 실패:", error); return }
         const items = (data ?? []).map(toNewsItem)
         setNews(items)
-        setLastPublishedAt(items.at(-1)?.publishedAt ?? null)
+        setLastCreatedAt(items.at(-1)?.publishedAt ?? null)
         setHasMore(items.length === PAGE_SIZE)
         setIsLoading(false)
       })
@@ -82,14 +86,14 @@ export function useNewsFeed(): UseNewsFeedReturn {
       const { data, error } = await supabase
         .from("news")
         .select("*")
-        .order("published_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(PAGE_SIZE)
 
       if (error) throw error
 
       const items = (data ?? []).map(toNewsItem)
       setNews(items)
-      setLastPublishedAt(items.at(-1)?.publishedAt ?? null)
+      setLastCreatedAt(items.at(-1)?.publishedAt ?? null)
       setHasMore(items.length === PAGE_SIZE)
     } catch (e) {
       console.error("[useNewsFeed] 새로고침 실패:", e)
@@ -100,28 +104,28 @@ export function useNewsFeed(): UseNewsFeedReturn {
 
   // 다음 페이지 (무한스크롤)
   const fetchNextPage = useCallback(async () => {
-    if (isLoadingMore || !hasMore || !lastPublishedAt) return
+    if (isLoadingMore || !hasMore || !lastCreatedAt) return
     setIsLoadingMore(true)
     try {
       const { data, error } = await supabase
         .from("news")
         .select("*")
-        .order("published_at", { ascending: false })
-        .lt("published_at", lastPublishedAt)
+        .order("created_at", { ascending: false })
+        .lt("created_at", lastCreatedAt)
         .limit(PAGE_SIZE)
 
       if (error) throw error
 
       const items = (data ?? []).map(toNewsItem)
       setNews((prev) => [...prev, ...items])
-      setLastPublishedAt(items.at(-1)?.publishedAt ?? null)
+      setLastCreatedAt(items.at(-1)?.publishedAt ?? null)
       setHasMore(items.length === PAGE_SIZE)
     } catch (e) {
       console.error("[useNewsFeed] 다음 페이지 로딩 실패:", e)
     } finally {
       setIsLoadingMore(false)
     }
-  }, [isLoadingMore, hasMore, lastPublishedAt])
+  }, [isLoadingMore, hasMore, lastCreatedAt])
 
   return { news, isLoading, isLoadingMore, hasMore, fetchNextPage, refresh }
 }

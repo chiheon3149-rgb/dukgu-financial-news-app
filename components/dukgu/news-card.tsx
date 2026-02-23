@@ -13,6 +13,7 @@ const categoryStyles: Record<CategoryType, string> = {
 }
 
 interface NewsCardProps {
+  id?: string
   category: CategoryType
   headline: string
   summary: string
@@ -21,10 +22,11 @@ interface NewsCardProps {
   badCount: number
   commentCount: number
   saved?: boolean
-  tags?: string[] 
+  tags?: string[]
 }
 
 export function NewsCard({
+  id,
   category,
   headline,
   summary,
@@ -69,11 +71,12 @@ export function NewsCard({
       </p>
 
       {/* 💡 하단 영역: 길고 긴 버튼 코드 대신, 딱 한 줄로 부품을 끼워 넣습니다. */}
-      <NewsInteractionBar 
-        initialGood={goodCount} 
-        initialBad={badCount} 
-        commentCount={commentCount} 
-        initialSaved={saved} 
+      <NewsInteractionBar
+        newsId={id}
+        initialGood={goodCount}
+        initialBad={badCount}
+        commentCount={commentCount}
+        initialSaved={saved}
       />
       
     </article>
