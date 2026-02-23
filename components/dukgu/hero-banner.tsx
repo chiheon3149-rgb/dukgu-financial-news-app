@@ -157,9 +157,9 @@ export function HeroBanner() {
             <p className="text-sm font-bold text-white/70 py-2">브리핑 준비 중...</p>
           )}
 
-          {/* #태그 3개(한 줄) + 리포트읽기 버튼 */}
-          <div className="flex items-center justify-between gap-2 mt-1">
-            <div className="flex gap-1.5 overflow-hidden min-w-0 flex-1">
+          {/* #태그 + 리포트읽기 버튼 (2줄) */}
+          <div className="flex flex-col gap-2 mt-1">
+            <div className="flex gap-1.5">
               {indices.slice(0, 3).map(idx => (
                 <span key={idx.name} className="text-[10px] px-2 py-1 bg-black/15 backdrop-blur-sm border border-white/10 rounded-md font-semibold text-white/90 whitespace-nowrap shrink-0">
                   #{idx.name}
@@ -167,13 +167,15 @@ export function HeroBanner() {
               ))}
             </div>
 
-            <Link
-              href="/briefing"
-              className={`group flex items-center gap-1 text-xs font-bold bg-white ${theme.textColor} px-3.5 py-2 rounded-lg hover:bg-gray-100 transition-all active:scale-95 shadow-lg shrink-0 cursor-pointer`}
-            >
-              <span>리포트읽기</span>
-              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+            <div className="flex justify-end">
+              <Link
+                href="/briefing"
+                className={`group flex items-center gap-1 text-xs font-bold bg-white ${theme.textColor} px-3.5 py-2 rounded-lg hover:bg-gray-100 transition-all active:scale-95 shadow-lg cursor-pointer`}
+              >
+                <span>리포트읽기</span>
+                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
           </div>
 
         </div>
