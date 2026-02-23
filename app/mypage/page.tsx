@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { XpLevelBadge } from "@/components/dukgu/xp-level-badge"
 import { MyPageQuizBanner } from "@/components/dukgu/mypage-quiz-banner"
+import { PolicyModal, type PolicyType } from "@/components/dukgu/policy-modal"
 import { useUser } from "@/context/user-context"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
 import { useFollow } from "@/hooks/use-follow"
@@ -46,6 +47,7 @@ export default function MyPage() {
   const { following, followers } = useFollow()
   const [showLevelMap, setShowLevelMap] = useState(false)
   const [showFollowList, setShowFollowList] = useState<"following" | "followers" | null>(null)
+  const [openPolicy, setOpenPolicy] = useState<PolicyType | null>(null)
 
   // 포트폴리오 공개 설정 (로컬 상태 — Supabase 연결 시 profiles 테이블로 이전)
   const [portfolioPublic, setPortfolioPublic] = useState(false)
@@ -244,7 +246,31 @@ export default function MyPage() {
           <span className="text-[13px] font-bold">로그아웃</span>
         </button>
 
+        {/* 약관 링크 */}
+        <div className="flex items-center justify-center gap-3 pb-2">
+          <button
+            onClick={() => setOpenPolicy("terms")}
+            className="text-[10px] font-bold text-slate-300 hover:text-slate-400 transition-colors"
+          >
+            이용약관
+          </button>
+          <span className="text-slate-200 text-[10px]">·</span>
+          <button
+            onClick={() => setOpenPolicy("privacy")}
+            className="text-[10px] font-bold text-slate-300 hover:text-slate-400 transition-colors"
+          >
+            개인정보처리방침
+          </button>
+          <span className="text-slate-200 text-[10px]">·</span>
+          <span className="text-[10px] font-bold text-slate-200">v1.0.0</span>
+        </div>
+
       </main>
+
+      {/* 약관 / 개인정보 팝업 */}
+      {openPolicy && (
+        <PolicyModal type={openPolicy} onClose={() => setOpenPolicy(null)} />
+      )}
     </div>
   )
 }
