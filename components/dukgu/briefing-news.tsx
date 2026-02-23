@@ -71,9 +71,11 @@ export function BriefingNews({ mode, items }: BriefingNewsProps) {
                   </span>
                 )}
               </div>
-              <a href={news.link} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-blue-500 transition-colors bg-white px-2 py-1 rounded-lg shadow-sm border border-slate-100">
-                원문 <ExternalLink className="w-2.5 h-2.5" />
-              </a>
+              {news.link && news.link !== "#" && (
+                <a href={news.link} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-blue-500 transition-colors bg-white px-2 py-1 rounded-lg shadow-sm border border-slate-100">
+                  원문 <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              )}
             </div>
             
             <h4 className="font-bold text-sm text-slate-800 leading-snug mb-2">{news.title}</h4>
