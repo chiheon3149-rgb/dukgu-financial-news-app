@@ -19,27 +19,43 @@ const SAMPLE_NOTICES = [
   { id: 3, title: "[업데이트] 미국/한국 브리핑 모드 추가", isNew: false },
 ]
 
-const NOTICES_READ_KEY = "dukgu:notices-read"
+const NOTICES_READ_KEY = "dukgu:notices-read-ids"
+
+function getReadIds(): number[] {
+  try {
+    return JSON.parse(localStorage.getItem(NOTICES_READ_KEY) ?? "[]")
+  } catch {
+    return []
+  }
+}
+
+function saveReadIds(ids: number[]) {
+  try {
+    localStorage.setItem(NOTICES_READ_KEY, JSON.stringify(ids))
+  } catch {}
+}
 
 export function NoticeDropdown() {
   const [isOpen, setIsOpen] = useState(false)
-  // localStorage에서 읽음 상태 초기화 → 페이지 이동 후에도 유지됨
-  const [hasUnread, setHasUnread] = useState<boolean>(() => {
-    if (typeof window === "undefined") return SAMPLE_NOTICES.some((n) => n.isNew)
-    try {
-      const readAt = localStorage.getItem(NOTICES_READ_KEY)
-      return !readAt && SAMPLE_NOTICES.some((n) => n.isNew)
-    } catch {
-      return SAMPLE_NOTICES.some((n) => n.isNew)
-    }
-  })
+  // SSR 안전: 초기값 false/[], useEffect에서 localStorage 반영
+  const [hasUnread, setHasUnread] = useState(false)
+  const [readIds, setReadIds] = useState<number[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // 열리는 순간 읽음 처리 + localStorage 영속화
+  useEffect(() => {
+    const stored = getReadIds()
+    setReadIds(stored)
+    setHasUnread(SAMPLE_NOTICES.some((n) => n.isNew && !stored.includes(n.id)))
+  }, [])
+
+  // 열리는 순간 읽음 처리 + localStorage 영속화 (공지 ID 단위)
   const handleOpen = () => {
     setIsOpen(true)
     setHasUnread(false)
-    try { localStorage.setItem(NOTICES_READ_KEY, Date.now().toString()) } catch {}
+    const prev = getReadIds()
+    const next = Array.from(new Set([...prev, ...SAMPLE_NOTICES.filter(n => n.isNew).map(n => n.id)]))
+    saveReadIds(next)
+    setReadIds(next)
   }
 
   // 데스크톱: 팝업 바깥 클릭 시 닫기
@@ -103,23 +119,26 @@ export function NoticeDropdown() {
 
             {/* 알림 리스트 */}
             <div className="max-h-64 overflow-y-auto">
-              {SAMPLE_NOTICES.map((notice) => (
-                <Link
-                  key={notice.id}
-                  href={`/notice/${notice.id}`}
-                  onClick={() => setIsOpen(false)}
-                  className="block px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-start gap-2">
-                    {notice.isNew && (
-                      <span className="mt-0.5 shrink-0 w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    )}
-                    <p className={`text-xs leading-snug line-clamp-2 ${notice.isNew ? "text-slate-800 font-semibold" : "text-slate-600 font-medium"}`}>
-                      {notice.title}
-                    </p>
-                  </div>
-                </Link>
-              ))}
+              {SAMPLE_NOTICES.map((notice) => {
+                const isUnread = notice.isNew && !readIds.includes(notice.id)
+                return (
+                  <Link
+                    key={notice.id}
+                    href={`/notice/${notice.id}`}
+                    onClick={() => setIsOpen(false)}
+                    className="block px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-start gap-2">
+                      {isUnread && (
+                        <span className="mt-0.5 shrink-0 w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                      )}
+                      <p className={`text-xs leading-snug line-clamp-2 ${isUnread ? "text-slate-800 font-semibold" : "text-slate-600 font-medium"}`}>
+                        {notice.title}
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
 
             {/* 전체보기 */}
