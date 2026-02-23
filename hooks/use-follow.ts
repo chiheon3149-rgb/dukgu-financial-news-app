@@ -35,6 +35,8 @@ function saveFollows(myId: string, data: FollowRelation[]) {
 
 interface UseFollowReturn {
   following: FollowRelation[]
+  /** 나를 팔로우하는 유저 목록 — Supabase 전환 전까지는 빈 배열 */
+  followers: FollowRelation[]
   isFollowing: (userId: string) => boolean
   toggleFollow: (target: { id: string; nickname: string; emoji: string; level: number }) => void
 }
@@ -79,5 +81,8 @@ export function useFollow(): UseFollowReturn {
     [myId]
   )
 
-  return { following, isFollowing, toggleFollow }
+  // followers: 실제 팔로워는 Supabase follows 테이블 쿼리가 필요합니다.
+  // localStorage 기반으로는 다른 유저가 나를 팔로우했는지 알 수 없으므로 빈 배열 반환.
+  // Supabase 전환 시: supabase.from("follows").select("*").eq("following_id", myId)
+  return { following, followers: [], isFollowing, toggleFollow }
 }
