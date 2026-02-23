@@ -4,30 +4,44 @@ import { useState } from "react"
 import { Newspaper, ExternalLink, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react"
 
 // 💡 1. 'mode' 데이터를 받을 수 있게 입구(Interface)를 정의합니다.
-interface BriefingNewsProps {
-  mode: "US" | "KR";
+interface NewsItem {
+  stars: number
+  cat: string
+  color: "blue" | "emerald" | "slate"
+  title: string
+  summary?: string
+  insight?: string
+  link: string
 }
 
-// 💡 2. 데이터 장부를 미국과 한국으로 분리합니다.
-const usNewsData = [
-  { stars: "★★★★★", cat: "Eco", title: "미 대법원 관세 판결 오늘 밤 발표 대기", summary: "트럼프 전 대통령의 상호관세 권한 위헌 여부 결정. 결과에 따라 글로벌 무역망 구조가 전면 재설계됨.", insight: null, link: "#", color: "slate" },
-  { stars: "★★★★★", cat: "Tech", color: "blue", title: "메타, 엔비디아 차세대 칩 '베라 루빈' 대거 채택", summary: null, insight: "B2B 솔루션 기획 시 '표준화된 1등 인프라'를 쓰는 것이 장기적으로 유리함을 시사.", link: "#" },
-  { stars: "★★★★☆", cat: "Bio", color: "emerald", title: "FDA, 차세대 비만 치료제 패스트트랙 승인", summary: null, insight: "헬스케어 플랫폼 기획 시 사용자의 '투약 관리 주기' 알림 로직 변경 필요.", link: "#" },
-  { stars: "★★★★☆", cat: "Tech", color: "blue", title: "오픈AI, 추론 전용 초경량 로컬 모델 공개", insight: "향후 앱 기획 시 서버 통신 없이 디바이스 내에서 처리하는 온디바이스 AI 기능 설계 필수.", link: "#" },
-];
+interface BriefingNewsProps {
+  mode: "US" | "KR"
+  items?: NewsItem[]
+}
 
-const krNewsData = [
-  { stars: "★★★★★", cat: "Tech", color: "blue", title: "네이버, 한국형 초거대 AI '하이퍼클로바X' 패치 배포", summary: "국내 비즈니스 환경에 최적화된 API 성능 개선. 로컬라이징 서비스 기획자들에게 강력한 도구 제공.", insight: "국내 특화 데이터셋을 활용한 챗봇 UI 기획 시 우선순위 고려 대상.", link: "#" },
-  { stars: "★★★★☆", cat: "Eco", title: "금감원, 가계부채 관리 위한 'DSR 3단계' 조기 도입 검토", summary: "대출 한도 데이터 축소 예상. 핀테크/프롭테크 앱 내 한도 조회 로직의 대대적인 수정 불가피.", insight: null, link: "#", color: "slate" },
-  { stars: "★★★★☆", cat: "Policy", color: "emerald", title: "K-배터리, 차세대 전고체 배터리 양산 라인 가동", insight: "에너지 섹터 인프라 업데이트. 관련 투자 모니터링 대시보드 기획 시 주요 지표로 설정 필요.", link: "#" },
-  { stars: "★★★☆☆", cat: "Tech", color: "blue", title: "카카오, 테이블오더 시장 점유율 확대 선언", summary: "페이젠(PayZen) 등 기존 시장 플레이어와의 트래픽 경쟁 심화 예상.", insight: "브랜드 차별화 및 오프라인 SDK 안정성이 승부처가 될 것.", link: "#" },
-];
+function starsStr(n: number): string {
+  return "★".repeat(n) + "☆".repeat(Math.max(0, 5 - n))
+}
 
-export function BriefingNews({ mode }: BriefingNewsProps) {
+const usNewsData: NewsItem[] = [
+  { stars: 5, cat: "Eco",  color: "slate",   title: "미 대법원 관세 판결 오늘 밤 발표 대기", summary: "트럼프 전 대통령의 상호관세 권한 위헌 여부 결정. 결과에 따라 글로벌 무역망 구조가 전면 재설계됨.", link: "#" },
+  { stars: 5, cat: "Tech", color: "blue",    title: "메타, 엔비디아 차세대 칩 '베라 루빈' 대거 채택", insight: "B2B 솔루션 기획 시 '표준화된 1등 인프라'를 쓰는 것이 장기적으로 유리함을 시사.", link: "#" },
+  { stars: 4, cat: "Bio",  color: "emerald", title: "FDA, 차세대 비만 치료제 패스트트랙 승인", insight: "헬스케어 플랫폼 기획 시 사용자의 '투약 관리 주기' 알림 로직 변경 필요.", link: "#" },
+  { stars: 4, cat: "Tech", color: "blue",    title: "오픈AI, 추론 전용 초경량 로컬 모델 공개", insight: "향후 앱 기획 시 서버 통신 없이 디바이스 내에서 처리하는 온디바이스 AI 기능 설계 필수.", link: "#" },
+]
+
+const krNewsData: NewsItem[] = [
+  { stars: 5, cat: "Tech",   color: "blue",    title: "네이버, 한국형 초거대 AI '하이퍼클로바X' 패치 배포", summary: "국내 비즈니스 환경에 최적화된 API 성능 개선. 로컬라이징 서비스 기획자들에게 강력한 도구 제공.", insight: "국내 특화 데이터셋을 활용한 챗봇 UI 기획 시 우선순위 고려 대상.", link: "#" },
+  { stars: 4, cat: "Eco",    color: "slate",   title: "금감원, 가계부채 관리 위한 'DSR 3단계' 조기 도입 검토", summary: "대출 한도 데이터 축소 예상. 핀테크/프롭테크 앱 내 한도 조회 로직의 대대적인 수정 불가피.", link: "#" },
+  { stars: 4, cat: "Policy", color: "emerald", title: "K-배터리, 차세대 전고체 배터리 양산 라인 가동", insight: "에너지 섹터 인프라 업데이트. 관련 투자 모니터링 대시보드 기획 시 주요 지표로 설정 필요.", link: "#" },
+  { stars: 3, cat: "Tech",   color: "blue",    title: "카카오, 테이블오더 시장 점유율 확대 선언", summary: "페이젠(PayZen) 등 기존 시장 플레이어와의 트래픽 경쟁 심화 예상.", insight: "브랜드 차별화 및 오프라인 SDK 안정성이 승부처가 될 것.", link: "#" },
+]
+
+export function BriefingNews({ mode, items }: BriefingNewsProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  
-  // 💡 3. 현재 모드에 맞는 데이터를 선택합니다.
-  const currentData = mode === "US" ? usNewsData : krNewsData;
+
+  const currentData: NewsItem[] = items
+    ?? (mode === "US" ? usNewsData : krNewsData)
   const visibleNews = isExpanded ? currentData : currentData.slice(0, 3)
 
   return (
@@ -47,7 +61,7 @@ export function BriefingNews({ mode }: BriefingNewsProps) {
           <div key={idx} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 transition-all">
             <div className="flex justify-between items-start mb-2.5">
               <div className="flex gap-1 text-amber-400 text-[10px] items-center">
-                {news.stars} 
+                {starsStr(news.stars)}
                 {news.cat && (
                   <span className={`ml-1.5 px-1.5 py-0.5 rounded-md font-bold text-[9px] uppercase 
                     ${news.color === 'blue' ? 'bg-blue-100 text-blue-600' : 

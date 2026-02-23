@@ -3,10 +3,11 @@
 import { BarChart3, Activity } from "lucide-react"
 
 interface MarketIndexLogProps {
-  mode: "US" | "KR";
+  mode: "US" | "KR"
+  items?: { name: string; val: string; change: string; status: string }[]
 }
 
-export function MarketIndexLog({ mode }: MarketIndexLogProps) {
+export function MarketIndexLog({ mode, items }: MarketIndexLogProps) {
   // 🇺🇸 미국 4대 지수 로그 (다우, 나스닥, S&P 500, 러셀 2000 추가!)
   const usIndices = [
     { name: "다우존스", val: "43,789.34", change: "+0.12%", color: "red", status: "전통 우량 기업 섹터 가동률 정상." },
@@ -22,7 +23,7 @@ export function MarketIndexLog({ mode }: MarketIndexLogProps) {
     { name: "코스피 200", val: "348.90", change: "+0.32%", color: "red", status: "대형주 중심의 지수 데이터 양호." }
   ]
 
-  const data = mode === "US" ? usIndices : krIndices
+  const data = items ?? (mode === "US" ? usIndices : krIndices)
 
   return (
     <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">

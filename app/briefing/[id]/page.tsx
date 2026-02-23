@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, use } from "react"
+import { useSearchParams } from "next/navigation"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { BriefingHero } from "@/components/dukgu/briefing-hero"
 import { MarketSwitcher } from "@/components/dukgu/market-switcher"
@@ -9,69 +10,95 @@ import { MarketIndexLog } from "@/components/dukgu/market-index-board"
 import { DbriefingSchedule } from "@/components/dukgu/dbriefing-schedule"
 import { BriefingNews } from "@/components/dukgu/briefing-news"
 import { BriefingSummary } from "@/components/dukgu/briefing-summary"
+import { supabase } from "@/lib/supabase"
+import type { IndexSummary } from "@/types"
 
-export default function BriefingDetailPage() {
-  const [marketMode, setMarketMode] = useState<"US" | "KR">("US");
+export interface BriefingContent {
+  kpis?: {
+    label: string; value: string; change: string; status: string
+    statusColor: "rose" | "blue" | "amber" | "slate"
+  }[]
+  markets?: { name: string; val: string; change: string; status: string }[]
+  schedule?: { dDay: string; title: string; description: string; isUrgent?: boolean }[]
+  news?: {
+    stars: number; cat: string; color: "blue" | "emerald" | "slate"
+    title: string; summary?: string; insight?: string; link: string
+  }[]
+  summary?: string
+  quote?: string
+  quoteAuthor?: string
+}
 
-  // 기획자님의 데이터 장부
-  const marketContent = {
-    US: {
-      hero: {
-        date: "2026년 2월 21일 (오전)",
-        title: "오늘의 모닝 브리핑\n(미국 증시 패치 노트)",
-        desc: "글로벌 마켓 트래픽과 기술주 업데이트 요약",
-        variant: "morning" as const,
-        emoji: "🚀"
-      },
-      summary: {
-        text: "전일 미국 증시는 AI 수익성 의문으로 기술주 중심의 하락이 발생했습니다. 서버 부하 방어를 위한 관망세가 뚜렷합니다.",
-        quote: "성공한 서비스는 사용자가 원하는 것을 미리 아는 것이다.",
-        author: "스티브 잡스"
-      }
-    },
-    KR: {
-      hero: {
-        date: "2026년 2월 21일 (오후)",
-        title: "오늘의 클로징 리포트\n(국내 증시 리스크 점검)",
-        desc: "코스피/코스닥 마감 로그 및 다음 배포 일정",
-        variant: "afternoon" as const,
-        emoji: "🐯"
-      },
-      summary: {
-        text: "금일 코스피는 외인들의 트래픽 매도세로 지지선이 소폭 하락했습니다. 환율 변동에 따른 데이터 유실에 주의하세요.",
-        quote: "투자의 제1원칙은 절대로 돈을 잃지 않는 것이다.",
-        author: "워렌 버핏"
-      }
+interface BriefingRow {
+  id: string; type: string; headline: string
+  indices: IndexSummary[] | null; content: BriefingContent | null
+}
+
+function formatDateLabel(dateStr: string, type: "morning" | "afternoon"): string {
+  const d = new Date(dateStr + "T00:00:00")
+  const days = ["일", "월", "화", "수", "목", "금", "토"]
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일(${days[d.getDay()]}요일) (${type === "morning" ? "오전" : "오후"})`
+}
+
+export default function BriefingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: dateStr } = use(params)
+  const searchParams = useSearchParams()
+  const initialMode = (searchParams.get("mode") as "US" | "KR") ?? "US"
+
+  const [marketMode, setMarketMode] = useState<"US" | "KR">(initialMode)
+  const [morning, setMorning] = useState<BriefingRow | null>(null)
+  const [afternoon, setAfternoon] = useState<BriefingRow | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("briefings")
+        .select("id, type, headline, indices, content")
+        .eq("date", dateStr)
+      setMorning(data?.find((r: any) => r.type === "morning") ?? null)
+      setAfternoon(data?.find((r: any) => r.type === "afternoon") ?? null)
+      setIsLoading(false)
     }
-  };
+    load()
+  }, [dateStr])
 
-  const current = marketContent[marketMode];
+  const current = marketMode === "US" ? morning : afternoon
+
+  if (isLoading) {
+    return (
+      <div className="min-h-dvh bg-slate-50">
+        <DetailHeader title="브리핑" />
+        <div className="flex items-center justify-center h-60 text-slate-400 text-sm animate-pulse">
+          브리핑 불러오는 중...
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-dvh bg-slate-50 pb-20">
-      {/* 뒤로가기 버튼이 있는 헤더 */}
       <DetailHeader title={marketMode === "US" ? "Global Briefing" : "K-Market Report"} />
-
       <main className="container max-w-md mx-auto px-4 py-6 space-y-8">
-        <MarketSwitcher mode={marketMode} setMode={setMarketMode} />
+        <MarketSwitcher mode={marketMode} setMode={setMarketMode} isKrAvailable={!!afternoon} />
 
-        <BriefingHero 
-          date={current.hero.date}
-          title={current.hero.title}
-          description={current.hero.desc}
-          emoji={current.hero.emoji}
-          variant={current.hero.variant}
+        <BriefingHero
+          date={formatDateLabel(dateStr, marketMode === "US" ? "morning" : "afternoon")}
+          title={current?.headline ?? "브리핑 준비 중"}
+          description={(current?.indices ?? []).map(i => `${i.name} ${i.change}`).join("  ·  ")}
+          variant={marketMode === "US" ? "morning" : "afternoon"}
+          emoji={marketMode === "US" ? "🚀" : "🐯"}
         />
 
-        <KpiTracker mode={marketMode} />
-        <MarketIndexLog mode={marketMode} />
-        <DbriefingSchedule mode={marketMode} />
-        <BriefingNews mode={marketMode} />
+        <KpiTracker mode={marketMode} items={current?.content?.kpis} />
+        <MarketIndexLog mode={marketMode} items={current?.content?.markets} />
+        <DbriefingSchedule mode={marketMode} items={current?.content?.schedule} />
+        <BriefingNews mode={marketMode} items={current?.content?.news} />
 
-        <BriefingSummary 
-          summary={current.summary.text}
-          quote={current.summary.quote}
-          author={current.summary.author}
+        <BriefingSummary
+          summary={current?.content?.summary ?? ""}
+          quote={current?.content?.quote ?? ""}
+          author={current?.content?.quoteAuthor ?? ""}
         />
       </main>
     </div>

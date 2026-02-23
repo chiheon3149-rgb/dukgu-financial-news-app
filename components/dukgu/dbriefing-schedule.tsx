@@ -4,7 +4,8 @@ import { CalendarDays } from "lucide-react"
 
 // 💡 1. 'mode' 데이터를 받을 수 있게 입구 정의
 interface DbriefingScheduleProps {
-  mode: "US" | "KR";
+  mode: "US" | "KR"
+  items?: ScheduleItemProps[]
 }
 
 interface ScheduleItemProps {
@@ -15,7 +16,7 @@ interface ScheduleItemProps {
 }
 
 // 💡 2. 함수 이름을 DbriefingSchedule로 바꿨습니다! (page.tsx와 일치)
-export function DbriefingSchedule({ mode }: DbriefingScheduleProps) {
+export function DbriefingSchedule({ mode, items }: DbriefingScheduleProps) {
   
   // 💡 미국(오전) 데이터
   const usSchedules: ScheduleItemProps[] = [
@@ -49,7 +50,7 @@ export function DbriefingSchedule({ mode }: DbriefingScheduleProps) {
     }
   ];
 
-  const data = mode === "US" ? usSchedules : krSchedules;
+  const data = items ?? (mode === "US" ? usSchedules : krSchedules)
 
   return (
     <section className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all hover:shadow-md">

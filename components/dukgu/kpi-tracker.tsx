@@ -5,7 +5,8 @@ import { ICON_MAPPER } from "@/lib/constants/icons"
 
 // 💡 1. 'mode'를 받을 수 있게 입구(Interface)를 만듭니다.
 interface KpiTrackerProps {
-  mode: "US" | "KR";
+  mode: "US" | "KR"
+  items?: KpiItemProps[]
 }
 
 interface KpiItemProps {
@@ -56,7 +57,7 @@ function KpiItem({ label, value, change, status, statusColor }: KpiItemProps) {
 }
 
 // 💡 2. 'mode'를 받아와서 데이터 장부를 선택합니다.
-export function KpiTracker({ mode }: KpiTrackerProps) {
+export function KpiTracker({ mode, items }: KpiTrackerProps) {
   const usKpi: KpiItemProps[] = [
     { label: "VIX (변동성 지수)", value: "19.80", change: "+1.2%", status: "⚠️ 주의: 옵션 시장 헤지 증가", statusColor: "rose" },
     { label: "원/달러 환율", value: "1,405.50", change: "+3.0원", status: "🟡 관망: 환차익 인프라 유지", statusColor: "rose" },
@@ -69,8 +70,7 @@ export function KpiTracker({ mode }: KpiTrackerProps) {
     { label: "Fear & Greed", value: "45/100", change: "Neutral", status: "⚪ 중립: 투자 심리 안정화", statusColor: "slate" }
   ]
 
-  // 💡 지금 모드에 맞는 데이터를 고릅니다.
-  const data = mode === "US" ? usKpi : krKpi
+  const data = items ?? (mode === "US" ? usKpi : krKpi)
 
   return (
     <section className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
