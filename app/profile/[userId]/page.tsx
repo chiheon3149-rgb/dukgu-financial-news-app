@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, use } from "react"
-import { Lock, TrendingUp, TrendingDown, UserPlus, UserMinus } from "lucide-react"
+import { Lock, TrendingUp, UserPlus, UserMinus } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { useFollow } from "@/hooks/use-follow"
 import { getLevelMeta } from "@/lib/mock/user"
@@ -45,8 +45,6 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   )
 
   const following = isFollowing(userId)
-  // profiles 테이블에 portfolioPublic 필드 없음 → 항상 비공개
-  const canViewPortfolio = false
 
   if (targetProfile === undefined) {
     return (
@@ -131,38 +129,14 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
             </div>
           </div>
 
-          {canViewPortfolio ? (
-            <div className="px-5 py-4 space-y-3">
-              {portfolio.map((item) => (
-                <div key={item.ticker} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                  <div>
-                    <p className="text-[13px] font-black text-slate-800">{item.ticker}</p>
-                    <p className="text-[11px] font-bold text-slate-400">{item.name}</p>
-                  </div>
-                  <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-black ${
-                    item.returnRate >= 0 ? "bg-rose-50 text-rose-500" : "bg-blue-50 text-blue-500"
-                  }`}>
-                    {item.returnRate >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    {item.returnRate >= 0 ? "+" : ""}{item.returnRate}%
-                  </div>
-                </div>
-              ))}
-              {portfolio.length === 0 && (
-                <p className="text-[12px] font-bold text-slate-400 py-4 text-center">
-                  보유 종목이 없습니다.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="px-5 py-10 text-center text-slate-300">
-              <Lock className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-[12px] font-bold">
-                {!following
-                  ? "팔로우하면 공개 포트폴리오를 볼 수 있어요"
-                  : "이 유저는 포트폴리오를 비공개로 설정했습니다"}
-              </p>
-            </div>
-          )}
+          <div className="px-5 py-10 text-center text-slate-300">
+            <Lock className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p className="text-[12px] font-bold">
+              {!following
+                ? "팔로우하면 공개 포트폴리오를 볼 수 있어요"
+                : "이 유저는 포트폴리오를 비공개로 설정했습니다"}
+            </p>
+          </div>
         </section>
 
       </main>
