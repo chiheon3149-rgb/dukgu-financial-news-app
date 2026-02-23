@@ -18,7 +18,7 @@ export default function StocksPage() {
   }
 
   const totalValueKrw = rows.reduce((acc, row) => {
-    return acc + (row.holding.currency === "KRW" ? row.currentValue : row.currentValue * 1360)
+    return acc + (row.holding.currency === "KRW" ? row.currentValue : row.currentValue * 1432)
   }, 0)
 
   return (

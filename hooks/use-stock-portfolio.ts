@@ -49,7 +49,7 @@ export interface StockRow {
   returnRate: number
 }
 
-export function useStockPortfolio(usdToKrwRate = 1360) {
+export function useStockPortfolio(usdToKrwRate = 1432) {
   const { holdings, addHolding, removeHolding } = useStockPortfolioContext()
 
   const tickers = holdings.map((h) => h.ticker)

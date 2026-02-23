@@ -355,6 +355,18 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     []
   )
 
+  const reportPost = useCallback(async (postId: string) => {
+    try {
+      await fetch("/api/community/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, reportedAt: new Date().toISOString() }),
+      })
+    } catch {
+      // silent
+    }
+  }, [])
+
   return {
     posts,
     comments,
@@ -365,6 +377,7 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     setSearchQuery,
     filteredPosts,
     getComments,
+    reportPost,
     createPost,
     updatePost,
     deletePost,

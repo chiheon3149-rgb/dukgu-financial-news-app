@@ -37,7 +37,10 @@ export function useMarketPrice(tickers: string[]): UseMarketPriceReturn {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchQuotes = useCallback(async () => {
-    if (tickers.length === 0) return
+    if (tickers.length === 0) {
+      setIsLoading(false)
+      return
+    }
     try {
       const res = await fetch(`/api/market/price?tickers=${tickers.join(",")}`)
       if (!res.ok) throw new Error(await res.text())
