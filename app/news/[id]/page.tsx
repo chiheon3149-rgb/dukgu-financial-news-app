@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Home, ExternalLink, Clock, Globe, Bookmark } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
@@ -11,6 +12,7 @@ import { NewsCommentSection } from "@/components/dukgu/news-comment-section"
 import { supabase } from "@/lib/supabase"
 import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
+import { useUser } from "@/context/user-context"
 
 interface NewsDetail {
   id: string
@@ -50,6 +52,8 @@ function getTimeAgo(iso: string): string {
 
 export default function NewsDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
+  const { profile } = useUser()
   const [news, setNews] = useState<NewsDetail | null | undefined>(undefined)
   const [liveViewCount, setLiveViewCount] = useState(0)
   const [liveCommentCount, setLiveCommentCount] = useState(0)
@@ -76,6 +80,11 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
   const isBookmarked = news ? isSaved(news.id) : false
 
   const toggleBookmark = () => {
+    if (!profile) {
+      alert("로그인 후 북마크를 사용할 수 있습니다.")
+      router.push("/login")
+      return
+    }
     if (!news) return
     const tags: string[] = Array.isArray(news.tags) ? news.tags : []
     toggleSave(news.id, {

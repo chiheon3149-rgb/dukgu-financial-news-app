@@ -36,11 +36,20 @@ function notify(newsId: string) {
 // 익명 유저용 디바이스 키 (localStorage에 영구 저장)
 const DEVICE_KEY_STORAGE = "dukgu_device_id"
 
+function generateId(): string {
+  // crypto.randomUUID()는 HTTPS 또는 localhost에서만 동작
+  // HTTP + IP 접속(로컬 네트워크 테스트) 시 폴백
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
 function getOrCreateDeviceKey(): string {
   if (typeof window === "undefined") return "ssr"
   let key = localStorage.getItem(DEVICE_KEY_STORAGE)
   if (!key) {
-    key = crypto.randomUUID()
+    key = generateId()
     localStorage.setItem(DEVICE_KEY_STORAGE, key)
   }
   return key

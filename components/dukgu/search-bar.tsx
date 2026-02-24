@@ -11,46 +11,30 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
   return (
     <form
       onSubmit={(e) => e.preventDefault()}
-      className="relative flex items-center w-full mb-4"
+      className="relative flex items-center w-full mb-3" // 여백을 살짝 줄여 상단 밀착
     >
-      {/* 돋보기 — 입력 중일 때 왼쪽 (검색 실행 버튼) */}
-      {value && (
-        <button
-          type="submit"
-          className="absolute left-3.5 text-slate-400 hover:text-blue-500 transition-colors"
-        >
-          <Search className="w-4 h-4" />
-        </button>
-      )}
+      {/* 1. 돋보기 아이콘 - 왼쪽에 고정하여 안정감 부여 */}
+      <div className="absolute left-4 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+        <Search className="w-4 h-4" />
+      </div>
 
+      {/* 2. 입력 필드 - 폰트 무게를 줄이고(font-medium) 패딩 최적화 */}
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="태그 제목 내용으로 검색하세요"
-        className={`w-full bg-white border border-slate-200 text-sm text-slate-800 rounded-2xl py-3 pr-10 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all placeholder:text-slate-400 shadow-sm ${
-          value ? "pl-10" : "pl-4"
-        }`}
+        placeholder="태그, 제목, 내용으로 검색"
+        className="w-full bg-slate-100/70 border border-transparent text-[14px] font-medium text-slate-800 rounded-xl py-2.5 pl-11 pr-10 focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400/50 transition-all placeholder:text-slate-400"
       />
 
-      {/* 돋보기 — 기본 상태일 때 오른쪽 */}
-      {!value && (
-        <button
-          type="submit"
-          className="absolute right-3.5 text-slate-400 hover:text-blue-500 transition-colors"
-        >
-          <Search className="w-4 h-4" />
-        </button>
-      )}
-
-      {/* X 버튼 — 입력 중일 때 오른쪽 (초기화) */}
+      {/* 3. X 버튼 - 입력 값이 있을 때만 오른쪽 노출 */}
       {value && (
         <button
           type="button"
           onClick={() => onChange("")}
-          className="absolute right-3.5 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-0.5 transition-colors"
+          className="absolute right-3.5 text-slate-400 hover:text-slate-600 bg-slate-200/50 rounded-full p-1 transition-colors"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="w-3 h-3" />
         </button>
       )}
     </form>

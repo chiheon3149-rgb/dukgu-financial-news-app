@@ -26,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko">
-      <body className={`${notoSansKR.className} antialiased`}>
+    <html lang="ko" suppressHydrationWarning>
+      <body className={`${notoSansKR.className} antialiased`} suppressHydrationWarning>
         {/* UserProvider로 감싸면 앱 전체가 하나의 유저 정보를 공유합니다 */}
         <UserProvider>
           {children}

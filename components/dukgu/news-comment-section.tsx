@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { ThumbsUp, ThumbsDown, Send, Check, X, Flag } from "lucide-react"
 import type { CommentReportReason } from "@/types"
 import { supabase } from "@/lib/supabase"
@@ -50,6 +51,7 @@ interface ReportModalState {
 
 export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; onCountChange?: (count: number) => void }) {
   const { profile } = useUser()
+  const router = useRouter()
   const [comments, setComments] = useState<NewsComment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [inputText, setInputText] = useState("")
@@ -93,6 +95,11 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputText.trim()) return
+    if (!profile) {
+      alert("로그인 후 댓글을 남길 수 있습니다.")
+      router.push("/login")
+      return
+    }
     const { data } = await supabase
       .from("news_comments")
       .insert({

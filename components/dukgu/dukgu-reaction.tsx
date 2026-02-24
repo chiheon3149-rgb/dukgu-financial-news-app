@@ -1,7 +1,9 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { Eye, MessageCircle } from "lucide-react"
 import { useNewsReaction } from "@/hooks/use-news-reaction"
+import { useUser } from "@/context/user-context"
 
 interface DukguReactionProps {
   initialGood: number
@@ -13,11 +15,22 @@ interface DukguReactionProps {
 }
 
 export function DukguReaction({ initialGood, initialBad, viewCount, commentCount, newsId, snapshot }: DukguReactionProps) {
+  const { profile } = useUser()
+  const router = useRouter()
   const { good, bad, userReaction, react } = useNewsReaction(
     newsId ?? "",
     initialGood,
     initialBad
   )
+
+  const handleReact = (type: "good" | "bad") => {
+    if (!profile) {
+      alert("로그인 후 이용 가능합니다.")
+      router.push("/login")
+      return
+    }
+    react(type, snapshot)
+  }
 
   const total = good + bad
   const goodPercent = total === 0 ? 50 : Math.round((good / total) * 100)
@@ -33,7 +46,7 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
       <div className="flex items-center justify-center gap-8">
         <div className="flex flex-col items-center gap-2">
           <button
-            onClick={() => react("good", snapshot)}
+            onClick={() => handleReact("good")}
             className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "good" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
           >
             🍲
@@ -51,7 +64,7 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
 
         <div className="flex flex-col items-center gap-2">
           <button
-            onClick={() => react("bad", snapshot)}
+            onClick={() => handleReact("bad")}
             className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "bad" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
           >
             🍽️
