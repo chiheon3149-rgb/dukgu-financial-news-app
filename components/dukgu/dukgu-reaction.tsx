@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { Eye, MessageCircle } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { useNewsReaction } from "@/hooks/use-news-reaction"
 
 interface DukguReactionProps {
   initialGood: number
@@ -13,45 +12,15 @@ interface DukguReactionProps {
 }
 
 export function DukguReaction({ initialGood, initialBad, viewCount, commentCount, newsId }: DukguReactionProps) {
-  const [good, setGood] = useState(initialGood)
-  const [bad, setBad] = useState(initialBad)
-  const reactionKey = newsId ? `news_reaction_${newsId}` : null
-
-  // localStorage에서 이전 반응 복원
-  const [userReaction, setUserReaction] = useState<"good" | "bad" | null>(() => {
-    if (typeof window === "undefined" || !reactionKey) return null
-    return localStorage.getItem(reactionKey) as "good" | "bad" | null
-  })
+  const { good, bad, userReaction, react } = useNewsReaction(
+    newsId ?? "",
+    initialGood,
+    initialBad
+  )
 
   const total = good + bad
   const goodPercent = total === 0 ? 50 : Math.round((good / total) * 100)
   const badPercent = total === 0 ? 50 : 100 - goodPercent
-
-  const handleGood = async () => {
-    if (userReaction === "good") return
-    const newGood = good + 1
-    const newBad = userReaction === "bad" ? bad - 1 : bad
-    setGood(newGood)
-    if (userReaction === "bad") setBad(newBad)
-    setUserReaction("good")
-    if (reactionKey) localStorage.setItem(reactionKey, "good")
-    if (newsId) {
-      await supabase.from("news").update({ good_count: newGood, bad_count: newBad }).eq("id", newsId)
-    }
-  }
-
-  const handleBad = async () => {
-    if (userReaction === "bad") return
-    const newBad = bad + 1
-    const newGood = userReaction === "good" ? good - 1 : good
-    setBad(newBad)
-    if (userReaction === "good") setGood(newGood)
-    setUserReaction("bad")
-    if (reactionKey) localStorage.setItem(reactionKey, "bad")
-    if (newsId) {
-      await supabase.from("news").update({ good_count: newGood, bad_count: newBad }).eq("id", newsId)
-    }
-  }
 
   return (
     <div className="py-6 border-y border-slate-100 my-6">
@@ -63,7 +32,7 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
       <div className="flex items-center justify-center gap-8">
         <div className="flex flex-col items-center gap-2">
           <button
-            onClick={handleGood}
+            onClick={() => react("good")}
             className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "good" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
           >
             🍲
@@ -81,7 +50,7 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
 
         <div className="flex flex-col items-center gap-2">
           <button
-            onClick={handleBad}
+            onClick={() => react("bad")}
             className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "bad" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
           >
             🍽️

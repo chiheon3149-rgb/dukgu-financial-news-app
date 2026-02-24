@@ -53,10 +53,10 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
         .single()
       setNews(data ?? null)
       if (data) {
-        // 조회수 증가 후 +1 반영
-        setLiveViewCount((data.view_count ?? 0) + 1)
+        const newViewCount = (data.view_count ?? 0) + 1
+        setLiveViewCount(newViewCount)
         setLiveCommentCount(data.comment_count ?? 0)
-        await supabase.rpc("increment_news_view_count", { target_news_id: id })
+        await supabase.from("news").update({ view_count: newViewCount }).eq("id", id)
       }
     }
     load()

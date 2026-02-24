@@ -59,6 +59,14 @@ function formatTime(dateStr: string): string {
   return `${m}/${day} ${h}:${min}`
 }
 
+// 반응 훅에서 호출 — 카드 피드 캐시 카운트 동기화
+export function updateCachedReactionInFeed(newsId: string, good: number, bad: number) {
+  const idx = _cachedNews.findIndex((n) => n.id === newsId)
+  if (idx !== -1) {
+    _cachedNews[idx] = { ..._cachedNews[idx], goodCount: good, badCount: bad }
+  }
+}
+
 export function useNewsFeed(): UseNewsFeedReturn {
   const [news, setNews] = useState<NewsItem[]>(_cachedNews)
   const [isLoading, setIsLoading] = useState(_cachedNews.length === 0)
