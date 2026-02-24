@@ -9,6 +9,7 @@ import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
 import { DukguAiSummary } from "@/components/dukgu/dukgu-ai-summary"
 import { NewsCommentSection } from "@/components/dukgu/news-comment-section"
 import { supabase } from "@/lib/supabase"
+import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
 
 interface NewsDetail {
   id: string
@@ -178,7 +179,13 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
           newsId={news.id}
         />
 
-        <NewsCommentSection newsId={id} onCountChange={setLiveCommentCount} />
+        <NewsCommentSection
+          newsId={id}
+          onCountChange={(count) => {
+            setLiveCommentCount(count)
+            updateCachedCommentCountInFeed(id, count)
+          }}
+        />
       </main>
     </div>
   )

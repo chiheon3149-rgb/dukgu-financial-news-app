@@ -67,6 +67,14 @@ export function updateCachedReactionInFeed(newsId: string, good: number, bad: nu
   }
 }
 
+// 댓글 추가/삭제 시 호출 — 카드 피드 캐시 댓글 수 동기화
+export function updateCachedCommentCountInFeed(newsId: string, count: number) {
+  const idx = _cachedNews.findIndex((n) => n.id === newsId)
+  if (idx !== -1) {
+    _cachedNews[idx] = { ..._cachedNews[idx], commentCount: count }
+  }
+}
+
 export function useNewsFeed(): UseNewsFeedReturn {
   const [news, setNews] = useState<NewsItem[]>(_cachedNews)
   const [isLoading, setIsLoading] = useState(_cachedNews.length === 0)
