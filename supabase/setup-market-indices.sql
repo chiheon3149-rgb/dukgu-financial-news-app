@@ -71,10 +71,10 @@ SELECT cron.schedule(
   '*/1 * * * *',              -- 매 1분마다
   $$
   SELECT net.http_post(
-    url     := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/fetch-market-indices',
+    url     := 'https://xzfnavxkpwsrmuyyklzr.supabase.co/functions/v1/fetch-market-indices',
     headers := jsonb_build_object(
       'Content-Type',  'application/json',
-      'Authorization', 'Bearer YOUR_SERVICE_ROLE_KEY'
+      'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6Zm5hdnhrcHdzcm11eXlrbHpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3NjU3NzEsImV4cCI6MjA4NzM0MTc3MX0.oA3sm_vOvhXRWFArlgNWz3aunJx_onIxCDIt4ewJEqQ'
     ),
     body    := '{}'::jsonb
   )

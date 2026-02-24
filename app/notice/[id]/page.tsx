@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import Link from "next/link"
 import { Home } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
-import { supabase } from "@/lib/supabase" // 💡 실제 Supabase 클라이언트 경로로 맞춰주세요
+import { supabase } from "@/lib/supabase"
 
 interface NoticeDetail {
   id: string
@@ -24,7 +24,9 @@ function formatDate(iso: string) {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`
 }
 
-export default function NoticeDetailPage({ params }: { params: { id: string } }) {
+export default function NoticeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params) // 💡 Next.js 15 규칙: params는 Promise이므로 use로 풀어줍니다.
+  
   const [notice, setNotice] = useState<NoticeDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -34,7 +36,7 @@ export default function NoticeDetailPage({ params }: { params: { id: string } })
         const { data, error } = await supabase
           .from("notices")
           .select("id, title, category, content, details, created_at")
-          .eq("id", params.id)
+          .eq("id", id) // 💡 params.id 대신 id 사용
           .single()
 
         if (error) throw error
@@ -47,7 +49,7 @@ export default function NoticeDetailPage({ params }: { params: { id: string } })
     }
 
     fetchNotice()
-  }, [params.id])
+  }, [id]) // 💡 의존성 배열도 id로 변경
 
   if (isLoading) {
     return <div className="min-h-dvh flex items-center justify-center text-slate-400 text-sm">로딩 중...</div>
