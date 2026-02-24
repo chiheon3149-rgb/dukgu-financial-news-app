@@ -94,8 +94,23 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       snapshot?: { headline: string; category: string; timeAgo: string }
     ) => {
       const current = _store.get(newsId)
-      if (!current || current.userReaction === type) return
+      if (!current) return
 
+      const userKey = userId ?? getOrCreateDeviceKey()
+
+      // Toggle OFF: 같은 반응을 다시 누르면 취소
+      if (current.userReaction === type) {
+        const newGood = type === "good" ? Math.max(0, current.good - 1) : current.good
+        const newBad  = type === "bad"  ? Math.max(0, current.bad  - 1) : current.bad
+        _store.set(newsId, { good: newGood, bad: newBad, userReaction: null })
+        notify(newsId)
+        updateCachedReactionInFeed(newsId, newGood, newBad)
+        await supabase.from("news_reactions").delete()
+          .eq("news_id", newsId).eq("user_key", userKey)
+        return
+      }
+
+      // 새 반응 or 전환 (good ↔ bad)
       const prevReaction = current.userReaction
       let newGood = current.good
       let newBad  = current.bad
@@ -108,14 +123,10 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
         if (prevReaction === "good") newGood = Math.max(0, newGood - 1)
       }
 
-      // 즉시 UI 반영 (낙관적 업데이트)
       _store.set(newsId, { good: newGood, bad: newBad, userReaction: type })
       notify(newsId)
       updateCachedReactionInFeed(newsId, newGood, newBad)
 
-      // DB upsert — 트리거가 news.good_count / bad_count 원자적 갱신
-      // 로그인 유저면 user_id + snapshot 도 함께 저장 (마이페이지 활동내역 표시용)
-      const userKey = userId ?? getOrCreateDeviceKey()
       await supabase
         .from("news_reactions")
         .upsert(

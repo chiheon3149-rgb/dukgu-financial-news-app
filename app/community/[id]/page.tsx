@@ -28,13 +28,23 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
   const isMyPost = !!profile && post?.authorId === profile.id
 
   const handleReact = (type: "like" | "dislike") => {
-    if (reaction === type || !post) return
-    setCounts((prev) => ({
-      like: type === "like" ? prev.like + 1 : reaction === "like" ? prev.like - 1 : prev.like,
-      dislike: type === "dislike" ? prev.dislike + 1 : reaction === "dislike" ? prev.dislike - 1 : prev.dislike,
-    }))
-    setReaction(type)
-    reactPost(post.id, type)
+    if (!post) return
+    const isToggleOff = reaction === type
+    if (isToggleOff) {
+      setCounts((prev) => ({
+        like:    type === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
+        dislike: type === "dislike" ? Math.max(0, prev.dislike - 1) : prev.dislike,
+      }))
+      setReaction(null)
+      reactPost(post.id, type, reaction)
+    } else {
+      setCounts((prev) => ({
+        like:    type === "like"    ? prev.like    + 1 : reaction === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
+        dislike: type === "dislike" ? prev.dislike + 1 : reaction === "dislike" ? Math.max(0, prev.dislike - 1) : prev.dislike,
+      }))
+      setReaction(type)
+      reactPost(post.id, type, reaction)
+    }
   }
 
   const handleDelete = async () => {

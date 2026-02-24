@@ -105,13 +105,13 @@ interface UseCommunityReturn {
     data: Pick<CommunityPost, "title" | "content" | "tags" | "category">
   ) => Promise<void>
   deletePost: (postId: string) => Promise<void>
-  reactPost: (postId: string, type: "like" | "dislike") => void
+  reactPost: (postId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => void
   addComment: (
     data: Omit<CommunityComment, "id" | "publishedAt" | "timeAgo" | "likeCount" | "dislikeCount" | "reportCount" | "isRemovedByAdmin">
   ) => void
   editComment: (commentId: string, content: string) => Promise<void>
   deleteComment: (commentId: string) => Promise<void>
-  reactComment: (commentId: string, type: "like" | "dislike") => void
+  reactComment: (commentId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => void
   reportComment: (report: {
     commentId: string
     postId: string
@@ -260,22 +260,38 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     setPosts((prev) => prev.filter((p) => p.id !== postId))
   }, [])
 
-  const reactPost = useCallback((postId: string, type: "like" | "dislike") => {
+  const reactPost = useCallback((postId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => {
+    const isToggleOff = currentReaction === type
+    const userKey = userId ?? getOrCreateDeviceKey()
+
     // 낙관적 UI 업데이트
     setPosts((prev) =>
       prev.map((p) => {
         if (p.id !== postId) return p
-        const newLike = type === "like" ? p.likeCount + 1 : p.likeCount
-        const newDislike = type === "dislike" ? p.dislikeCount + 1 : p.dislikeCount
-        return { ...p, likeCount: newLike, dislikeCount: newDislike }
+        if (isToggleOff) {
+          return {
+            ...p,
+            likeCount:    type === "like"    ? Math.max(0, p.likeCount    - 1) : p.likeCount,
+            dislikeCount: type === "dislike" ? Math.max(0, p.dislikeCount - 1) : p.dislikeCount,
+          }
+        }
+        return {
+          ...p,
+          likeCount:    type === "like"    ? p.likeCount    + 1 : currentReaction === "like"    ? Math.max(0, p.likeCount    - 1) : p.likeCount,
+          dislikeCount: type === "dislike" ? p.dislikeCount + 1 : currentReaction === "dislike" ? Math.max(0, p.dislikeCount - 1) : p.dislikeCount,
+        }
       })
     )
-    // DB upsert → 트리거가 like_count/dislike_count 원자적 갱신
-    const userKey = userId ?? getOrCreateDeviceKey()
-    supabase
-      .from("community_post_reactions")
-      .upsert({ post_id: postId, user_key: userKey, reaction: type }, { onConflict: "post_id,user_key" })
-      .then(({ error }) => { if (error) console.error("[useCommunity] reactPost 실패:", error) })
+
+    if (isToggleOff) {
+      supabase.from("community_post_reactions").delete()
+        .eq("post_id", postId).eq("user_key", userKey)
+        .then(({ error }) => { if (error) console.error("[useCommunity] reactPost 취소 실패:", error) })
+    } else {
+      supabase.from("community_post_reactions")
+        .upsert({ post_id: postId, user_key: userKey, reaction: type }, { onConflict: "post_id,user_key" })
+        .then(({ error }) => { if (error) console.error("[useCommunity] reactPost 실패:", error) })
+    }
   }, [userId])
 
   const addComment = useCallback(
@@ -341,22 +357,38 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     }
   }, [comments])
 
-  const reactComment = useCallback((commentId: string, type: "like" | "dislike") => {
+  const reactComment = useCallback((commentId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => {
+    const isToggleOff = currentReaction === type
+    const userKey = userId ?? getOrCreateDeviceKey()
+
     // 낙관적 UI 업데이트
     setComments((prev) =>
       prev.map((c) => {
         if (c.id !== commentId) return c
-        const newLike = type === "like" ? c.likeCount + 1 : c.likeCount
-        const newDislike = type === "dislike" ? c.dislikeCount + 1 : c.dislikeCount
-        return { ...c, likeCount: newLike, dislikeCount: newDislike }
+        if (isToggleOff) {
+          return {
+            ...c,
+            likeCount:    type === "like"    ? Math.max(0, c.likeCount    - 1) : c.likeCount,
+            dislikeCount: type === "dislike" ? Math.max(0, c.dislikeCount - 1) : c.dislikeCount,
+          }
+        }
+        return {
+          ...c,
+          likeCount:    type === "like"    ? c.likeCount    + 1 : currentReaction === "like"    ? Math.max(0, c.likeCount    - 1) : c.likeCount,
+          dislikeCount: type === "dislike" ? c.dislikeCount + 1 : currentReaction === "dislike" ? Math.max(0, c.dislikeCount - 1) : c.dislikeCount,
+        }
       })
     )
-    // DB upsert → 트리거가 like_count/dislike_count 원자적 갱신
-    const userKey = userId ?? getOrCreateDeviceKey()
-    supabase
-      .from("community_comment_reactions")
-      .upsert({ comment_id: commentId, user_key: userKey, reaction: type }, { onConflict: "comment_id,user_key" })
-      .then(({ error }) => { if (error) console.error("[useCommunity] reactComment 실패:", error) })
+
+    if (isToggleOff) {
+      supabase.from("community_comment_reactions").delete()
+        .eq("comment_id", commentId).eq("user_key", userKey)
+        .then(({ error }) => { if (error) console.error("[useCommunity] reactComment 취소 실패:", error) })
+    } else {
+      supabase.from("community_comment_reactions")
+        .upsert({ comment_id: commentId, user_key: userKey, reaction: type }, { onConflict: "comment_id,user_key" })
+        .then(({ error }) => { if (error) console.error("[useCommunity] reactComment 실패:", error) })
+    }
   }, [userId])
 
   const reportComment = useCallback(

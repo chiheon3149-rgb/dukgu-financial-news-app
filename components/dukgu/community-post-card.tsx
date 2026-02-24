@@ -8,7 +8,7 @@ import { useState } from "react"
 
 interface CommunityPostCardProps {
   post: CommunityPost
-  onReact: (postId: string, type: "like" | "dislike") => void
+  onReact: (postId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => void
   onDelete?: (postId: string) => Promise<void>
   currentUserId?: string
   onProfileClick?: (authorId: string) => void
@@ -33,13 +33,22 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
   const isMyPost = !!currentUserId && post.authorId === currentUserId
 
   const handleReact = (type: "like" | "dislike") => {
-    if (reaction === type) return
-    setCounts((prev) => ({
-      like: type === "like" ? prev.like + 1 : reaction === "like" ? prev.like - 1 : prev.like,
-      dislike: type === "dislike" ? prev.dislike + 1 : reaction === "dislike" ? prev.dislike - 1 : prev.dislike,
-    }))
-    setReaction(type)
-    onReact(post.id, type)
+    const isToggleOff = reaction === type
+    if (isToggleOff) {
+      setCounts((prev) => ({
+        like:    type === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
+        dislike: type === "dislike" ? Math.max(0, prev.dislike - 1) : prev.dislike,
+      }))
+      onReact(post.id, type, reaction)
+      setReaction(null)
+    } else {
+      setCounts((prev) => ({
+        like:    type === "like"    ? prev.like    + 1 : reaction === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
+        dislike: type === "dislike" ? prev.dislike + 1 : reaction === "dislike" ? Math.max(0, prev.dislike - 1) : prev.dislike,
+      }))
+      onReact(post.id, type, reaction)
+      setReaction(type)
+    }
   }
 
   const handleDelete = async (e: React.MouseEvent) => {

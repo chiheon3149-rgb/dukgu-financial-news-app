@@ -37,7 +37,7 @@ interface CommentSectionProps {
   /** 댓글 삭제 핸들러 (DB 삭제) */
   onDeleteComment: (commentId: string) => Promise<void>
   /** 댓글 반응 핸들러 (DB 저장) */
-  onReact: (commentId: string, type: "like" | "dislike") => void
+  onReact: (commentId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => void
 }
 
 interface ReportModalState {
@@ -103,17 +103,29 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
 
   // 반응
   const handleReact = (id: string, type: "like" | "dislike") => {
-    const prev = reactions[id]
-    if (prev === type) return
-    setReactions((r) => ({ ...r, [id]: type }))
-    setComments((cs) =>
-      cs.map((c) => c.id === id ? {
-        ...c,
-        likeCount: type === "like" ? c.likeCount + 1 : prev === "like" ? c.likeCount - 1 : c.likeCount,
-        dislikeCount: type === "dislike" ? c.dislikeCount + 1 : prev === "dislike" ? c.dislikeCount - 1 : c.dislikeCount,
-      } : c)
-    )
-    onReact(id, type)
+    const prev = (reactions[id] ?? null) as "like" | "dislike" | null
+    const isToggleOff = prev === type
+
+    if (isToggleOff) {
+      setReactions((r) => { const n = { ...r }; delete n[id]; return n })
+      setComments((cs) =>
+        cs.map((c) => c.id === id ? {
+          ...c,
+          likeCount:    type === "like"    ? Math.max(0, c.likeCount    - 1) : c.likeCount,
+          dislikeCount: type === "dislike" ? Math.max(0, c.dislikeCount - 1) : c.dislikeCount,
+        } : c)
+      )
+    } else {
+      setReactions((r) => ({ ...r, [id]: type }))
+      setComments((cs) =>
+        cs.map((c) => c.id === id ? {
+          ...c,
+          likeCount:    type === "like"    ? c.likeCount    + 1 : prev === "like"    ? Math.max(0, c.likeCount    - 1) : c.likeCount,
+          dislikeCount: type === "dislike" ? c.dislikeCount + 1 : prev === "dislike" ? Math.max(0, c.dislikeCount - 1) : c.dislikeCount,
+        } : c)
+      )
+    }
+    onReact(id, type, prev)
   }
 
   // 신고 제출
