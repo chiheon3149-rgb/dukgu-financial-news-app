@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase"
 
 interface Notice {
   id: string
-  content: string
+  title: string
   link_url: string | null
   created_at: string
 }
@@ -39,7 +39,7 @@ export function NoticeDropdown() {
   useEffect(() => {
     supabase
       .from("notices")
-      .select("id, content, link_url, created_at")
+      .select("id, title, link_url, created_at")
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
@@ -124,7 +124,7 @@ export function NoticeDropdown() {
               ) : (
                 notices.map((notice) => {
                   const isUnread = !readIds.includes(notice.id)
-                  const href = notice.link_url ?? "/notice"
+                  const href = notice.link_url ?? `/notice/${notice.id}`
                   return (
                     <Link
                       key={notice.id}
@@ -137,7 +137,7 @@ export function NoticeDropdown() {
                           <span className="mt-0.5 shrink-0 w-1.5 h-1.5 bg-blue-500 rounded-full" />
                         )}
                         <p className={`text-xs leading-snug line-clamp-2 ${isUnread ? "text-slate-800 font-semibold" : "text-slate-600 font-medium"}`}>
-                          {notice.content}
+                          {notice.title}
                         </p>
                       </div>
                     </Link>
