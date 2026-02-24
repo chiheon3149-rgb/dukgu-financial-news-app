@@ -4,6 +4,7 @@ import { useEffect, useReducer, useCallback, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@/context/user-context"
 import { updateCachedReactionInFeed } from "@/hooks/use-news-feed"
+import { updateCachedReactionInSaved } from "@/hooks/use-saved-articles"
 
 // =============================================================================
 // 👍 useNewsReaction — DB 트리거 기반 좋아요/싫어요 훅
@@ -136,6 +137,7 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
         setCachedReaction(newsId, null)
         notify(newsId)
         updateCachedReactionInFeed(newsId, newGood, newBad)
+        updateCachedReactionInSaved(newsId, null)
         await supabase.from("news_reactions").delete()
           .eq("news_id", newsId).eq("user_key", userKey)
         return
@@ -158,6 +160,7 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       setCachedReaction(newsId, type)
       notify(newsId)
       updateCachedReactionInFeed(newsId, newGood, newBad)
+      updateCachedReactionInSaved(newsId, type, snapshot)
 
       await supabase
         .from("news_reactions")

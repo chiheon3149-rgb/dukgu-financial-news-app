@@ -1,21 +1,13 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import React, { useEffect, useRef } from "react" // 💡 React.Fragment 사용을 위해 React 추가
 import Link from "next/link"
 import { NewsCard } from "./news-card"
 import { Clock, RefreshCw, Loader2 } from "lucide-react"
 import { useNewsFeed } from "@/hooks/use-news-feed"
+import { AdBanner } from "./ad-banner" // 💡 AdBanner 임포트 추가
 
 const SCROLL_KEY = "newsListScrollY"
-
-// =============================================================================
-// 📰 NewsFeed
-//
-// 변경 사항:
-// 1. 하드코딩된 initialNewsData 배열 제거 → useNewsFeed() 훅으로 이전
-// 2. stale closure 버그 수정: loadMoreNews 를 훅 내부로 이동, 의존성 명확화
-// 3. key={index} → key={news.id} 로 교체하여 안전한 리스트 렌더링
-// =============================================================================
 
 interface NewsFeedProps {
   searchKeyword?: string
@@ -33,10 +25,10 @@ export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
         return inHeadline || inSummary || inTags
       })
     : news
+
   const observerTarget = useRef<HTMLDivElement>(null)
   const scrollRestored = useRef(false)
 
-  // 뒤로가기 시 스크롤 위치 복원
   useEffect(() => {
     if (isLoading || news.length === 0 || scrollRestored.current) return
     scrollRestored.current = true
@@ -49,7 +41,6 @@ export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
     }
   }, [isLoading, news.length])
 
-  // IntersectionObserver: 스크롤이 하단 센서에 닿으면 다음 페이지를 요청합니다.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -85,16 +76,26 @@ export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
       </div>
 
       <div className="flex flex-col gap-3">
-        {filteredNews.map((item) => (
-          <Link
-            key={item.id}
-            href={`/news/${item.id}`}
-            className="block"
-            onClick={() => sessionStorage.setItem(SCROLL_KEY, String(window.scrollY))}
-          >
-            <NewsCard {...item} />
-          </Link>
+        {filteredNews.map((item, index) => (
+          <React.Fragment key={item.id}>
+            {/* 1. 기본 뉴스 카드 */}
+            <Link
+              href={`/news/${item.id}`}
+              className="block"
+              onClick={() => sessionStorage.setItem(SCROLL_KEY, String(window.scrollY))}
+            >
+              <NewsCard {...item} />
+            </Link>
+
+            {/* 💡 2. 8번째 뉴스마다 광고 배너 삽입 (index는 0부터 시작하므로 +1) */}
+            {(index + 1) % 8 === 0 && (
+              <div className="py-2">
+                <AdBanner />
+              </div>
+            )}
+          </React.Fragment>
         ))}
+
         {keyword && filteredNews.length === 0 && !isLoading && (
           <p className="text-center text-sm text-slate-400 font-medium py-10">
             &quot;{searchKeyword}&quot; 검색 결과가 없습니다
@@ -102,7 +103,6 @@ export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
         )}
       </div>
 
-      {/* 무한 스크롤 센서 & 로딩 인디케이터 */}
       <div ref={observerTarget} className="w-full py-8 flex justify-center items-center">
         {isLoadingMore ? (
           <div className="flex flex-col items-center gap-2 text-slate-400">

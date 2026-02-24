@@ -15,7 +15,7 @@ export type Currency = "KRW" | "USD"
 export type ChangeStatus = "up" | "down" | "same"
 
 /** 뉴스 카테고리 */
-export type NewsCategory = "정치" | "경제" | "사회" | "문화"
+export type NewsCategory = "정치" | "경제" | "사회" | "문화" | "IT"
 
 /** 브리핑 종류 (조간 = 미국장 마감, 마감 = 한국장 마감) */
 export type BriefingType = "morning" | "afternoon"
@@ -334,6 +334,7 @@ export interface UserProfile {
   totalXp: number
   xpHistory: XpEvent[]
   avatarEmoji: string
+  portfolioPublic: boolean
 }
 
 

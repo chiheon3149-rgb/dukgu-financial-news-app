@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 import Link from "next/link"
@@ -113,7 +112,7 @@ function SavedContent() {
           reactions.length === 0 ? (
             <EmptyState icon={<ThumbsUp className="w-10 h-10 opacity-20" />} message="반응한 기사가 없습니다" />
           ) : (
-            reactions.map((r) => (
+            reactions.filter((r) => r.snapshot).map((r) => (
               <Link key={r.newsId} href={`/news/${r.newsId}`}
                 className="block bg-white rounded-[20px] border border-slate-100 shadow-sm p-4 hover:border-emerald-200 transition-all active:scale-[0.98]">
                 <div className="flex items-start gap-3">
@@ -124,9 +123,9 @@ function SavedContent() {
                   </div>
                   <div>
                     <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full mr-1.5 ${
-                      CATEGORY_COLORS[r.snapshot.category] ?? "bg-slate-100 text-slate-600"
-                    }`}>{r.snapshot.category}</span>
-                    <p className="text-[14px] font-black text-slate-800 leading-snug mt-1">{r.snapshot.headline}</p>
+                      CATEGORY_COLORS[r.snapshot?.category ?? ""] ?? "bg-slate-100 text-slate-600"
+                    }`}>{r.snapshot?.category}</span>
+                    <p className="text-[14px] font-black text-slate-800 leading-snug mt-1">{r.snapshot?.headline}</p>
                     <p className="text-[10px] font-bold text-slate-400 mt-1">
                       {new Date(r.reactedAt).toLocaleDateString("ko-KR")} · {r.type === "like" ? "좋아요" : "싫어요"}
                     </p>

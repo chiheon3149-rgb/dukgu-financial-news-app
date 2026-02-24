@@ -1,15 +1,21 @@
 "use client"
 
-import { useState } from "react"
 import { ThumbsUp, ThumbsDown, MessageCircle, Bookmark } from "lucide-react"
 import { useNewsReaction } from "@/hooks/use-news-reaction"
+import { useSavedArticles } from "@/hooks/use-saved-articles"
+import type { NewsCategory } from "@/types"
 
 interface InteractionBarProps {
   newsId?: string
   initialGood: number
   initialBad: number
   commentCount: number
-  initialSaved?: boolean
+  snapshot?: {
+    headline: string
+    category: NewsCategory
+    timeAgo: string
+    tags?: string[]
+  }
 }
 
 export function NewsInteractionBar({
@@ -17,31 +23,33 @@ export function NewsInteractionBar({
   initialGood,
   initialBad,
   commentCount,
-  initialSaved = false,
+  snapshot,
 }: InteractionBarProps) {
   const { good, bad, userReaction, react } = useNewsReaction(
     newsId ?? "",
     initialGood,
     initialBad
   )
-  const [isSaved, setIsSaved] = useState(initialSaved)
+  const { isSaved, toggleSave } = useSavedArticles()
+  const saved = newsId ? isSaved(newsId) : false
 
   const handleLike = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    react("good")
+    react("good", snapshot)
   }
 
   const handleDislike = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    react("bad")
+    react("bad", snapshot)
   }
 
   const handleBookmark = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setIsSaved(!isSaved)
+    if (!newsId || !snapshot) return
+    toggleSave(newsId, snapshot)
   }
 
   return (
@@ -81,10 +89,10 @@ export function NewsInteractionBar({
         <button
           onClick={handleBookmark}
           className={`p-2 rounded-full transition-all active:scale-95 ${
-            isSaved ? "text-blue-500" : "text-slate-300 hover:bg-slate-50"
+            saved ? "text-blue-500" : "text-slate-300 hover:bg-slate-50"
           }`}
         >
-          <Bookmark className={`w-4 h-4 ${isSaved ? "fill-current" : ""}`} />
+          <Bookmark className={`w-4 h-4 ${saved ? "fill-current" : ""}`} />
         </button>
       </div>
     </div>

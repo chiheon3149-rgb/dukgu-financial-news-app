@@ -27,6 +27,7 @@ interface UserContextValue {
   addXp: (source: XpSource, amount: number, label: string) => XpResult
   updateNickname: (nickname: string) => void
   updateAvatar: (emoji: string) => void
+  updatePortfolioPublic: (value: boolean) => void
 }
 
 const UserContext = createContext<UserContextValue | null>(null)
@@ -72,6 +73,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             joinedAt: profileData.joined_at,
             avatarEmoji: profileData.avatar_emoji ?? "🐱",
             totalXp: profileData.total_xp ?? 0,
+            portfolioPublic: profileData.portfolio_public ?? false,
             xpHistory: (xpData ?? []).map((e: any) => ({
               id: e.id,
               source: e.source,
@@ -101,6 +103,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             joinedAt: newProfile.joined_at,
             avatarEmoji: "🐱",
             totalXp: 0,
+            portfolioPublic: false,
             xpHistory: [],
           })
         }
@@ -189,6 +192,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setProfile((prev) => (prev ? { ...prev, avatarEmoji: emoji } : prev))
   }, [])
 
+  const updatePortfolioPublic = useCallback((value: boolean) => {
+    setProfile((prev) => {
+      if (!prev) return prev
+      supabase.from("profiles").update({ portfolio_public: value }).eq("id", prev.id)
+      return { ...prev, portfolioPublic: value }
+    })
+  }, [])
+
   return (
     <UserContext.Provider
       value={{
@@ -200,6 +211,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         addXp,
         updateNickname,
         updateAvatar,
+        updatePortfolioPublic,
       }}
     >
       {children}

@@ -20,6 +20,7 @@ interface ProfileRow {
   avatar_emoji: string | null
   total_xp: number | null
   joined_at: string | null
+  portfolio_public: boolean | null
 }
 
 export default function UserProfilePage({ params }: { params: Promise<{ userId: string }> }) {
@@ -31,7 +32,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
     const load = async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, nickname, avatar_emoji, total_xp, joined_at")
+        .select("id, nickname, avatar_emoji, total_xp, joined_at, portfolio_public")
         .eq("id", userId)
         .single()
       setTargetProfile(data ?? null)
@@ -115,29 +116,41 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
         </section>
 
         {/* 포트폴리오 섹션 */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-50">
-            <div className="flex items-center justify-between">
-              <p className="text-[13px] font-black text-slate-800 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-500" />
-                포트폴리오
-              </p>
-              <div className="flex items-center gap-1 text-slate-400">
-                <Lock className="w-3 h-3" />
-                <span className="text-[10px] font-bold">비공개</span>
+        {(() => {
+          const isPublic = !!targetProfile.portfolio_public
+          const canView = following && isPublic
+          return (
+            <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-50">
+                <div className="flex items-center justify-between">
+                  <p className="text-[13px] font-black text-slate-800 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-500" />
+                    포트폴리오
+                  </p>
+                  <div className="flex items-center gap-1 text-slate-400">
+                    <Lock className="w-3 h-3" />
+                    <span className="text-[10px] font-bold">{isPublic ? "공개" : "비공개"}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="px-5 py-10 text-center text-slate-300">
-            <Lock className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-[12px] font-bold">
-              {!following
-                ? "팔로우하면 공개 포트폴리오를 볼 수 있어요"
-                : "이 유저는 포트폴리오를 비공개로 설정했습니다"}
-            </p>
-          </div>
-        </section>
+              {canView ? (
+                <div className="px-5 py-6 text-center text-slate-400">
+                  <p className="text-[12px] font-bold">포트폴리오 연동 예정입니다</p>
+                </div>
+              ) : (
+                <div className="px-5 py-10 text-center text-slate-300">
+                  <Lock className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-[12px] font-bold">
+                    {!following
+                      ? "팔로우하면 공개 포트폴리오를 볼 수 있어요"
+                      : "이 유저는 포트폴리오를 비공개로 설정했습니다"}
+                  </p>
+                </div>
+              )}
+            </section>
+          )
+        })()}
 
       </main>
     </div>

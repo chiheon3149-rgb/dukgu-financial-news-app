@@ -1,27 +1,24 @@
 "use client"
 
-// 💡 상태 관리 로직(useState)과 아이콘 수입이 싹 사라졌습니다!
-import { NewsInteractionBar } from "./news-interaction-bar" // 방금 만든 부품 수입
+import { NewsInteractionBar } from "./news-interaction-bar"
 
-type CategoryType = "정치" | "경제" | "사회" | "문화"
-
-const categoryStyles: Record<CategoryType, string> = {
-  "정치": "bg-primary/10 text-primary border-primary/20",
-  "경제": "bg-accent/15 text-accent-foreground border-accent/25",
-  "사회": "bg-chart-4/15 text-chart-4 border-chart-4/25",
-  "문화": "bg-chart-1/15 text-chart-1 border-chart-1/25",
+const categoryStyles = {
+  정치: "text-red-600 bg-red-50",
+  경제: "text-emerald-600 bg-emerald-50",
+  사회: "text-blue-600 bg-blue-50",
+  문화: "text-purple-600 bg-purple-50",
+  IT: "text-indigo-600 bg-indigo-50",
 }
 
 interface NewsCardProps {
   id?: string
-  category: CategoryType
+  category: keyof typeof categoryStyles
   headline: string
   summary: string
   timeAgo: string
   goodCount: number
   badCount: number
   commentCount: number
-  saved?: boolean
   tags?: string[]
 }
 
@@ -34,50 +31,51 @@ export function NewsCard({
   goodCount,
   badCount,
   commentCount,
-  saved,
   tags = [],
 }: NewsCardProps) {
-  
-  // 💡 복잡했던 좋아요/싫어요 계산 로직이 전부 증발했습니다! 코드가 엄청 깔끔해졌죠.
 
   return (
-    <article className="bg-card border border-border rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full">
+    // 💡 여백을 p-4로 다시 최적화하고 가로 길이를 자연스럽게 맞췄습니다.
+    <article className="bg-white border border-slate-100 rounded-[24px] p-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer flex flex-col h-full group">
       
-      {/* 상단: 카테고리 + 태그 + 시간 */}
-      <div className="flex items-center justify-between gap-3 mb-2.5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${categoryStyles[category]}`}>
-            {category}
-          </span>
-          <div className="flex items-center gap-1">
-            {tags.map((tag, idx) => (
-              <span key={idx} className="text-[11px] font-bold text-blue-500 tracking-tight">
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-        <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+      {/* 상단: 카테고리 + 시간 (태그는 제목 아래로 내려 가독성 확보) */}
+      <div className="flex items-center justify-between mb-2">
+        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-tight ${categoryStyles[category] || "bg-slate-50 text-slate-500"}`}>
+          {category}
+        </span>
+        <span className="text-[10px] font-bold text-slate-400">
           {timeAgo}
         </span>
       </div>
 
       {/* 본문 영역 */}
-      <h3 className="text-[15px] font-bold text-card-foreground leading-snug mb-1.5 text-pretty">
+      <h3 className="text-[15px] font-bold text-slate-900 leading-snug mb-1.5 group-hover:text-blue-600 transition-colors line-clamp-2">
         {headline}
       </h3>
-      <p className="text-sm text-muted-foreground leading-relaxed mb-4 line-clamp-2">
+      
+      {/* 💡 태그를 본문 바로 위에 작게 배치하여 시선 분산을 막음 */}
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {tags.map((tag, idx) => (
+          <span key={idx} className="text-[11px] font-bold text-blue-500/70 tracking-tight">
+            {tag.startsWith('#') ? tag : `#${tag}`}
+          </span>
+        ))}
+      </div>
+
+      <p className="text-[12px] text-slate-500 leading-relaxed mb-4 line-clamp-2 break-keep opacity-90">
         {summary}
       </p>
 
-      {/* 💡 하단 영역: 길고 긴 버튼 코드 대신, 딱 한 줄로 부품을 끼워 넣습니다. */}
-      <NewsInteractionBar
-        newsId={id}
-        initialGood={goodCount}
-        initialBad={badCount}
-        commentCount={commentCount}
-        initialSaved={saved}
-      />
+      {/* 💡 "이상한 선" 제거 후 인터랙션 바만 깔끔하게 배치 */}
+      <div className="mt-auto pt-2 border-t border-slate-50/50">
+        <NewsInteractionBar
+          newsId={id}
+          initialGood={goodCount}
+          initialBad={badCount}
+          commentCount={commentCount}
+          snapshot={id ? { headline, category, timeAgo, tags } : undefined}
+        />
+      </div>
       
     </article>
   )
