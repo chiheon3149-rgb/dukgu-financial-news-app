@@ -6,9 +6,6 @@ import { supabase } from "@/lib/supabase"
 
 // =============================================================================
 // 📰 useNewsFeed 훅 — Supabase 연동 버전
-//
-// Supabase의 news 테이블에서 뉴스를 가져옵니다.
-// 최신순으로 정렬되며, 스크롤 시 10개씩 추가로 불러옵니다.
 // =============================================================================
 
 const PAGE_SIZE = 10
@@ -17,6 +14,9 @@ const PAGE_SIZE = 10
 let _cachedNews: NewsItem[] = []
 let _cachedLastCreatedAt: string | null = null
 let _cachedHasMore: boolean = true
+
+// 💡 [추가 1] 화면에 즉시 변경을 알리기 위한 이벤트 이름
+const NEWS_CACHE_UPDATED_EVENT = "NEWS_CACHE_UPDATED_EVENT"
 
 interface UseNewsFeedReturn {
   news: NewsItem[]
@@ -64,6 +64,8 @@ export function updateCachedReactionInFeed(newsId: string, good: number, bad: nu
   const idx = _cachedNews.findIndex((n) => n.id === newsId)
   if (idx !== -1) {
     _cachedNews[idx] = { ..._cachedNews[idx], goodCount: good, badCount: bad }
+    // 💡 변경 사항을 화면에 알림
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(NEWS_CACHE_UPDATED_EVENT))
   }
 }
 
@@ -72,6 +74,8 @@ export function updateCachedCommentCountInFeed(newsId: string, count: number) {
   const idx = _cachedNews.findIndex((n) => n.id === newsId)
   if (idx !== -1) {
     _cachedNews[idx] = { ..._cachedNews[idx], commentCount: count }
+    // 💡 변경 사항을 화면에 알림
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(NEWS_CACHE_UPDATED_EVENT))
   }
 }
 
@@ -81,6 +85,15 @@ export function useNewsFeed(): UseNewsFeedReturn {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(_cachedHasMore)
   const [lastCreatedAt, setLastCreatedAt] = useState<string | null>(_cachedLastCreatedAt)
+
+  // 💡 [추가 2] 캐시가 업데이트되었다는 방송(Event)을 듣고 화면(news 상태)을 강제로 다시 그리는 장치
+  useEffect(() => {
+    const handleCacheUpdate = () => {
+      setNews([..._cachedNews]) // 새 배열로 만들어야 React가 변경을 감지하고 리렌더링함
+    }
+    window.addEventListener(NEWS_CACHE_UPDATED_EVENT, handleCacheUpdate)
+    return () => window.removeEventListener(NEWS_CACHE_UPDATED_EVENT, handleCacheUpdate)
+  }, [])
 
   // 최초 마운트 시 자동 로딩 (캐시 있으면 skip)
   useEffect(() => {
