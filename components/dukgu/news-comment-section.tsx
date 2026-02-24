@@ -68,7 +68,10 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
         .select("id, author_id, author_nickname, author_emoji, author_level, content, like_count, dislike_count, report_count, is_removed, published_at")
         .eq("news_id", newsId)
         .order("published_at", { ascending: true })
-      setComments((data ?? []).map(r => ({ ...r, timeAgo: formatTimeAgo(r.published_at) })))
+      const rows = data ?? []
+      setComments(rows.map(r => ({ ...r, timeAgo: formatTimeAgo(r.published_at) })))
+      // 마운트 시 실제 DB 댓글 수로 부모(피드 캐시 포함) 동기화
+      onCountChange?.(rows.length)
       setIsLoading(false)
     }
     fetchComments()
@@ -95,7 +98,7 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
         onCountChange?.(next.length)
         return next
       })
-      await supabase.rpc("increment_news_comment_count", { target_news_id: newsId })
+      // DB comment_count는 PostgreSQL 트리거가 자동으로 +1 처리
     }
     setInputText("")
   }
@@ -114,7 +117,7 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
       onCountChange?.(next.length)
       return next
     })
-    await supabase.rpc("decrement_news_comment_count", { target_news_id: newsId })
+    // DB comment_count는 PostgreSQL 트리거가 자동으로 -1 처리
     setOpenMenuId(null)
   }
 
