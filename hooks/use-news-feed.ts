@@ -13,6 +13,11 @@ import { supabase } from "@/lib/supabase"
 
 const PAGE_SIZE = 10
 
+// 모듈 레벨 캐시 — 뒤로가기 시 재fetch 없이 이전 상태 복원
+let _cachedNews: NewsItem[] = []
+let _cachedLastCreatedAt: string | null = null
+let _cachedHasMore: boolean = true
+
 interface UseNewsFeedReturn {
   news: NewsItem[]
   isLoading: boolean
@@ -55,14 +60,15 @@ function formatTime(dateStr: string): string {
 }
 
 export function useNewsFeed(): UseNewsFeedReturn {
-  const [news, setNews] = useState<NewsItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [news, setNews] = useState<NewsItem[]>(_cachedNews)
+  const [isLoading, setIsLoading] = useState(_cachedNews.length === 0)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
-  const [lastCreatedAt, setLastCreatedAt] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(_cachedHasMore)
+  const [lastCreatedAt, setLastCreatedAt] = useState<string | null>(_cachedLastCreatedAt)
 
-  // 최초 마운트 시 자동 로딩
+  // 최초 마운트 시 자동 로딩 (캐시 있으면 skip)
   useEffect(() => {
+    if (_cachedNews.length > 0) return
     supabase
       .from("news")
       .select("*")
@@ -71,9 +77,12 @@ export function useNewsFeed(): UseNewsFeedReturn {
       .then(({ data, error }) => {
         if (error) { console.error("[useNewsFeed] 초기 로딩 실패:", error); return }
         const items = (data ?? []).map(toNewsItem)
+        _cachedNews = items
+        _cachedLastCreatedAt = items.at(-1)?.publishedAt ?? null
+        _cachedHasMore = items.length === PAGE_SIZE
         setNews(items)
-        setLastCreatedAt(items.at(-1)?.publishedAt ?? null)
-        setHasMore(items.length === PAGE_SIZE)
+        setLastCreatedAt(_cachedLastCreatedAt)
+        setHasMore(_cachedHasMore)
         setIsLoading(false)
       })
   }, [])
@@ -92,9 +101,12 @@ export function useNewsFeed(): UseNewsFeedReturn {
       if (error) throw error
 
       const items = (data ?? []).map(toNewsItem)
+      _cachedNews = items
+      _cachedLastCreatedAt = items.at(-1)?.publishedAt ?? null
+      _cachedHasMore = items.length === PAGE_SIZE
       setNews(items)
-      setLastCreatedAt(items.at(-1)?.publishedAt ?? null)
-      setHasMore(items.length === PAGE_SIZE)
+      setLastCreatedAt(_cachedLastCreatedAt)
+      setHasMore(_cachedHasMore)
     } catch (e) {
       console.error("[useNewsFeed] 새로고침 실패:", e)
     } finally {
@@ -117,9 +129,12 @@ export function useNewsFeed(): UseNewsFeedReturn {
       if (error) throw error
 
       const items = (data ?? []).map(toNewsItem)
-      setNews((prev) => [...prev, ...items])
-      setLastCreatedAt(items.at(-1)?.publishedAt ?? null)
-      setHasMore(items.length === PAGE_SIZE)
+      _cachedNews = [..._cachedNews, ...items]
+      _cachedLastCreatedAt = items.at(-1)?.publishedAt ?? null
+      _cachedHasMore = items.length === PAGE_SIZE
+      setNews(_cachedNews)
+      setLastCreatedAt(_cachedLastCreatedAt)
+      setHasMore(_cachedHasMore)
     } catch (e) {
       console.error("[useNewsFeed] 다음 페이지 로딩 실패:", e)
     } finally {

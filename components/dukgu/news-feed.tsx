@@ -6,6 +6,8 @@ import { NewsCard } from "./news-card"
 import { Clock, RefreshCw, Loader2 } from "lucide-react"
 import { useNewsFeed } from "@/hooks/use-news-feed"
 
+const SCROLL_KEY = "newsListScrollY"
+
 // =============================================================================
 // 📰 NewsFeed
 //
@@ -15,9 +17,37 @@ import { useNewsFeed } from "@/hooks/use-news-feed"
 // 3. key={index} → key={news.id} 로 교체하여 안전한 리스트 렌더링
 // =============================================================================
 
-export function NewsFeed() {
+interface NewsFeedProps {
+  searchKeyword?: string
+}
+
+export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
   const { news, isLoading, isLoadingMore, hasMore, fetchNextPage, refresh } = useNewsFeed()
+
+  const keyword = searchKeyword.trim().toLowerCase()
+  const filteredNews = keyword
+    ? news.filter((item) => {
+        const inHeadline = item.headline.toLowerCase().includes(keyword)
+        const inSummary = item.summary.toLowerCase().includes(keyword)
+        const inTags = item.tags.some((tag) => tag.toLowerCase().includes(keyword))
+        return inHeadline || inSummary || inTags
+      })
+    : news
   const observerTarget = useRef<HTMLDivElement>(null)
+  const scrollRestored = useRef(false)
+
+  // 뒤로가기 시 스크롤 위치 복원
+  useEffect(() => {
+    if (isLoading || news.length === 0 || scrollRestored.current) return
+    scrollRestored.current = true
+    const savedY = sessionStorage.getItem(SCROLL_KEY)
+    if (savedY) {
+      sessionStorage.removeItem(SCROLL_KEY)
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: parseInt(savedY, 10), behavior: "instant" })
+      })
+    }
+  }, [isLoading, news.length])
 
   // IntersectionObserver: 스크롤이 하단 센서에 닿으면 다음 페이지를 요청합니다.
   useEffect(() => {
@@ -55,12 +85,21 @@ export function NewsFeed() {
       </div>
 
       <div className="flex flex-col gap-3">
-        {news.map((item) => (
-          // key를 index 대신 고유한 id로 사용합니다 (동적 리스트 안전성 확보)
-          <Link key={item.id} href={`/news/${item.id}`} className="block">
+        {filteredNews.map((item) => (
+          <Link
+            key={item.id}
+            href={`/news/${item.id}`}
+            className="block"
+            onClick={() => sessionStorage.setItem(SCROLL_KEY, String(window.scrollY))}
+          >
             <NewsCard {...item} />
           </Link>
         ))}
+        {keyword && filteredNews.length === 0 && !isLoading && (
+          <p className="text-center text-sm text-slate-400 font-medium py-10">
+            &quot;{searchKeyword}&quot; 검색 결과가 없습니다
+          </p>
+        )}
       </div>
 
       {/* 무한 스크롤 센서 & 로딩 인디케이터 */}
