@@ -56,7 +56,12 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState("")
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const [reactions, setReactions] = useState<Record<string, "like" | "dislike">>({})
+  const [reactions, setReactions] = useState<Record<string, "like" | "dislike">>(() => {
+    if (typeof window === "undefined") return {}
+    try {
+      return JSON.parse(localStorage.getItem(`dukgu:news_comment_reactions:${newsId}`) ?? "{}")
+    } catch { return {} }
+  })
   const [reportModal, setReportModal] = useState<ReportModalState | null>(null)
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
@@ -132,12 +137,18 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
 
   const handleReact = async (id: string, type: "like" | "dislike") => {
     const prev = reactions[id]
-    if (prev === type) return
+    if (prev === type) return // 이미 같은 반응 → 양자택일 유지
     const target = comments.find(c => c.id === id)
     if (!target) return
-    const newLike = type === "like" ? target.like_count + 1 : prev === "like" ? target.like_count - 1 : target.like_count
-    const newDislike = type === "dislike" ? target.dislike_count + 1 : prev === "dislike" ? target.dislike_count - 1 : target.dislike_count
-    setReactions(r => ({ ...r, [id]: type }))
+    const newLike = type === "like"
+      ? target.like_count + 1
+      : prev === "like" ? Math.max(0, target.like_count - 1) : target.like_count
+    const newDislike = type === "dislike"
+      ? target.dislike_count + 1
+      : prev === "dislike" ? Math.max(0, target.dislike_count - 1) : target.dislike_count
+    const newReactions = { ...reactions, [id]: type }
+    setReactions(newReactions)
+    localStorage.setItem(`dukgu:news_comment_reactions:${newsId}`, JSON.stringify(newReactions))
     setComments(cs => cs.map(c => c.id === id ? { ...c, like_count: newLike, dislike_count: newDislike } : c))
     await supabase.from("news_comments").update({ like_count: newLike, dislike_count: newDislike }).eq("id", id)
   }

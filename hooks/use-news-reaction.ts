@@ -25,6 +25,8 @@ interface ReactionEntry {
 // 모듈 레벨 공유 스토어 — 카드 피드와 상세 페이지가 같은 상태를 바라봄
 const _store = new Map<string, ReactionEntry>()
 const _listeners = new Map<string, Set<() => void>>()
+// 유저가 직접 반응한 newsId 추적 — DB 조회가 낙관적 업데이트를 덮어쓰지 않도록
+const _interacted = new Set<string>()
 
 function notify(newsId: string) {
   _listeners.get(newsId)?.forEach((fn) => fn())
@@ -43,13 +45,35 @@ function getOrCreateDeviceKey(): string {
   return key
 }
 
+// 뉴스 반응 localStorage 캐시 — 새로고침 시 즉시 복원
+const REACTION_CACHE_KEY = "dukgu:news_reactions"
+
+function getCachedReaction(newsId: string): UserReaction {
+  if (typeof window === "undefined") return null
+  try {
+    const map = JSON.parse(localStorage.getItem(REACTION_CACHE_KEY) ?? "{}")
+    return (map[newsId] as UserReaction) ?? null
+  } catch { return null }
+}
+
+function setCachedReaction(newsId: string, reaction: UserReaction) {
+  if (typeof window === "undefined") return
+  try {
+    const map = JSON.parse(localStorage.getItem(REACTION_CACHE_KEY) ?? "{}")
+    if (reaction === null) delete map[newsId]
+    else map[newsId] = reaction
+    localStorage.setItem(REACTION_CACHE_KEY, JSON.stringify(map))
+  } catch {}
+}
+
 export function useNewsReaction(newsId: string, initialGood: number, initialBad: number) {
   const { profile } = useUser()
   const userId = profile?.id ?? null
 
   // 스토어 초기화 (처음 등록 시만, 이미 있으면 기존 값 유지)
+  // 새로고침 후에도 localStorage 캐시로 즉시 반응 상태 복원
   if (!_store.has(newsId)) {
-    _store.set(newsId, { good: initialGood, bad: initialBad, userReaction: null })
+    _store.set(newsId, { good: initialGood, bad: initialBad, userReaction: getCachedReaction(newsId) })
   }
 
   const [, forceUpdate] = useReducer((n: number) => n + 1, 0)
@@ -78,9 +102,14 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       .eq("user_key", userKey)
       .maybeSingle()
       .then(({ data }) => {
+        // 유저가 이미 직접 반응했으면 DB 조회 결과로 덮어쓰지 않음
+        if (_interacted.has(newsId)) return
         const current = _store.get(newsId)
         if (!current) return
-        const reaction = (data?.reaction as UserReaction) ?? null
+        const dbReaction = (data?.reaction as UserReaction) ?? null
+        // DB가 null을 반환해도 localStorage 캐시를 유지 (RLS/upsert 실패 대비)
+        // DB에 실제 반응이 있으면 DB를 우선
+        const reaction = dbReaction !== null ? dbReaction : getCachedReaction(newsId)
         if (current.userReaction !== reaction) {
           _store.set(newsId, { ...current, userReaction: reaction })
           notify(newsId)
@@ -97,12 +126,14 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       if (!current) return
 
       const userKey = userId ?? getOrCreateDeviceKey()
+      _interacted.add(newsId) // 이후 DB 조회가 낙관적 업데이트를 덮어쓰지 않도록 마킹
 
       // Toggle OFF: 같은 반응을 다시 누르면 취소
       if (current.userReaction === type) {
         const newGood = type === "good" ? Math.max(0, current.good - 1) : current.good
         const newBad  = type === "bad"  ? Math.max(0, current.bad  - 1) : current.bad
         _store.set(newsId, { good: newGood, bad: newBad, userReaction: null })
+        setCachedReaction(newsId, null)
         notify(newsId)
         updateCachedReactionInFeed(newsId, newGood, newBad)
         await supabase.from("news_reactions").delete()
@@ -124,6 +155,7 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       }
 
       _store.set(newsId, { good: newGood, bad: newBad, userReaction: type })
+      setCachedReaction(newsId, type)
       notify(newsId)
       updateCachedReactionInFeed(newsId, newGood, newBad)
 
