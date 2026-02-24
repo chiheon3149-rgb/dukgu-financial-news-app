@@ -32,6 +32,12 @@ interface CommentSectionProps {
   onReport: (payload: { commentId: string; postId: string; reason: CommentReportReason; detail?: string }) => Promise<void>
   /** 댓글 추가 핸들러 */
   onAddComment: (data: Omit<CommunityComment, "id" | "publishedAt" | "timeAgo" | "likeCount" | "dislikeCount" | "reportCount" | "isRemovedByAdmin">) => void
+  /** 댓글 수정 핸들러 (DB 저장) */
+  onSaveEdit: (commentId: string, content: string) => Promise<void>
+  /** 댓글 삭제 핸들러 (DB 삭제) */
+  onDeleteComment: (commentId: string) => Promise<void>
+  /** 댓글 반응 핸들러 (DB 저장) */
+  onReact: (commentId: string, type: "like" | "dislike") => void
 }
 
 interface ReportModalState {
@@ -41,7 +47,7 @@ interface ReportModalState {
   detail: string
 }
 
-export function CommentSection({ postId, initialComments, currentUser, onReport, onAddComment }: CommentSectionProps) {
+export function CommentSection({ postId, initialComments, currentUser, onReport, onAddComment, onSaveEdit, onDeleteComment, onReact }: CommentSectionProps) {
   const [comments, setComments] = useState<CommunityComment[]>(initialComments)
   const [inputText, setInputText] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -81,16 +87,18 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
   }
 
   // 댓글 수정
-  const saveEdit = (id: string) => {
+  const saveEdit = async (id: string) => {
     setComments((prev) => prev.map((c) => c.id === id ? { ...c, content: editText } : c))
     setEditingId(null)
+    await onSaveEdit(id, editText)
   }
 
   // 댓글 삭제
-  const deleteComment = (id: string) => {
+  const deleteComment = async (id: string) => {
     if (!window.confirm("댓글을 삭제하시겠습니까?")) return
     setComments((prev) => prev.filter((c) => c.id !== id))
     setOpenMenuId(null)
+    await onDeleteComment(id)
   }
 
   // 반응
@@ -105,6 +113,7 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
         dislikeCount: type === "dislike" ? c.dislikeCount + 1 : prev === "dislike" ? c.dislikeCount - 1 : c.dislikeCount,
       } : c)
     )
+    onReact(id, type)
   }
 
   // 신고 제출

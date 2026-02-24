@@ -65,7 +65,7 @@ export function useSavedArticles(): UseSavedArticlesReturn {
       if (reactionData) {
         setReactions(reactionData.map((row: any) => ({
           newsId: row.news_id,
-          type: row.type,
+          type: row.reaction === "good" ? "like" : "dislike",
           reactedAt: row.reacted_at,
           snapshot: row.snapshot,
         })))

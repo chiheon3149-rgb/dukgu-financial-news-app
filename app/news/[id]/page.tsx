@@ -10,6 +10,7 @@ import { DukguAiSummary } from "@/components/dukgu/dukgu-ai-summary"
 import { NewsCommentSection } from "@/components/dukgu/news-comment-section"
 import { supabase } from "@/lib/supabase"
 import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
+import { useSavedArticles } from "@/hooks/use-saved-articles"
 
 interface NewsDetail {
   id: string
@@ -38,12 +39,21 @@ function formatDate(iso: string): string {
   return `${y}-${m}-${day} ${h}:${min}`
 }
 
+function getTimeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 60) return `${minutes}분 전`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}시간 전`
+  return `${Math.floor(hours / 24)}일 전`
+}
+
 export default function NewsDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [news, setNews] = useState<NewsDetail | null | undefined>(undefined)
-  const [isBookmarked, setIsBookmarked] = useState(false)
   const [liveViewCount, setLiveViewCount] = useState(0)
   const [liveCommentCount, setLiveCommentCount] = useState(0)
+  const { isSaved, toggleSave } = useSavedArticles()
 
   useEffect(() => {
     const load = async () => {
@@ -63,8 +73,17 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
     load()
   }, [id])
 
+  const isBookmarked = news ? isSaved(news.id) : false
+
   const toggleBookmark = () => {
-    setIsBookmarked(!isBookmarked)
+    if (!news) return
+    const tags: string[] = Array.isArray(news.tags) ? news.tags : []
+    toggleSave(news.id, {
+      headline: news.headline,
+      category: news.category as any,
+      timeAgo: getTimeAgo(news.published_at),
+      tags,
+    })
     if (!isBookmarked) alert("간식 창고(북마크)에 저장했다냥! 🐾")
   }
 
@@ -177,6 +196,7 @@ export default function NewsDetailPage({ params }: { params: Promise<{ id: strin
           viewCount={liveViewCount}
           commentCount={liveCommentCount}
           newsId={news.id}
+          snapshot={{ headline: news.headline, category: news.category, timeAgo: getTimeAgo(news.published_at) }}
         />
 
         <NewsCommentSection

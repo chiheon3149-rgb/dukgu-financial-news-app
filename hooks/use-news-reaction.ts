@@ -89,7 +89,10 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
   }, [newsId, userId])
 
   const react = useCallback(
-    async (type: "good" | "bad") => {
+    async (
+      type: "good" | "bad",
+      snapshot?: { headline: string; category: string; timeAgo: string }
+    ) => {
       const current = _store.get(newsId)
       if (!current || current.userReaction === type) return
 
@@ -111,11 +114,19 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       updateCachedReactionInFeed(newsId, newGood, newBad)
 
       // DB upsert — 트리거가 news.good_count / bad_count 원자적 갱신
+      // 로그인 유저면 user_id + snapshot 도 함께 저장 (마이페이지 활동내역 표시용)
       const userKey = userId ?? getOrCreateDeviceKey()
       await supabase
         .from("news_reactions")
         .upsert(
-          { news_id: newsId, user_key: userKey, reaction: type },
+          {
+            news_id:    newsId,
+            user_key:   userKey,
+            reaction:   type,
+            user_id:    userId ?? null,
+            snapshot:   snapshot ?? null,
+            reacted_at: new Date().toISOString(),
+          },
           { onConflict: "news_id,user_key" }
         )
     },

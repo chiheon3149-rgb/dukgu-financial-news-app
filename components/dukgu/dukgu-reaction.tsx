@@ -9,9 +9,10 @@ interface DukguReactionProps {
   viewCount: number
   commentCount: number
   newsId?: string
+  snapshot?: { headline: string; category: string; timeAgo: string }
 }
 
-export function DukguReaction({ initialGood, initialBad, viewCount, commentCount, newsId }: DukguReactionProps) {
+export function DukguReaction({ initialGood, initialBad, viewCount, commentCount, newsId, snapshot }: DukguReactionProps) {
   const { good, bad, userReaction, react } = useNewsReaction(
     newsId ?? "",
     initialGood,
@@ -32,7 +33,7 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
       <div className="flex items-center justify-center gap-8">
         <div className="flex flex-col items-center gap-2">
           <button
-            onClick={() => react("good")}
+            onClick={() => react("good", snapshot)}
             className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "good" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
           >
             🍲
@@ -50,7 +51,7 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
 
         <div className="flex flex-col items-center gap-2">
           <button
-            onClick={() => react("bad")}
+            onClick={() => react("bad", snapshot)}
             className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "bad" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
           >
             🍽️

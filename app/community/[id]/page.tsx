@@ -14,7 +14,7 @@ const CATEGORY_LABEL: Record<CommunityCategory, string> = { free: "자유", econ
 export default function CommunityPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const { posts, isLoading, getComments, reactPost, addComment, reportComment, deletePost } = useCommunity(id)
+  const { posts, isLoading, getComments, reactPost, addComment, editComment, deleteComment, reactComment, reportComment, deletePost } = useCommunity(id)
   const { profile, currentLevel } = useUser()
 
   const post = posts.find((p) => p.id === id)
@@ -185,6 +185,9 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
           currentUser={currentUser}
           onReport={reportComment}
           onAddComment={addComment}
+          onSaveEdit={editComment}
+          onDeleteComment={deleteComment}
+          onReact={reactComment}
         />
       </main>
     </div>
