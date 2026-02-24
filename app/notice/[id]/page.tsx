@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase"
 
 interface NoticeDetail {
   id: string
+  notice_no: number // 💡 추가된 숫자 번호
   title: string
   category: string | null
   content: string
@@ -25,7 +26,8 @@ function formatDate(iso: string) {
 }
 
 export default function NoticeDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params) // 💡 Next.js 15 규칙: params는 Promise이므로 use로 풀어줍니다.
+  // params에서 id(숫자 또는 UUID)를 비동기로 가져옵니다.
+  const { id } = use(params)
   
   const [notice, setNotice] = useState<NoticeDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -35,8 +37,8 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
       try {
         const { data, error } = await supabase
           .from("notices")
-          .select("id, title, category, content, details, created_at")
-          .eq("id", id) // 💡 params.id 대신 id 사용
+          .select("id, notice_no, title, category, content, details, created_at")
+          .eq("notice_no", id) // 💡 UUID 대신 숫자 번호(notice_no)로 데이터를 찾습니다!
           .single()
 
         if (error) throw error
@@ -49,20 +51,32 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
     }
 
     fetchNotice()
-  }, [id]) // 💡 의존성 배열도 id로 변경
+  }, [id])
 
+  // 로딩 화면
   if (isLoading) {
-    return <div className="min-h-dvh flex items-center justify-center text-slate-400 text-sm">로딩 중...</div>
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-white text-slate-400 text-sm animate-pulse">
+        공지사항을 불러오는 중...
+      </div>
+    )
   }
 
+  // 데이터 없음 화면
   if (!notice) {
-    return <div className="min-h-dvh flex items-center justify-center text-slate-400 text-sm">존재하지 않는 공지사항입니다.</div>
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center bg-white gap-4">
+        <p className="text-sm text-slate-500">존재하지 않는 공지사항입니다.</p>
+        <Link href="/" className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
+          홈으로 돌아가기
+        </Link>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-dvh bg-white pb-20">
       
-      {/* 💡 상세 페이지 헤더 */}
       <DetailHeader 
         title="공지사항 상세" 
         rightElement={
@@ -72,11 +86,10 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
         }
       />
 
-      {/* 본문 영역 */}
       <main className="p-5">
         <div className="border-b border-slate-100 pb-4 mb-4">
           <div className="flex items-center gap-2 mb-2">
-            {/* 카테고리 뱃지 (데이터가 있을 때만 표시) */}
+            {/* 카테고리 뱃지 */}
             {notice.category && (
               <span className="px-1.5 py-0.5 bg-blue-100 text-blue-600 text-[10px] font-bold rounded">
                 {notice.category}
@@ -92,10 +105,9 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
         {/* 텍스트 내용 */}
         <div className="text-sm text-slate-600 leading-relaxed space-y-4">
           
-          {/* DB에 저장된 텍스트의 줄바꿈을 그대로 유지 */}
           <div className="whitespace-pre-wrap">{notice.content}</div>
           
-          {/* 기존에 만드신 회색 박스 (details JSON 데이터가 있을 때만 렌더링) */}
+          {/* 상세 정보 박스 (JSON 데이터가 있을 때만) */}
           {notice.details && Object.keys(notice.details).length > 0 && (
             <div className="bg-slate-50 p-4 rounded-lg text-xs border border-slate-100 mt-6">
               <ul className="space-y-2 font-medium">
