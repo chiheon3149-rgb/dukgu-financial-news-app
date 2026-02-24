@@ -73,9 +73,14 @@ export function HeroBanner() {
       setMorning(m)
       setAfternoon(a)
 
-      // 시간 기반 기본 선택 (7~15시 → 미국, 나머지 → 한국), 없으면 반대쪽으로 폴백
-      const hour = new Date().getHours()
-      const preferUS = hour >= 7 && hour < 16
+      // ✅ 7:00 ~ 15:29 → 미국 / 그 외 → 한국
+      const now = new Date()
+      const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+      const preferUS =
+        currentMinutes >= 7 * 60 &&
+        currentMinutes < (15 * 60 + 30)
+
       if (preferUS) {
         setMarket(m ? "US" : a ? "KR" : null)
       } else {
