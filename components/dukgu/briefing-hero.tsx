@@ -4,8 +4,8 @@ interface BriefingHeroProps {
   date: string;
   title: string;
   description: string;
+  tags?: string[]; // 💡 태그 데이터를 받을 수 있도록 추가
   emoji?: string;
-  // 💡 오전/오후 테마를 위해 배경색을 선택할 수 있게 만들었습니다.
   variant?: "morning" | "afternoon"; 
 }
 
@@ -13,6 +13,7 @@ export function BriefingHero({
   date, 
   title, 
   description, 
+  tags = [], // 💡 기본값은 빈 배열
   emoji = "🚀", 
   variant = "morning" 
 }: BriefingHeroProps) {
@@ -31,13 +32,32 @@ export function BriefingHero({
       
       {/* 컨텐츠 영역 */}
       <div className="relative z-10">
-        <p className="text-blue-100 text-sm font-semibold mb-2 drop-shadow-sm">
+        {/* 1. 날짜 */}
+        <p className="text-blue-100 text-[11px] font-bold mb-3 drop-shadow-sm opacity-80">
           {date}
         </p>
-        <h2 className="text-2xl font-black leading-tight mb-2 drop-shadow-md whitespace-pre-wrap">
+
+        {/* 💡 2. 태그 영역 (제목 위로 배치) */}
+        {tags && tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {tags.map((tag) => (
+              <span 
+                key={tag} 
+                className="bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold border border-white/10"
+              >
+                {tag.startsWith("#") ? tag : `#${tag}`}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* 3. 제목 (헤드라인) */}
+        <h2 className="text-2xl font-black leading-tight mb-2.5 drop-shadow-md whitespace-pre-wrap">
           {title}
         </h2>
-        <p className="text-sm text-blue-50 font-medium opacity-90 leading-relaxed">
+
+        {/* 4. 설명 (요약문) */}
+        <p className="text-[13px] text-blue-50 font-medium opacity-90 leading-relaxed break-keep">
           {description}
         </p>
       </div>

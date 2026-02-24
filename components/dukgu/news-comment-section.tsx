@@ -61,6 +61,14 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
 
+  // 💡 [수정] 댓글 개수가 변할 때만 부모에게 알립니다. (useEffect 활용)
+  // 이렇게 하면 렌더링 도중 setState를 호출하는 충돌이 발생하지 않습니다.
+  useEffect(() => {
+    if (!isLoading) {
+      onCountChange?.(comments.length)
+    }
+  }, [comments.length, onCountChange, isLoading])
+
   useEffect(() => {
     const fetchComments = async () => {
       const { data } = await supabase
@@ -89,12 +97,10 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
       })
       .select()
       .single()
+    
     if (data) {
-      setComments(prev => {
-        const next = [...prev, { ...data, timeAgo: "방금 전" }]
-        onCountChange?.(next.length)
-        return next
-      })
+      // 💡 [수정] 부모 호출(onCountChange)을 여기서 제거했습니다. 위 useEffect가 알아서 처리합니다.
+      setComments(prev => [...prev, { ...data, timeAgo: "방금 전" }])
       await supabase.rpc("increment_news_comment_count", { target_news_id: newsId })
     }
     setInputText("")
@@ -109,11 +115,9 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
   const deleteComment = async (id: string) => {
     if (!window.confirm("댓글을 삭제하시겠습니까?")) return
     await supabase.from("news_comments").delete().eq("id", id)
-    setComments(prev => {
-      const next = prev.filter(c => c.id !== id)
-      onCountChange?.(next.length)
-      return next
-    })
+    
+    // 💡 [수정] 여기서도 부모 호출 로직을 제거했습니다.
+    setComments(prev => prev.filter(c => c.id !== id))
     await supabase.rpc("decrement_news_comment_count", { target_news_id: newsId })
     setOpenMenuId(null)
   }
@@ -158,6 +162,7 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
     }
   }
 
+  // UI 렌더링 부분은 동일하므로 생략 (기존 코드 그대로 유지)
   return (
     <section className="mt-8 border-t-8 border-slate-50 pt-6 -mx-5 px-5">
       <h4 className="text-sm font-black text-slate-900 mb-5">

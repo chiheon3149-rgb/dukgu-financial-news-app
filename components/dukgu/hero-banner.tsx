@@ -2,20 +2,9 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Clock } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import type { IndexSummary } from "@/types"
-
-// =============================================================================
-// 🏠 HeroBanner
-//
-// 오늘 날짜의 briefings 테이블에서 오전(morning)/오후(afternoon) 데이터를 가져와
-// 미국(US) / 한국(KR) 라디오 버튼으로 전환해 보여줍니다.
-//
-// - morning → 미국(US) 버튼
-// - afternoon → 한국(KR) 버튼
-// - 오늘 데이터가 없으면 섹션 자체를 숨깁니다.
-// =============================================================================
 
 interface BriefingRow {
   id: string
@@ -28,13 +17,13 @@ interface BriefingRow {
 
 const THEME = {
   US: {
-    theme: "from-red-400/80 to-red-600/80 shadow-red-500/30",
+    theme: "from-red-500 to-red-600 shadow-red-500/30",
     flag: "🇺🇸",
     textColor: "text-red-700",
     briefingType: "오전브리핑",
   },
   KR: {
-    theme: "from-blue-500/80 to-blue-700/80 shadow-blue-500/30",
+    theme: "from-blue-500 to-blue-600 shadow-blue-500/30",
     flag: "🇰🇷",
     textColor: "text-blue-700",
     briefingType: "오후브리핑",
@@ -73,7 +62,6 @@ export function HeroBanner() {
       setMorning(m)
       setAfternoon(a)
 
-      // 시간 기반 기본 선택 (7~15시 → 미국, 나머지 → 한국), 없으면 반대쪽으로 폴백
       const hour = new Date().getHours()
       const preferUS = hour >= 7 && hour < 16
       if (preferUS) {
@@ -85,12 +73,10 @@ export function HeroBanner() {
     load()
   }, [])
 
-  // fetch 완료 전 스켈레톤
   if (morning === undefined || afternoon === undefined) {
     return <section className="pt-2 pb-2 h-48 animate-pulse bg-muted rounded-2xl" />
   }
 
-  // 오늘 데이터 없음 → 섹션 숨김
   if (!morning && !afternoon) return null
   if (!market) return null
 
@@ -101,18 +87,19 @@ export function HeroBanner() {
   return (
     <section className="pt-2 pb-2">
       <div
-        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${theme.theme} backdrop-blur-md border border-white/20 p-5 text-white shadow-xl transition-all duration-500`}
+        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${theme.theme} p-5 text-white shadow-xl transition-all duration-500`}
       >
         {/* 투명 국기 배경 */}
-        <div className="absolute -bottom-6 -right-4 text-[130px] opacity-[0.15] pointer-events-none select-none transition-all duration-500 rotate-12">
+        <div className="absolute -bottom-6 -right-4 text-[130px] opacity-[0.12] pointer-events-none select-none transition-all duration-500 rotate-12">
           {theme.flag}
         </div>
 
+        {/* 상단 광택 효과 */}
         <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
 
         <div className="relative z-10 flex flex-col gap-4">
 
-          {/* 날짜 + 라디오 버튼 */}
+          {/* 1. 날짜 + 라디오 버튼 (상단 유지) */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-semibold text-white/90 drop-shadow-sm truncate mr-2">
               {dateLabel} 오늘의 {theme.briefingType}
@@ -139,16 +126,28 @@ export function HeroBanner() {
             </div>
           </div>
 
-          {/* 헤드라인 + AI 요약 */}
+          {/* 💡 2. 태그 영역 (제목 위로 전격 이동!) */}
+          {indices.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 -mt-1">
+              {indices.slice(0, 3).map(idx => (
+                <span 
+                  key={idx.name} 
+                  className="text-[10px] px-2 py-1 bg-white/20 backdrop-blur-md border border-white/10 rounded-lg font-bold text-white whitespace-nowrap shrink-0"
+                >
+                  #{idx.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* 3. 헤드라인 + AI 요약 */}
           {currentBriefing ? (
             <div className="flex flex-col gap-2">
-              {/* 제목: 한 줄, 넘치면 폰트 축소 */}
-              <h2 className="text-[15px] font-extrabold text-left leading-tight drop-shadow-md truncate">
+              <h2 className="text-[16px] font-black text-left leading-tight drop-shadow-md">
                 {currentBriefing.headline}
               </h2>
-              {/* AI 요약: 최대 3줄 */}
               {currentBriefing.content?.summary && (
-                <p className="text-[11px] text-white/85 leading-relaxed line-clamp-3 drop-shadow-sm">
+                <p className="text-[11px] text-white/85 leading-relaxed line-clamp-2 drop-shadow-sm font-medium">
                   {currentBriefing.content.summary}
                 </p>
               )}
@@ -157,25 +156,15 @@ export function HeroBanner() {
             <p className="text-sm font-bold text-white/70 py-2">브리핑 준비 중...</p>
           )}
 
-          {/* #태그 + 리포트읽기 버튼 (2줄) */}
-          <div className="flex flex-col gap-2 mt-1">
-            <div className="flex gap-1.5">
-              {indices.slice(0, 3).map(idx => (
-                <span key={idx.name} className="text-[10px] px-2 py-1 bg-black/15 backdrop-blur-sm border border-white/10 rounded-md font-semibold text-white/90 whitespace-nowrap shrink-0">
-                  #{idx.name}
-                </span>
-              ))}
-            </div>
-
-            <div className="flex justify-end">
-              <Link
-                href="/briefing"
-                className={`group flex items-center gap-1 text-xs font-bold bg-white ${theme.textColor} px-3.5 py-2 rounded-lg hover:bg-gray-100 transition-all active:scale-95 shadow-lg cursor-pointer`}
-              >
-                <span>리포트읽기</span>
-                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
+          {/* 4. 리포트읽기 버튼 (맨 하단 우측 배치) */}
+          <div className="flex justify-end mt-1">
+            <Link
+              href="/briefing"
+              className={`group flex items-center gap-1 text-[11px] font-black bg-white ${theme.textColor} px-3.5 py-2 rounded-xl hover:bg-gray-100 transition-all active:scale-95 shadow-lg cursor-pointer`}
+            >
+              <span>리포트읽기</span>
+              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </div>
 
         </div>
