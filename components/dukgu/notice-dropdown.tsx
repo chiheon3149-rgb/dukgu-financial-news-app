@@ -3,25 +3,18 @@
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { Bell, ChevronRight, X } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
-// =============================================================================
-// 🔔 NoticeDropdown — 알림 드롭다운
-//
-// - 데스크톱: 벨 아이콘 아래 absolute 팝업
-// - 모바일(sm 이하): 화면 중앙 고정(fixed) 오버레이로 표시
-// - 열리는 순간 읽은 상태로 처리 → 빨간 뱃지 사라짐
-// =============================================================================
-
-// 💡 Supabase 연결 시 API로 교체할 샘플 데이터
-const SAMPLE_NOTICES = [
-  { id: 1, title: "[공지] 시스템 업데이트 작업 중입니다.", isNew: true },
-  { id: 2, title: "[안내] 페이젠(PayZen) 결제 모듈 점검 안내", isNew: false },
-  { id: 3, title: "[업데이트] 미국/한국 브리핑 모드 추가", isNew: false },
-]
+interface Notice {
+  id: string
+  content: string
+  link_url: string | null
+  created_at: string
+}
 
 const NOTICES_READ_KEY = "dukgu:notices-read-ids"
 
-function getReadIds(): number[] {
+function getReadIds(): string[] {
   try {
     return JSON.parse(localStorage.getItem(NOTICES_READ_KEY) ?? "[]")
   } catch {
@@ -29,7 +22,7 @@ function getReadIds(): number[] {
   }
 }
 
-function saveReadIds(ids: number[]) {
+function saveReadIds(ids: string[]) {
   try {
     localStorage.setItem(NOTICES_READ_KEY, JSON.stringify(ids))
   } catch {}
@@ -37,28 +30,38 @@ function saveReadIds(ids: number[]) {
 
 export function NoticeDropdown() {
   const [isOpen, setIsOpen] = useState(false)
-  // SSR 안전: 초기값 false/[], useEffect에서 localStorage 반영
+  const [notices, setNotices] = useState<Notice[]>([])
   const [hasUnread, setHasUnread] = useState(false)
-  const [readIds, setReadIds] = useState<number[]>([])
+  const [readIds, setReadIds] = useState<string[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  // Supabase에서 공지 불러오기
   useEffect(() => {
-    const stored = getReadIds()
-    setReadIds(stored)
-    setHasUnread(SAMPLE_NOTICES.some((n) => n.isNew && !stored.includes(n.id)))
+    supabase
+      .from("notices")
+      .select("id, content, link_url, created_at")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (!data?.length) return
+        setNotices(data)
+        const stored = getReadIds()
+        setReadIds(stored)
+        setHasUnread(data.some((n) => !stored.includes(n.id)))
+      })
   }, [])
 
-  // 열리는 순간 읽음 처리 + localStorage 영속화 (공지 ID 단위)
+  // 열리는 순간 전체 읽음 처리
   const handleOpen = () => {
     setIsOpen(true)
     setHasUnread(false)
     const prev = getReadIds()
-    const next = Array.from(new Set([...prev, ...SAMPLE_NOTICES.filter(n => n.isNew).map(n => n.id)]))
+    const next = Array.from(new Set([...prev, ...notices.map((n) => n.id)]))
     saveReadIds(next)
     setReadIds(next)
   }
 
-  // 데스크톱: 팝업 바깥 클릭 시 닫기
+  // 바깥 클릭 시 닫기
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -92,9 +95,6 @@ export function NoticeDropdown() {
             onClick={() => setIsOpen(false)}
           />
 
-          {/* 드롭다운 본문
-              - 모바일: fixed로 화면 중앙 하단 표시
-              - 데스크톱: absolute right-0 팝업 */}
           <div className="
             fixed left-4 right-4 top-16 z-50
             sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:w-72 sm:mt-2
@@ -106,7 +106,7 @@ export function NoticeDropdown() {
               <span className="text-xs font-bold text-slate-800">최근 알림</span>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-medium text-slate-500 bg-slate-200/70 px-1.5 py-0.5 rounded">
-                  {SAMPLE_NOTICES.length}건
+                  {notices.length}건
                 </span>
                 <button
                   onClick={() => setIsOpen(false)}
@@ -119,26 +119,31 @@ export function NoticeDropdown() {
 
             {/* 알림 리스트 */}
             <div className="max-h-64 overflow-y-auto">
-              {SAMPLE_NOTICES.map((notice) => {
-                const isUnread = notice.isNew && !readIds.includes(notice.id)
-                return (
-                  <Link
-                    key={notice.id}
-                    href={`/notice/${notice.id}`}
-                    onClick={() => setIsOpen(false)}
-                    className="block px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-start gap-2">
-                      {isUnread && (
-                        <span className="mt-0.5 shrink-0 w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                      )}
-                      <p className={`text-xs leading-snug line-clamp-2 ${isUnread ? "text-slate-800 font-semibold" : "text-slate-600 font-medium"}`}>
-                        {notice.title}
-                      </p>
-                    </div>
-                  </Link>
-                )
-              })}
+              {notices.length === 0 ? (
+                <p className="text-center text-xs text-slate-400 py-6">새 공지사항이 없습니다</p>
+              ) : (
+                notices.map((notice) => {
+                  const isUnread = !readIds.includes(notice.id)
+                  const href = notice.link_url ?? "/notice"
+                  return (
+                    <Link
+                      key={notice.id}
+                      href={href}
+                      onClick={() => setIsOpen(false)}
+                      className="block px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="flex items-start gap-2">
+                        {isUnread && (
+                          <span className="mt-0.5 shrink-0 w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                        )}
+                        <p className={`text-xs leading-snug line-clamp-2 ${isUnread ? "text-slate-800 font-semibold" : "text-slate-600 font-medium"}`}>
+                          {notice.content}
+                        </p>
+                      </div>
+                    </Link>
+                  )
+                })
+              )}
             </div>
 
             {/* 전체보기 */}
