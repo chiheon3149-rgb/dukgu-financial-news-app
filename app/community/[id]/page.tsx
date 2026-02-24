@@ -14,7 +14,7 @@ const CATEGORY_LABEL: Record<CommunityCategory, string> = { free: "자유", econ
 export default function CommunityPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const { posts, isLoading, getComments, reactPost, addComment, reportComment, deletePost } = useCommunity(id)
+  const { posts, isLoading, getComments, reactPost, addComment, editComment, deleteComment, reactComment, reportComment, deletePost } = useCommunity(id)
   const { profile, currentLevel } = useUser()
 
   const post = posts.find((p) => p.id === id)
@@ -28,13 +28,23 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
   const isMyPost = !!profile && post?.authorId === profile.id
 
   const handleReact = (type: "like" | "dislike") => {
-    if (reaction === type || !post) return
-    setCounts((prev) => ({
-      like: type === "like" ? prev.like + 1 : reaction === "like" ? prev.like - 1 : prev.like,
-      dislike: type === "dislike" ? prev.dislike + 1 : reaction === "dislike" ? prev.dislike - 1 : prev.dislike,
-    }))
-    setReaction(type)
-    reactPost(post.id, type)
+    if (!post) return
+    const isToggleOff = reaction === type
+    if (isToggleOff) {
+      setCounts((prev) => ({
+        like:    type === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
+        dislike: type === "dislike" ? Math.max(0, prev.dislike - 1) : prev.dislike,
+      }))
+      setReaction(null)
+      reactPost(post.id, type, reaction)
+    } else {
+      setCounts((prev) => ({
+        like:    type === "like"    ? prev.like    + 1 : reaction === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
+        dislike: type === "dislike" ? prev.dislike + 1 : reaction === "dislike" ? Math.max(0, prev.dislike - 1) : prev.dislike,
+      }))
+      setReaction(type)
+      reactPost(post.id, type, reaction)
+    }
   }
 
   const handleDelete = async () => {
@@ -185,6 +195,9 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
           currentUser={currentUser}
           onReport={reportComment}
           onAddComment={addComment}
+          onSaveEdit={editComment}
+          onDeleteComment={deleteComment}
+          onReact={reactComment}
         />
       </main>
     </div>

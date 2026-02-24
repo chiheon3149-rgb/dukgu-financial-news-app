@@ -3,9 +3,8 @@ import { StickyHeader } from "@/components/dukgu/sticky-header"
 import { TickerBar } from "@/components/dukgu/ticker-bar"
 import { HeroBanner } from "@/components/dukgu/hero-banner"
 import { AdBanner } from "@/components/dukgu/ad-banner"
-import { NewsFeed } from "@/components/dukgu/news-feed"
 import { NoticeBanner } from "@/components/dukgu/notice-banner"
-import { SearchBar } from "@/components/dukgu/search-bar"
+import { NewsSection } from "@/components/dukgu/news-section"
 
 export default function HomePage() {
   return (
@@ -16,10 +15,7 @@ export default function HomePage() {
         <NoticeBanner />
         <HeroBanner />
         <AdBanner />
-        <div className="pt-2">
-          <SearchBar />
-          <NewsFeed />
-        </div>
+        <NewsSection />
       </main>
     </div>
   )

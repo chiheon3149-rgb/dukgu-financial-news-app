@@ -76,7 +76,10 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
         .select("id, author_id, author_nickname, author_emoji, author_level, content, like_count, dislike_count, report_count, is_removed, published_at")
         .eq("news_id", newsId)
         .order("published_at", { ascending: true })
-      setComments((data ?? []).map(r => ({ ...r, timeAgo: formatTimeAgo(r.published_at) })))
+      const rows = data ?? []
+      setComments(rows.map(r => ({ ...r, timeAgo: formatTimeAgo(r.published_at) })))
+      // 마운트 시 실제 DB 댓글 수로 부모(피드 캐시 포함) 동기화
+      onCountChange?.(rows.length)
       setIsLoading(false)
     }
     fetchComments()
@@ -99,8 +102,11 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
       .single()
     
     if (data) {
-      // 💡 [수정] 부모 호출(onCountChange)을 여기서 제거했습니다. 위 useEffect가 알아서 처리합니다.
-      setComments(prev => [...prev, { ...data, timeAgo: "방금 전" }])
+      setComments(prev => {
+        const next = [...prev, { ...data, timeAgo: "방금 전" }]
+        onCountChange?.(next.length)
+        return next
+      })
       await supabase.rpc("increment_news_comment_count", { target_news_id: newsId })
     }
     setInputText("")
@@ -115,9 +121,11 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
   const deleteComment = async (id: string) => {
     if (!window.confirm("댓글을 삭제하시겠습니까?")) return
     await supabase.from("news_comments").delete().eq("id", id)
-    
-    // 💡 [수정] 여기서도 부모 호출 로직을 제거했습니다.
-    setComments(prev => prev.filter(c => c.id !== id))
+    setComments(prev => {
+      const next = prev.filter(c => c.id !== id)
+      onCountChange?.(next.length)
+      return next
+    })
     await supabase.rpc("decrement_news_comment_count", { target_news_id: newsId })
     setOpenMenuId(null)
   }

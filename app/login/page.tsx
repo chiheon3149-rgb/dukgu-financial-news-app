@@ -69,7 +69,7 @@ export default function LoginPage() {
         )}
 
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-1.5">
-          DUKGU
+          덕구와 함께하는<br/>금융 뉴스 브리핑
         </h1>
         <p className="text-sm font-medium text-slate-500">
           매일 아침, 당신을 위한 금융 뉴스 브리핑

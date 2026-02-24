@@ -1,41 +1,53 @@
 "use client"
 
-import { useState } from "react"
 import { Search, X } from "lucide-react"
 
-export function SearchBar() {
-  const [keyword, setKeyword] = useState("")
+interface SearchBarProps {
+  value: string
+  onChange: (value: string) => void
+}
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!keyword.trim()) return
-    alert(`"${keyword}" (으)로 과거 뉴스를 검색합니다!`)
-  }
-
+export function SearchBar({ value, onChange }: SearchBarProps) {
   return (
-    <form 
-      onSubmit={handleSearch}
+    <form
+      onSubmit={(e) => e.preventDefault()}
       className="relative flex items-center w-full mb-4"
     >
-      {/* 돋보기 아이콘 */}
-      <div className="absolute left-3.5 text-slate-400">
-        <Search className="w-4 h-4" />
-      </div>
+      {/* 돋보기 — 입력 중일 때 왼쪽 (검색 실행 버튼) */}
+      {value && (
+        <button
+          type="submit"
+          className="absolute left-3.5 text-slate-400 hover:text-blue-500 transition-colors"
+        >
+          <Search className="w-4 h-4" />
+        </button>
+      )}
 
-      {/* 💡 기획자님 의견대로 bg-white로 변경하고, 테두리를 조금 더 선명하게 잡아줬습니다. */}
       <input
         type="text"
-        value={keyword}
-        onChange={(e) => setKeyword(e.target.value)}
-        placeholder="궁금한 과거 뉴스를 검색해 보세요"
-        className="w-full bg-white border border-slate-200 text-sm text-slate-800 rounded-2xl py-3 pl-10 pr-10 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all placeholder:text-slate-400 shadow-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="태그 제목 내용으로 검색하세요"
+        className={`w-full bg-white border border-slate-200 text-sm text-slate-800 rounded-2xl py-3 pr-10 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all placeholder:text-slate-400 shadow-sm ${
+          value ? "pl-10" : "pl-4"
+        }`}
       />
 
-      {/* 지우기 버튼 */}
-      {keyword && (
+      {/* 돋보기 — 기본 상태일 때 오른쪽 */}
+      {!value && (
+        <button
+          type="submit"
+          className="absolute right-3.5 text-slate-400 hover:text-blue-500 transition-colors"
+        >
+          <Search className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* X 버튼 — 입력 중일 때 오른쪽 (초기화) */}
+      {value && (
         <button
           type="button"
-          onClick={() => setKeyword("")}
+          onClick={() => onChange("")}
           className="absolute right-3.5 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-0.5 transition-colors"
         >
           <X className="w-3.5 h-3.5" />
