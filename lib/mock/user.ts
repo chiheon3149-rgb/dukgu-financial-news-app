@@ -12,6 +12,8 @@ export const MOCK_USER: UserProfile = {
   joinedAt: "2025-11-01T00:00:00+09:00",
   avatarEmoji: "🐱",
   totalXp: 185,
+  // 💡 빌드 에러 해결: 포트폴리오 공개 여부 속성 추가
+  portfolioPublic: true, 
   xpHistory: [
     { id: "xp-001", source: "quiz_correct", amount: 50, label: "경제 퀴즈 정답", earnedAt: "2026-02-22T10:00:00+09:00" },
     { id: "xp-002", source: "quiz_correct", amount: 50, label: "정치 퀴즈 정답", earnedAt: "2026-02-15T10:00:00+09:00" },
@@ -24,18 +26,13 @@ export const MOCK_USER: UserProfile = {
 
 // =============================================================================
 // 🏆 레벨 정의 테이블
-//
-// 레벨 설계 철학:
-// 초반(1~3레벨)은 빠르게 올라가서 성취감을 주고,
-// 중반부터는 점점 더 많은 노력이 필요하도록 설계합니다.
-// 퀴즈 정답 1회당 50XP 기준으로, 레벨 5까지 도달에 약 20회 정답이 필요합니다.
 // =============================================================================
 
 export const LEVEL_TABLE: LevelMeta[] = [
-  { level: 1, title: "새싹 투자자",    minXp: 0,    maxXp: 100,  icon: "🌱" },
-  { level: 2, title: "견습 분석가",    minXp: 100,  maxXp: 250,  icon: "📊" },
+  { level: 1, title: "새싹 투자자",     minXp: 0,    maxXp: 100,  icon: "🌱" },
+  { level: 2, title: "견습 분석가",     minXp: 100,  maxXp: 250,  icon: "📊" },
   { level: 3, title: "주니어 트레이더", minXp: 250,  maxXp: 500,  icon: "📈" },
-  { level: 4, title: "시니어 투자자",  minXp: 500,  maxXp: 900,  icon: "💼" },
+  { level: 4, title: "시니어 투자자",   minXp: 500,  maxXp: 900,  icon: "💼" },
   { level: 5, title: "포트폴리오 마스터", minXp: 900, maxXp: 1500, icon: "🏆" },
   { level: 6, title: "월스트리트 레전드", minXp: 1500, maxXp: 9999, icon: "👑" },
 ]
@@ -70,8 +67,8 @@ export const MOCK_SAVED_ARTICLES: SavedArticle[] = [
 ]
 
 export const MOCK_ARTICLE_REACTIONS: ArticleReaction[] = [
-  { newsId: "news-002", type: "like",    reactedAt: "2026-02-22T09:10:00+09:00", snapshot: { headline: "미 연준 의사록 공개… 올해 하반기 금리 인하 시그널", category: "경제", timeAgo: "25분 전" } },
-  { newsId: "news-006", type: "like",    reactedAt: "2026-02-21T20:00:00+09:00", snapshot: { headline: "MZ세대 '커피값으로 주식 산다'… 소액 투자 열풍", category: "문화", timeAgo: "2시간 전" } },
+  { newsId: "news-002", type: "like",     reactedAt: "2026-02-22T09:10:00+09:00", snapshot: { headline: "미 연준 의사록 공개… 올해 하반기 금리 인하 시그널", category: "경제", timeAgo: "25분 전" } },
+  { newsId: "news-006", type: "like",     reactedAt: "2026-02-21T20:00:00+09:00", snapshot: { headline: "MZ세대 '커피값으로 주식 산다'… 소액 투자 열풍", category: "문화", timeAgo: "2시간 전" } },
   { newsId: "news-004", type: "dislike", reactedAt: "2026-02-21T14:00:00+09:00", snapshot: { headline: "정부, 민생 안정 위한 하반기 추경 편성 공식 검토", category: "정치", timeAgo: "어제" } },
 ]
 
