@@ -107,16 +107,16 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
 
     supabase
       .from("news_reactions")
-      .select("reaction")
+      .select("type")
       .eq("news_id", newsId)
-      .eq("user_key", userKey)
+      .eq("user_id", userKey)
       .maybeSingle()
       .then(({ data }) => {
         // 유저가 이미 직접 반응했으면 DB 조회 결과로 덮어쓰지 않음
         if (_interacted.has(newsId)) return
         const current = _store.get(newsId)
         if (!current) return
-        const dbReaction = (data?.reaction as UserReaction) ?? null
+        const dbReaction = (data?.type as UserReaction) ?? null
         // DB가 null을 반환해도 localStorage 캐시를 유지 (RLS/upsert 실패 대비)
         // DB에 실제 반응이 있으면 DB를 우선
         const reaction = dbReaction !== null ? dbReaction : getCachedReaction(newsId)
@@ -148,7 +148,7 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
         updateCachedReactionInFeed(newsId, newGood, newBad)
         updateCachedReactionInSaved(newsId, null)
         await supabase.from("news_reactions").delete()
-          .eq("news_id", newsId).eq("user_key", userKey)
+          .eq("news_id", newsId).eq("user_id", userKey)
         return
       }
 
@@ -176,13 +176,12 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
         .upsert(
           {
             news_id:    newsId,
-            user_key:   userKey,
-            reaction:   type,
-            user_id:    userId ?? null,
+            user_id:    userKey,
+            type:       type,
             snapshot:   snapshot ?? null,
             reacted_at: new Date().toISOString(),
           },
-          { onConflict: "news_id,user_key" }
+          { onConflict: "news_id,user_id" }
         )
     },
     [newsId, userId]

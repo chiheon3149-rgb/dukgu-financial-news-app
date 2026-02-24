@@ -88,7 +88,7 @@ async function ensureLoaded() {
       .filter((row: any) => row.snapshot != null)
       .map((row: any) => ({
         newsId: row.news_id,
-        type: (row.reaction === "good" ? "like" : "dislike") as ArticleReactionType,
+        type: (row.type === "good" ? "like" : "dislike") as ArticleReactionType,
         reactedAt: row.reacted_at,
         snapshot: row.snapshot,
       }))
@@ -128,12 +128,15 @@ export function updateCachedReactionInSaved(
   notifyAll()
 }
 
-// 로그아웃/재로그인 시 스토어 초기화
+// 로그아웃/재로그인 시 스토어 초기화 + 재로딩
 if (typeof window !== "undefined") {
   supabase.auth.onAuthStateChange((event) => {
     if (event === "SIGNED_OUT" || event === "SIGNED_IN") {
       resetStore()
       notifyAll()
+      if (event === "SIGNED_IN") {
+        ensureLoaded() // 로그인 직후 데이터 즉시 재조회
+      }
     }
   })
 }
