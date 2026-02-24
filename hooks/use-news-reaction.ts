@@ -1,9 +1,18 @@
 "use client"
 
-import { useEffect, useReducer, useCallback } from "react"
+import { useEffect, useReducer, useCallback, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@/context/user-context"
 import { updateCachedReactionInFeed } from "@/hooks/use-news-feed"
+
+// =============================================================================
+// 👍 useNewsReaction — DB 트리거 기반 좋아요/싫어요 훅
+//
+// · news_reactions 테이블에 upsert → 트리거가 news.good_count/bad_count 원자적 갱신
+// · 로그인 유저: profile.id를 user_key로 사용
+// · 익명 유저: localStorage에 영구 저장된 device UUID를 user_key로 사용
+// · 모듈 레벨 스토어로 낙관적 UI 업데이트 (여러 컴포넌트 동기화)
+// =============================================================================
 
 type UserReaction = "good" | "bad" | null
 
@@ -21,8 +30,17 @@ function notify(newsId: string) {
   _listeners.get(newsId)?.forEach((fn) => fn())
 }
 
-function storageKey(userId: string | null, newsId: string) {
-  return `news_reaction_${userId ?? "anon"}_${newsId}`
+// 익명 유저용 디바이스 키 (localStorage에 영구 저장)
+const DEVICE_KEY_STORAGE = "dukgu_device_id"
+
+function getOrCreateDeviceKey(): string {
+  if (typeof window === "undefined") return "ssr"
+  let key = localStorage.getItem(DEVICE_KEY_STORAGE)
+  if (!key) {
+    key = crypto.randomUUID()
+    localStorage.setItem(DEVICE_KEY_STORAGE, key)
+  }
+  return key
 }
 
 export function useNewsReaction(newsId: string, initialGood: number, initialBad: number) {
@@ -45,16 +63,29 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
     }
   }, [newsId])
 
-  // userId 확정 후 localStorage에서 유저별 반응 복원
+  // DB에서 유저 반응 조회 (userId가 바뀔 때마다 재조회)
+  const lastFetchedUserKeyRef = useRef<string | null>(null)
+
   useEffect(() => {
-    if (typeof window === "undefined") return
-    const key = storageKey(userId, newsId)
-    const stored = localStorage.getItem(key) as UserReaction
-    const current = _store.get(newsId)
-    if (current && current.userReaction !== stored) {
-      _store.set(newsId, { ...current, userReaction: stored })
-      notify(newsId)
-    }
+    const userKey = userId ?? getOrCreateDeviceKey()
+    if (lastFetchedUserKeyRef.current === userKey) return
+    lastFetchedUserKeyRef.current = userKey
+
+    supabase
+      .from("news_reactions")
+      .select("reaction")
+      .eq("news_id", newsId)
+      .eq("user_key", userKey)
+      .maybeSingle()
+      .then(({ data }) => {
+        const current = _store.get(newsId)
+        if (!current) return
+        const reaction = (data?.reaction as UserReaction) ?? null
+        if (current.userReaction !== reaction) {
+          _store.set(newsId, { ...current, userReaction: reaction })
+          notify(newsId)
+        }
+      })
   }, [newsId, userId])
 
   const react = useCallback(
@@ -62,34 +93,31 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       const current = _store.get(newsId)
       if (!current || current.userReaction === type) return
 
+      const prevReaction = current.userReaction
       let newGood = current.good
-      let newBad = current.bad
+      let newBad  = current.bad
 
       if (type === "good") {
         newGood += 1
-        if (current.userReaction === "bad") newBad -= 1
+        if (prevReaction === "bad") newBad = Math.max(0, newBad - 1)
       } else {
         newBad += 1
-        if (current.userReaction === "good") newGood -= 1
+        if (prevReaction === "good") newGood = Math.max(0, newGood - 1)
       }
 
-      // 스토어 업데이트 → 구독 중인 모든 컴포넌트 리렌더
+      // 즉시 UI 반영 (낙관적 업데이트)
       _store.set(newsId, { good: newGood, bad: newBad, userReaction: type })
       notify(newsId)
-
-      // useNewsFeed 캐시도 업데이트 (뒤로가기 시 카드 피드 반영)
       updateCachedReactionInFeed(newsId, newGood, newBad)
 
-      // localStorage 저장 (유저별 키)
-      if (typeof window !== "undefined") {
-        localStorage.setItem(storageKey(userId, newsId), type)
-      }
-
-      // Supabase aggregate 카운트 업데이트
+      // DB upsert — 트리거가 news.good_count / bad_count 원자적 갱신
+      const userKey = userId ?? getOrCreateDeviceKey()
       await supabase
-        .from("news")
-        .update({ good_count: newGood, bad_count: newBad })
-        .eq("id", newsId)
+        .from("news_reactions")
+        .upsert(
+          { news_id: newsId, user_key: userKey, reaction: type },
+          { onConflict: "news_id,user_key" }
+        )
     },
     [newsId, userId]
   )
