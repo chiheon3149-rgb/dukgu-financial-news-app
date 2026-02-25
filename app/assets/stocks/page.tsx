@@ -8,7 +8,6 @@ import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { AddTickerSheet } from "@/components/dukgu/add-ticker-sheet"
 import { useStockPortfolio } from "@/hooks/use-stock-portfolio"
-import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import type { StockHolding } from "@/types"
 
 export default function StocksPage() {
