@@ -64,7 +64,7 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
     if (!post) return
     toast("게시글을 삭제하시겠습니까?", {
       action: { label: "삭제", onClick: () => performDelete() },
-      cancel: { label: "취소" },
+      cancel: { label: "취소", onClick: () => {} }, // ✅ 이 부분을 수정했습니다.
     })
   }
 
