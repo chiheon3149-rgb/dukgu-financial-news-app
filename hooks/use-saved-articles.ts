@@ -54,10 +54,13 @@ async function ensureLoaded() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
   if (!user) {
+    // [핵심 버그 수정 2] idle로 되돌려서 onAuthStateChange에서 재시도 가능하게 함
     _loadState = "idle"
     return
   }
+
   _userId = user.id
 
   const [{ data: savedData }, { data: reactionData }] = await Promise.all([
@@ -128,14 +131,29 @@ export function updateCachedReactionInSaved(
   notifyAll()
 }
 
-// 로그아웃/재로그인 시 스토어 초기화 + 재로딩
+// [핵심 버그 수정 2] onAuthStateChange에서 모든 유저 세션 이벤트를 처리
+// - SIGNED_IN: 로그인
+// - INITIAL_SESSION: 새로고침 시 기존 세션 복원 (가장 중요! 기존 코드에서 누락됨)
+// - TOKEN_REFRESHED: 토큰 갱신 완료 후 재시도
+// 위 세 케이스 모두 유저가 있고 _loadState === "idle"이면 데이터를 로드
 if (typeof window !== "undefined") {
-  supabase.auth.onAuthStateChange((event) => {
-    if (event === "SIGNED_OUT" || event === "SIGNED_IN") {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT") {
       resetStore()
       notifyAll()
-      if (event === "SIGNED_IN") {
-        ensureLoaded() // 로그인 직후 데이터 즉시 재조회
+      return
+    }
+
+    // 유저 세션이 있는 모든 이벤트에서 데이터 로드 시도
+    if (session?.user) {
+      if (_loadState === "idle") {
+        // 아직 로드 안 된 상태 (초기 or getUser()가 null 반환 후 재시도) → 즉시 로드
+        ensureLoaded()
+      } else if (_loadState === "loaded" && _userId !== session.user.id) {
+        // 다른 유저로 전환된 경우 → 초기화 후 재로드
+        resetStore()
+        notifyAll()
+        ensureLoaded()
       }
     }
   })

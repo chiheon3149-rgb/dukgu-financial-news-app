@@ -6,18 +6,18 @@ import { Bitcoin, TrendingUp, TrendingDown, Plus, RefreshCw, AlertCircle, Loader
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { AddCryptoSheet } from "@/components/dukgu/add-crypto-sheet"
 import { useCryptoPortfolio } from "@/hooks/use-crypto-portfolio"
+import { useExchangeRate } from "@/hooks/use-exchange-rate"
 
 const COIN_EMOJI: Record<string, string> = {
   "BTC-USD": "₿", "ETH-USD": "Ξ", "XRP-USD": "✕", "SOL-USD": "◎",
   "ADA-USD": "₳", "DOGE-USD": "Ð", "BNB-USD": "B", "AVAX-USD": "A",
 }
 
-const USD_TO_KRW = 1432
-
 export default function CryptoPage() {
+  const usdToKrw = useExchangeRate()
   const { rows, totalValueUsd, isLoadingPrices, priceError, addHolding } = useCryptoPortfolio()
   const [isCryptoSheetOpen, setIsCryptoSheetOpen] = useState(false)
-  const totalValueKrw = Math.round(totalValueUsd * USD_TO_KRW)
+  const totalValueKrw = Math.round(totalValueUsd * usdToKrw)
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32">

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Noto_Sans_KR } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from 'sonner'
 import './globals.css'
 import { BottomNav } from "@/components/dukgu/bottom-nav"
 import { UserProvider } from "@/context/user-context"
@@ -33,6 +34,7 @@ export default function RootLayout({
           {children}
           <BottomNav />
           <Analytics />
+          <Toaster position="bottom-center" richColors />
         </UserProvider>
       </body>
     </html>

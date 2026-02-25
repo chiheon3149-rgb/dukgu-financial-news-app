@@ -46,9 +46,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from("inquiries").insert(record)
     if (error) throw error
 
-    console.log("\n========== 📬 새 문의 도착 ==========")
-    console.log(`[${record.category}] ${record.title} — ${record.user_email}`)
-    console.log("====================================\n")
+    console.log(`[inquiry] 접수 완료: ${record.id} (${record.category})`)
 
     return NextResponse.json({ success: true, id: record.id })
   } catch (err) {

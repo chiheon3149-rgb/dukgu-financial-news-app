@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Building2, Plus, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 
 // =============================================================================
@@ -63,7 +64,7 @@ export default function SavingsPage() {
     const principal = parseFloat(form.principal)
     const rate = parseFloat(form.annualRate)
     if (!form.bankName.trim() || !form.startDate || !form.endDate || isNaN(principal) || isNaN(rate)) {
-      alert("은행명, 원금, 이자율, 날짜를 올바르게 입력해주세요.")
+      toast.error("은행명, 원금, 이자율, 날짜를 올바르게 입력해주세요.")
       return
     }
     const newItem: SavingsItem = {

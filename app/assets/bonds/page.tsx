@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { ScrollText, Plus, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 
 // =============================================================================
@@ -54,7 +55,7 @@ export default function BondsPage() {
     const rate = parseFloat(form.couponRate)
     const pp = parseFloat(form.purchasePrice)
     if (!form.name.trim() || isNaN(fv) || isNaN(qty) || isNaN(rate) || isNaN(pp) || !form.maturityDate) {
-      alert("모든 필수 항목을 올바르게 입력해주세요.")
+      toast.error("모든 필수 항목을 올바르게 입력해주세요.")
       return
     }
     const updated = [...items, {

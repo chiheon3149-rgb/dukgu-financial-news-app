@@ -156,6 +156,7 @@ export function useCommunity(postId?: string): UseCommunityReturn {
             .select("*")
             .eq("is_deleted", false)
             .order("published_at", { ascending: false })
+            .limit(100)
           if (error || !postRows) return
           setPosts(postRows.map(mapPost))
         }
@@ -380,15 +381,31 @@ export function useCommunity(postId?: string): UseCommunityReturn {
       })
     )
 
-    if (isToggleOff) {
-      supabase.from("community_comment_reactions").delete()
-        .eq("comment_id", commentId).eq("user_key", userKey)
-        .then(({ error }) => { if (error) console.error("[useCommunity] reactComment 취소 실패:", error) })
-    } else {
-      supabase.from("community_comment_reactions")
-        .upsert({ comment_id: commentId, user_key: userKey, reaction: type }, { onConflict: "comment_id,user_key" })
-        .then(({ error }) => { if (error) console.error("[useCommunity] reactComment 실패:", error) })
+    // community_comment_reactions upsert/delete 후 실제 카운트를 community_comments에 반영
+    const syncCounts = async () => {
+      if (isToggleOff) {
+        await supabase.from("community_comment_reactions").delete()
+          .eq("comment_id", commentId).eq("user_key", userKey)
+      } else {
+        await supabase.from("community_comment_reactions")
+          .upsert({ comment_id: commentId, user_key: userKey, reaction: type }, { onConflict: "comment_id,user_key" })
+      }
+
+      // 실제 카운트 집계 후 community_comments 테이블 업데이트 (트리거 대신 직접 계산)
+      const [{ count: likeCount }, { count: dislikeCount }] = await Promise.all([
+        supabase.from("community_comment_reactions").select("*", { count: "exact", head: true })
+          .eq("comment_id", commentId).eq("reaction", "like"),
+        supabase.from("community_comment_reactions").select("*", { count: "exact", head: true })
+          .eq("comment_id", commentId).eq("reaction", "dislike"),
+      ])
+
+      await supabase.from("community_comments").update({
+        like_count:    likeCount    ?? 0,
+        dislike_count: dislikeCount ?? 0,
+      }).eq("id", commentId)
     }
+
+    syncCounts().catch((e) => console.error("[useCommunity] reactComment 실패:", e))
   }, [userId])
 
   const reportComment = useCallback(

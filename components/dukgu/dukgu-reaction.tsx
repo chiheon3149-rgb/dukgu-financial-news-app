@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { Eye, MessageCircle } from "lucide-react"
+import { toast } from "sonner"
 import { useNewsReaction } from "@/hooks/use-news-reaction"
 import { useUser } from "@/context/user-context"
 
@@ -25,7 +26,7 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
 
   const handleReact = (type: "good" | "bad") => {
     if (!profile) {
-      alert("로그인 후 이용 가능합니다.")
+      toast.error("로그인 후 이용 가능합니다.")
       router.push("/login")
       return
     }

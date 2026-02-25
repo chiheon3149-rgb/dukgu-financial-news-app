@@ -3,13 +3,16 @@
 import { useState } from "react"
 import Link from "next/link"
 import { TrendingUp, TrendingDown, Plus, RefreshCw, AlertCircle, Loader2, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { AddTickerSheet } from "@/components/dukgu/add-ticker-sheet"
 import { useStockPortfolio } from "@/hooks/use-stock-portfolio"
 import type { StockHolding } from "@/types"
 
 export default function StocksPage() {
-  const { rows, isLoadingPrices, priceError, addHolding, removeHolding } = useStockPortfolio()
+  const usdToKrw = useExchangeRate()
+  const { rows, isLoadingPrices, priceError, addHolding, removeHolding } = useStockPortfolio(usdToKrw)
   const [isTickerSheetOpen, setIsTickerSheetOpen] = useState(false)
 
   // AddTickerSheet은 ticker/name/currency만 반환 → trades, dividends를 빈 배열로 채워 전달
@@ -18,7 +21,7 @@ export default function StocksPage() {
   }
 
   const totalValueKrw = rows.reduce((acc, row) => {
-    return acc + (row.holding.currency === "KRW" ? row.currentValue : row.currentValue * 1432)
+    return acc + (row.holding.currency === "KRW" ? row.currentValue : row.currentValue * usdToKrw)
   }, 0)
 
   return (
@@ -125,9 +128,10 @@ export default function StocksPage() {
                   {/* 삭제 버튼 (hover 시 표시) */}
                   <button
                     onClick={() => {
-                      if (window.confirm(`${holding.ticker} 종목을 삭제하시겠습니까?`)) {
-                        removeHolding(holding.ticker)
-                      }
+                      toast(`${holding.ticker} 종목을 삭제하시겠습니까?`, {
+                        action: { label: "삭제", onClick: () => removeHolding(holding.ticker) },
+                        cancel: { label: "취소" },
+                      })
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all z-10"
                   >

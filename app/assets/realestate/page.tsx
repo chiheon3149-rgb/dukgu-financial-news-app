@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Landmark, Plus, Trash2, Pencil } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import type { RealEstateHolding } from "@/types"
 
@@ -52,7 +53,7 @@ export default function RealEstatePage() {
     const acq = parseFloat(form.acquisitionPrice)
     const est = form.currentEstimatedPrice ? parseFloat(form.currentEstimatedPrice) : null
     if (!form.name.trim() || !form.acquisitionDate || isNaN(acq) || acq <= 0) {
-      alert("이름, 취득일, 취득가액을 올바르게 입력해 주세요.")
+      toast.error("이름, 취득일, 취득가액을 올바르게 입력해 주세요.")
       return
     }
     const newItem: RealEstateHolding = {

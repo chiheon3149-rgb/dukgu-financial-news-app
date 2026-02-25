@@ -59,7 +59,7 @@ export function useAssetHistory(): UseAssetHistoryReturn {
       })
     }
 
-    const today = new Date("2026-02-22")
+    const today = new Date()
     let cutoffDate: Date
 
     if (viewMode === "yesterday") {

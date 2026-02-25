@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { Plus, Trash2, ChevronDown, RefreshCw, Loader2, TrendingUp, TrendingDown } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import type { GoldHolding, TradeType } from "@/types"
 
@@ -107,7 +108,7 @@ export default function GoldPage() {
     const p = parseFloat(formPrice)
     const g = parseFloat(formGrams)
     if (!formDate || isNaN(p) || isNaN(g) || p <= 0 || g <= 0) {
-      alert("날짜, 가격, 수량을 올바르게 입력해 주세요.")
+      toast.error("날짜, 가격, 수량을 올바르게 입력해 주세요.")
       return
     }
     setHoldings((prev) => {

@@ -3,6 +3,7 @@
 import { use, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ThumbsUp, ThumbsDown, User, Loader2, MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommentSection } from "@/components/dukgu/comment-section"
 import { useCommunity } from "@/hooks/use-community"
@@ -47,16 +48,24 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  const handleDelete = async () => {
-    if (!post || !window.confirm("게시글을 삭제하시겠습니까?")) return
+  const performDelete = async () => {
+    if (!post) return
     setIsDeleting(true)
     try {
       await deletePost(post.id)
       router.replace("/community")
     } catch {
-      alert("삭제 중 오류가 발생했습니다.")
+      toast.error("삭제 중 오류가 발생했습니다.")
       setIsDeleting(false)
     }
+  }
+
+  const handleDelete = () => {
+    if (!post) return
+    toast("게시글을 삭제하시겠습니까?", {
+      action: { label: "삭제", onClick: () => performDelete() },
+      cancel: { label: "취소" },
+    })
   }
 
   if (isLoading) {

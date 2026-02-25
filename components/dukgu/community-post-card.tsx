@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ThumbsUp, ThumbsDown, MessageCircle, MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import type { CommunityPost } from "@/types"
 import { useState } from "react"
 
@@ -51,16 +52,14 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
     }
   }
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!window.confirm("게시글을 삭제하시겠습니까?")) return
     setMenuOpen(false)
-    try {
-      await onDelete?.(post.id)
-    } catch {
-      alert("삭제 중 오류가 발생했습니다.")
-    }
+    toast("게시글을 삭제하시겠습니까?", {
+      action: { label: "삭제", onClick: () => onDelete?.(post.id).catch(() => toast.error("삭제 중 오류가 발생했습니다.")) },
+      cancel: { label: "취소" },
+    })
   }
 
   return (

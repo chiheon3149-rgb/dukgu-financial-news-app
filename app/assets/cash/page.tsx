@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from "react"
 import { Banknote, Plus, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
+import { useExchangeRate } from "@/hooks/use-exchange-rate"
 
 // =============================================================================
 // 💵 /assets/cash — 현금 자산
@@ -17,7 +19,7 @@ interface CashItem {
 }
 
 const STORAGE_KEY = "dukgu:cash-holdings"
-const EXCHANGE_RATE: Record<string, number> = { KRW: 1, USD: 1432, EUR: 1550, JPY: 9.8, CNY: 198 }
+const EXCHANGE_RATE_FALLBACK: Record<string, number> = { KRW: 1, USD: 1430, EUR: 1550, JPY: 9.8, CNY: 198 }
 
 function load(): CashItem[] {
   if (typeof window === "undefined") return []
@@ -28,19 +30,25 @@ function save(items: CashItem[]) {
 }
 
 export default function CashPage() {
+  const usdToKrw = useExchangeRate()
+  const EXCHANGE_RATE = useMemo<Record<string, number>>(
+    () => ({ ...EXCHANGE_RATE_FALLBACK, USD: usdToKrw }),
+    [usdToKrw]
+  )
+
   const [items, setItems] = useState<CashItem[]>(() => load())
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [form, setForm] = useState({ label: "", currency: "KRW" as CashItem["currency"], amount: "", note: "" })
 
   const totalKrw = useMemo(() =>
     items.reduce((acc, i) => acc + i.amount * (EXCHANGE_RATE[i.currency] ?? 1), 0),
-    [items]
+    [items, EXCHANGE_RATE]
   )
 
   const handleAdd = () => {
     const amount = parseFloat(form.amount)
     if (!form.label.trim() || isNaN(amount) || amount <= 0) {
-      alert("이름과 금액을 올바르게 입력해주세요.")
+      toast.error("이름과 금액을 올바르게 입력해주세요.")
       return
     }
     const updated = [...items, { id: `cash-${Date.now()}`, label: form.label.trim(), currency: form.currency, amount, note: form.note || undefined }]

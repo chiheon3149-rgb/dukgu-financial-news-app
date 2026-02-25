@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { Zap, Calendar } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { BriefingLogCard } from "@/components/dukgu/briefing-log-card"
 import { BriefingSearchBar } from "@/components/dukgu/briefing-search-bar"
@@ -21,7 +22,7 @@ export default function BriefingPage() {
 
   const goToDetail = (id: string, mode: "US" | "KR", isReady: boolean) => {
     if (!isReady) {
-      alert("아직 리포트 배포 전이라냥! 조금만 기다려달라냥. 🐾")
+      toast("아직 리포트 배포 전이라냥! 조금만 기다려달라냥. 🐾")
       return
     }
     router.push(`/briefing/${id}?mode=${mode}`)

@@ -3,6 +3,7 @@
 import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { X, Plus, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
@@ -60,7 +61,7 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
       await updatePost(id, { title: title.trim(), content: content.trim(), tags, category })
       router.replace(`/community/${id}`)
     } catch {
-      alert("수정 중 오류가 발생했습니다.")
+      toast.error("수정 중 오류가 발생했습니다.")
       setIsSubmitting(false)
     }
   }

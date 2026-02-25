@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { ThumbsUp, ThumbsDown, Send, Check, X, Flag, AlertTriangle } from "lucide-react"
 import type { CommunityComment, CommentReportReason } from "@/types"
 
@@ -49,11 +49,28 @@ interface ReportModalState {
 
 export function CommentSection({ postId, initialComments, currentUser, onReport, onAddComment, onSaveEdit, onDeleteComment, onReact }: CommentSectionProps) {
   const [comments, setComments] = useState<CommunityComment[]>(initialComments)
+
+  // useCommunity 로드 완료 후 initialComments가 처음 세팅될 때 동기화
+  // (로컬에서 추가된 댓글을 덮어쓰지 않도록 최초 1회만 실행)
+  const initializedRef = useRef(false)
+  useEffect(() => {
+    if (initializedRef.current) return
+    if (initialComments.length > 0) {
+      initializedRef.current = true
+      setComments(initialComments)
+    }
+  }, [initialComments])
+
   const [inputText, setInputText] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState("")
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const [reactions, setReactions] = useState<Record<string, "like" | "dislike">>({})
+  const [reactions, setReactions] = useState<Record<string, "like" | "dislike">>(() => {
+    if (typeof window === "undefined") return {}
+    try {
+      return JSON.parse(localStorage.getItem(`dukgu:community_comment_reactions:${postId}`) ?? "{}")
+    } catch { return {} }
+  })
   const [reportModal, setReportModal] = useState<ReportModalState | null>(null)
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
@@ -101,13 +118,24 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
     await onDeleteComment(id)
   }
 
+  // reactions 상태 변경 + localStorage 동기화
+  const updateReactions = useCallback((updater: (prev: Record<string, "like" | "dislike">) => Record<string, "like" | "dislike">) => {
+    setReactions((prev) => {
+      const next = updater(prev)
+      try {
+        localStorage.setItem(`dukgu:community_comment_reactions:${postId}`, JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }, [postId])
+
   // 반응
   const handleReact = (id: string, type: "like" | "dislike") => {
     const prev = (reactions[id] ?? null) as "like" | "dislike" | null
     const isToggleOff = prev === type
 
     if (isToggleOff) {
-      setReactions((r) => { const n = { ...r }; delete n[id]; return n })
+      updateReactions((r) => { const n = { ...r }; delete n[id]; return n })
       setComments((cs) =>
         cs.map((c) => c.id === id ? {
           ...c,
@@ -116,7 +144,7 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
         } : c)
       )
     } else {
-      setReactions((r) => ({ ...r, [id]: type }))
+      updateReactions((r) => ({ ...r, [id]: type }))
       setComments((cs) =>
         cs.map((c) => c.id === id ? {
           ...c,
