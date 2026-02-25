@@ -81,6 +81,7 @@ export interface NewsItem {
   badCount: number
   commentCount: number
   isSaved?: boolean
+  source?: string | null
 }
 
 

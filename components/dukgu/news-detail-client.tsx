@@ -1,0 +1,249 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { Home, ExternalLink, Clock, Globe, Bookmark, Share2 } from "lucide-react"
+import { DetailHeader } from "@/components/dukgu/detail-header"
+import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
+import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
+import { DukguAiSummary } from "@/components/dukgu/dukgu-ai-summary"
+import { NewsCommentSection } from "@/components/dukgu/news-comment-section"
+import { supabase } from "@/lib/supabase"
+import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
+import { useSavedArticles } from "@/hooks/use-saved-articles"
+import { useUser } from "@/context/user-context"
+
+interface NewsDetail {
+  id: string
+  category: string
+  tags: string[]
+  headline: string
+  summary: string
+  source: string | null
+  original_url: string | null
+  content: string | null
+  ai_summary: string | null
+  published_at: string
+  good_count: number
+  bad_count: number
+  comment_count: number
+  view_count: number
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  const h = String(d.getHours()).padStart(2, "0")
+  const min = String(d.getMinutes()).padStart(2, "0")
+  return `${y}-${m}-${day} ${h}:${min}`
+}
+
+function getTimeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 60) return `${minutes}분 전`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}시간 전`
+  return `${Math.floor(hours / 24)}일 전`
+}
+
+export function NewsDetailClient({ id }: { id: string }) {
+  const router = useRouter()
+  const { profile } = useUser()
+  const [news, setNews] = useState<NewsDetail | null | undefined>(undefined)
+  const [liveViewCount, setLiveViewCount] = useState(0)
+  const [liveCommentCount, setLiveCommentCount] = useState(0)
+  const [shareCopied, setShareCopied] = useState(false)
+  const { isSaved, toggleSave } = useSavedArticles()
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("news")
+        .select("id, category, tags, headline, summary, source, original_url, content, ai_summary, published_at, good_count, bad_count, comment_count, view_count")
+        .eq("id", id)
+        .single()
+      setNews(data ?? null)
+      if (data) {
+        const newViewCount = (data.view_count ?? 0) + 1
+        setLiveViewCount(newViewCount)
+        setLiveCommentCount(data.comment_count ?? 0)
+        await supabase.from("news").update({ view_count: newViewCount }).eq("id", id)
+      }
+    }
+    load()
+  }, [id])
+
+  const isBookmarked = news ? isSaved(news.id) : false
+
+  const toggleBookmark = () => {
+    if (!profile) {
+      toast.error("로그인 후 북마크를 사용할 수 있습니다.")
+      router.push("/login")
+      return
+    }
+    if (!news) return
+    const tags: string[] = Array.isArray(news.tags) ? news.tags : []
+    toggleSave(news.id, {
+      headline: news.headline,
+      category: news.category as any,
+      timeAgo: getTimeAgo(news.published_at),
+      tags,
+    })
+    if (!isBookmarked) toast.success("간식 창고(북마크)에 저장했다냥! 🐾")
+  }
+
+  const handleShare = async () => {
+    if (!news) return
+    const url = window.location.href
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: news.headline,
+          text: news.summary ?? undefined,
+          url,
+        })
+      } catch {
+        // 사용자가 취소한 경우 무시
+      }
+    } else {
+      await navigator.clipboard.writeText(url)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    }
+  }
+
+  if (news === undefined) {
+    return (
+      <div className="min-h-dvh bg-white">
+        <DetailHeader title="뉴스 상세" />
+        <div className="flex items-center justify-center h-60 text-slate-400 text-sm animate-pulse">
+          뉴스 불러오는 중...
+        </div>
+      </div>
+    )
+  }
+
+  if (!news) {
+    return (
+      <div className="min-h-dvh bg-white">
+        <DetailHeader title="뉴스 상세" />
+        <div className="flex items-center justify-center h-60 text-slate-400 text-sm">
+          뉴스를 찾을 수 없습니다.
+        </div>
+      </div>
+    )
+  }
+
+  const tags: string[] = Array.isArray(news.tags) ? news.tags : []
+
+  return (
+    <div className="min-h-dvh bg-white pb-24">
+      <DetailHeader
+        title="뉴스 상세"
+        rightElement={
+          <Link href="/" className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
+            <Home className="w-5 h-5 text-slate-800" />
+          </Link>
+        }
+      />
+
+      <main className="max-w-md mx-auto px-5 py-6">
+
+        {/* 카테고리 + 태그 */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+            {news.category}
+          </span>
+          <div className="flex items-center gap-1.5">
+            {tags.map((tag) => (
+              <span key={tag} className="text-[11px] font-bold text-blue-400">
+                {tag.startsWith("#") ? tag : `#${tag}`}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* 헤드라인 + 원문/북마크/공유 버튼 */}
+        <div className="flex justify-between items-start gap-4 mb-3">
+          <h2 className="text-xl font-extrabold text-slate-900 leading-tight break-keep">
+            {news.headline}
+          </h2>
+          <div className="flex flex-col gap-2 shrink-0">
+            {news.original_url && (
+              <a
+                href={news.original_url.startsWith("http") ? news.original_url : `https://${news.original_url}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 hover:bg-slate-200 transition-colors"
+              >
+                원문보기 <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+            <button
+              onClick={toggleBookmark}
+              className={`flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                isBookmarked
+                  ? "bg-blue-500 text-white shadow-sm"
+                  : "bg-white border border-slate-200 text-slate-400 hover:border-slate-300"
+              }`}
+            >
+              <Bookmark className={`w-3 h-3 ${isBookmarked ? "fill-white" : ""}`} />
+              {isBookmarked ? "저장됨" : "저장하기"}
+            </button>
+            <button
+              onClick={handleShare}
+              className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-white border border-slate-200 text-slate-400 hover:border-slate-300"
+            >
+              <Share2 className="w-3 h-3" />
+              {shareCopied ? "복사됨!" : "공유하기"}
+            </button>
+          </div>
+        </div>
+
+        {/* 출처 + 시간 */}
+        <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium mb-8">
+          {news.source && (
+            <span className="flex items-center gap-1">
+              <Globe className="w-3 h-3" /> {news.source}
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3" /> {formatDate(news.published_at)}
+          </span>
+        </div>
+
+        {/* AI 요약 — ai_summary 있을 때만 표시 */}
+        {news.ai_summary && <DukguAiSummary summary={news.ai_summary} />}
+
+        {/* 본문 — content 있으면 본문, 없으면 summary 대체 */}
+        <article className="text-[15px] text-slate-600 leading-relaxed whitespace-pre-wrap font-medium mb-8">
+          {news.content ?? news.summary}
+        </article>
+
+        <AiDisclaimer />
+
+        <DukguReaction
+          initialGood={news.good_count}
+          initialBad={news.bad_count}
+          viewCount={liveViewCount}
+          commentCount={liveCommentCount}
+          newsId={news.id}
+          snapshot={{ headline: news.headline, category: news.category, timeAgo: getTimeAgo(news.published_at) }}
+        />
+
+        <NewsCommentSection
+          newsId={id}
+          onCountChange={(count) => {
+            setLiveCommentCount(count)
+            updateCachedCommentCountInFeed(id, count)
+          }}
+        />
+      </main>
+    </div>
+  )
+}

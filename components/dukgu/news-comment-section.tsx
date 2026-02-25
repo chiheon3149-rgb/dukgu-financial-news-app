@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ThumbsUp, ThumbsDown, Send, Check, X, Flag } from "lucide-react"
+import { toast } from "sonner"
 import type { CommentReportReason } from "@/types"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@/context/user-context"
@@ -96,7 +97,7 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
     e.preventDefault()
     if (!inputText.trim()) return
     if (!profile) {
-      alert("로그인 후 댓글을 남길 수 있습니다.")
+      toast.error("로그인 후 댓글을 남길 수 있습니다.")
       router.push("/login")
       return
     }
@@ -130,8 +131,7 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
     setEditingId(null)
   }
 
-  const deleteComment = async (id: string) => {
-    if (!window.confirm("댓글을 삭제하시겠습니까?")) return
+  const performDeleteComment = async (id: string) => {
     await supabase.from("news_comments").delete().eq("id", id)
     setComments(prev => {
       const next = prev.filter(c => c.id !== id)
@@ -140,6 +140,13 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
     })
     await supabase.rpc("decrement_news_comment_count", { target_news_id: newsId })
     setOpenMenuId(null)
+  }
+
+  const deleteComment = (id: string) => {
+    toast("댓글을 삭제하시겠습니까?", {
+      action: { label: "삭제", onClick: () => performDeleteComment(id) },
+      cancel: { label: "취소" },
+    })
   }
 
   const handleReact = async (id: string, type: "like" | "dislike") => {

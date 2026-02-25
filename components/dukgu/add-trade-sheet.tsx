@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { X, Plus } from "lucide-react"
+import { toast } from "sonner"
 import type { TradeRecord, TradeType } from "@/types"
 
 // =============================================================================
@@ -33,7 +34,7 @@ export function AddTradeSheet({ isOpen, currency, onClose, onSubmit }: AddTradeS
     const p = parseFloat(price)
     const q = parseFloat(quantity)
     if (!date || isNaN(p) || isNaN(q) || p <= 0 || q <= 0) {
-      alert("날짜, 매매가, 수량을 올바르게 입력해 주세요.")
+      toast.error("날짜, 매매가, 수량을 올바르게 입력해 주세요.")
       return
     }
     onSubmit({ type, date, price: p, quantity: q, memo: memo || undefined })

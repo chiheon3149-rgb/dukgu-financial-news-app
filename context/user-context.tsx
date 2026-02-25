@@ -36,6 +36,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const isLoadingRef = useRef(false)
+  // profile의 최신값을 동기적으로 읽기 위한 ref (addXp 반환값 동기화용)
+  const profileRef = useRef<UserProfile | null>(null)
 
   // 로그인한 유저 정보 불러오기
   useEffect(() => {
@@ -125,6 +127,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  // profileRef를 항상 최신 profile로 동기화
+  useEffect(() => { profileRef.current = profile }, [profile])
+
   const currentLevel = useMemo(
     () => getLevelMeta(profile?.totalXp ?? 0),
     [profile?.totalXp]
@@ -143,39 +148,40 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const addXp = useCallback(
     (source: XpSource, amount: number, label: string): XpResult => {
-      let result: XpResult = { newTotalXp: 0, leveledUp: false, newLevel: 1 }
+      // profileRef.current로 동기적으로 현재 프로필 읽기 → setProfile updater 비동기 실행 문제 해결
+      const prev = profileRef.current
+      if (!prev) return { newTotalXp: 0, leveledUp: false, newLevel: 1 }
 
-      setProfile((prev) => {
-        if (!prev) return prev
-        const newTotalXp = prev.totalXp + amount
-        const prevLevel = getLevelMeta(prev.totalXp)
-        const afterLevel = getLevelMeta(newTotalXp)
+      const newTotalXp = prev.totalXp + amount
+      const prevLevel = getLevelMeta(prev.totalXp)
+      const afterLevel = getLevelMeta(newTotalXp)
 
-        result = {
-          newTotalXp,
-          leveledUp: afterLevel.level > prevLevel.level,
-          newLevel: afterLevel.level,
-        }
+      const result: XpResult = {
+        newTotalXp,
+        leveledUp: afterLevel.level > prevLevel.level,
+        newLevel: afterLevel.level,
+      }
 
-        const event: XpEvent = {
-          id: `xp-${Date.now()}`,
-          source,
-          amount,
-          label,
-          earnedAt: new Date().toISOString(),
-        }
+      const event: XpEvent = {
+        id: `xp-${Date.now()}`,
+        source,
+        amount,
+        label,
+        earnedAt: new Date().toISOString(),
+      }
 
-        // Supabase에도 저장
+      setProfile((p) => {
+        if (!p) return p
+        const actualNewXp = p.totalXp + amount
         supabase.from("xp_events").insert({
-          user_id: prev.id,
+          user_id: p.id,
           source,
           amount,
           label,
           earned_at: event.earnedAt,
         })
-        supabase.from("profiles").update({ total_xp: newTotalXp }).eq("id", prev.id)
-
-        return { ...prev, totalXp: newTotalXp, xpHistory: [event, ...prev.xpHistory] }
+        supabase.from("profiles").update({ total_xp: actualNewXp }).eq("id", p.id)
+        return { ...p, totalXp: actualNewXp, xpHistory: [event, ...p.xpHistory] }
       })
 
       return result

@@ -28,6 +28,8 @@ const _store = new Map<string, ReactionEntry>()
 const _listeners = new Map<string, Set<() => void>>()
 // 유저가 직접 반응한 newsId 추적 — DB 조회가 낙관적 업데이트를 덮어쓰지 않도록
 const _interacted = new Set<string>()
+// 마지막 반응 타임스탬프 — 서버 카운트 싱크 시 더 최신 반응이 있으면 건드리지 않음
+const _lastInteractionTime = new Map<string, number>()
 
 function notify(newsId: string) {
   _listeners.get(newsId)?.forEach((fn) => fn())
@@ -37,8 +39,6 @@ function notify(newsId: string) {
 const DEVICE_KEY_STORAGE = "dukgu_device_id"
 
 function generateId(): string {
-  // crypto.randomUUID()는 HTTPS 또는 localhost에서만 동작
-  // HTTP + IP 접속(로컬 네트워크 테스트) 시 폴백
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID()
   }
@@ -97,6 +97,17 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
     }
   }, [newsId])
 
+  // [핵심 버그 수정 1] initialGood/initialBad가 비동기로 늦게 도착하거나 변경될 때
+  // 사용자가 직접 반응하지 않은 뉴스에 한해 store를 props 값으로 동기화
+  useEffect(() => {
+    if (_interacted.has(newsId)) return  // 유저가 직접 반응한 항목은 건드리지 않음
+    const current = _store.get(newsId)
+    if (!current) return
+    if (current.good === initialGood && current.bad === initialBad) return  // 이미 동기화됨
+    _store.set(newsId, { ...current, good: initialGood, bad: initialBad })
+    notify(newsId)
+  }, [newsId, initialGood, initialBad])
+
   // DB에서 유저 반응 조회 (userId가 바뀔 때마다 재조회)
   const lastFetchedUserKeyRef = useRef<string | null>(null)
 
@@ -112,13 +123,10 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       .eq("user_id", userKey)
       .maybeSingle()
       .then(({ data }) => {
-        // 유저가 이미 직접 반응했으면 DB 조회 결과로 덮어쓰지 않음
         if (_interacted.has(newsId)) return
         const current = _store.get(newsId)
         if (!current) return
         const dbReaction = (data?.type as UserReaction) ?? null
-        // DB가 null을 반환해도 localStorage 캐시를 유지 (RLS/upsert 실패 대비)
-        // DB에 실제 반응이 있으면 DB를 우선
         const reaction = dbReaction !== null ? dbReaction : getCachedReaction(newsId)
         if (current.userReaction !== reaction) {
           _store.set(newsId, { ...current, userReaction: reaction })
@@ -136,7 +144,10 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       if (!current) return
 
       const userKey = userId ?? getOrCreateDeviceKey()
-      _interacted.add(newsId) // 이후 DB 조회가 낙관적 업데이트를 덮어쓰지 않도록 마킹
+      // 이 타임스탬프로 서버 응답이 돌아올 때 최신 반응인지 확인
+      const interactionTime = Date.now()
+      _interacted.add(newsId)
+      _lastInteractionTime.set(newsId, interactionTime)
 
       // Toggle OFF: 같은 반응을 다시 누르면 취소
       if (current.userReaction === type) {
@@ -147,8 +158,12 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
         notify(newsId)
         updateCachedReactionInFeed(newsId, newGood, newBad)
         updateCachedReactionInSaved(newsId, null)
+
         await supabase.from("news_reactions").delete()
           .eq("news_id", newsId).eq("user_id", userKey)
+
+        // [핵심 버그 수정 3] 서버 실제 카운트로 최종 동기화
+        await syncServerCounts(newsId, interactionTime)
         return
       }
 
@@ -183,10 +198,41 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
           },
           { onConflict: "news_id,user_id" }
         )
+
+      // [핵심 버그 수정 3] 서버 실제 카운트로 최종 동기화
+      await syncServerCounts(newsId, interactionTime)
     },
     [newsId, userId]
   )
 
   const state = _store.get(newsId) ?? { good: initialGood, bad: initialBad, userReaction: null }
   return { good: state.good, bad: state.bad, userReaction: state.userReaction, react }
+}
+
+// news_reactions에서 실제 카운트를 집계해 news 테이블에 반영
+// 단, 더 최신의 반응이 있으면 store를 건드리지 않음 (낙관적 업데이트 보호)
+async function syncServerCounts(newsId: string, interactionTime: number) {
+  // news_reactions에서 실제 good/bad 카운트 집계 (트리거 대신 직접 계산)
+  const [{ count: goodCount }, { count: badCount }] = await Promise.all([
+    supabase.from("news_reactions").select("*", { count: "exact", head: true })
+      .eq("news_id", newsId).eq("type", "good"),
+    supabase.from("news_reactions").select("*", { count: "exact", head: true })
+      .eq("news_id", newsId).eq("type", "bad"),
+  ])
+
+  const actualGood = goodCount ?? 0
+  const actualBad  = badCount  ?? 0
+
+  // news 테이블에 실제 카운트 반영 (DB 트리거가 없으므로 직접 업데이트)
+  await supabase.from("news").update({ good_count: actualGood, bad_count: actualBad }).eq("id", newsId)
+
+  // 이 반응 이후 더 최신 반응이 생겼으면 store를 덮어쓰지 않음
+  if (_lastInteractionTime.get(newsId) !== interactionTime) return
+
+  const current = _store.get(newsId)
+  if (!current) return
+
+  _store.set(newsId, { ...current, good: actualGood, bad: actualBad })
+  notify(newsId)
+  updateCachedReactionInFeed(newsId, actualGood, actualBad)
 }

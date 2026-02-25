@@ -3,6 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { TrendingUp, TrendingDown, Plus, RefreshCw, AlertCircle, Loader2, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { AddTickerSheet } from "@/components/dukgu/add-ticker-sheet"
 import { useStockPortfolio } from "@/hooks/use-stock-portfolio"
@@ -127,9 +129,10 @@ export default function StocksPage() {
                   {/* 삭제 버튼 (hover 시 표시) */}
                   <button
                     onClick={() => {
-                      if (window.confirm(`${holding.ticker} 종목을 삭제하시겠습니까?`)) {
-                        removeHolding(holding.ticker)
-                      }
+                      toast(`${holding.ticker} 종목을 삭제하시겠습니까?`, {
+                        action: { label: "삭제", onClick: () => removeHolding(holding.ticker) },
+                        cancel: { label: "취소", onClick: () => {} }, // 👈 수정된 포인트
+                      })
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all z-10"
                   >

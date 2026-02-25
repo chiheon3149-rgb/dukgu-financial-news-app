@@ -40,6 +40,7 @@ function toNewsItem(row: any): NewsItem {
     goodCount: row.good_count ?? 0,
     badCount: row.bad_count ?? 0,
     commentCount: row.comment_count ?? 0,
+    source: row.source ?? null,
   }
 }
 

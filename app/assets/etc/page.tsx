@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Package, Plus, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 
 // =============================================================================
@@ -42,7 +43,7 @@ export default function EtcPage() {
     const pp = parseFloat(form.purchasePrice)
     const cp = parseFloat(form.currentPrice)
     if (!form.name.trim() || isNaN(pp) || isNaN(cp)) {
-      alert("이름, 매입가, 현재가를 올바르게 입력해주세요."); return
+      toast.error("이름, 매입가, 현재가를 올바르게 입력해주세요."); return
     }
     const updated = [...items, {
       id: `etc-${Date.now()}`, name: form.name.trim(), category: form.category,

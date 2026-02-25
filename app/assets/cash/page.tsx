@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Banknote, Plus, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { useExchangeRate } from "@/hooks/use-exchange-rate"
 
@@ -46,7 +47,7 @@ export default function CashPage() {
   const handleAdd = () => {
     const amount = parseFloat(form.amount)
     if (!form.label.trim() || isNaN(amount) || amount <= 0) {
-      alert("이름과 금액을 올바르게 입력해주세요.")
+      toast.error("이름과 금액을 올바르게 입력해주세요.")
       return
     }
     const updated = [...items, { id: `cash-${Date.now()}`, label: form.label.trim(), currency: form.currency, amount, note: form.note || undefined }]
