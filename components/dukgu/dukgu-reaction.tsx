@@ -38,43 +38,70 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
   const badPercent = total === 0 ? 50 : 100 - goodPercent
 
   return (
-    <div className="py-6 border-y border-slate-100 my-6">
-      <div className="flex items-center justify-center gap-4 text-xs font-semibold text-slate-400 mb-6">
-        <span className="flex items-center gap-1"><Eye className="w-4 h-4" /> 조회 {viewCount.toLocaleString()}</span>
-        <span className="flex items-center gap-1"><MessageCircle className="w-4 h-4" /> 댓글 {commentCount.toLocaleString()}</span>
+    <div className="py-8 border-y border-slate-50 my-8">
+      {/* 1. 상단 정보 (조회/댓글) */}
+      <div className="flex items-center justify-center gap-4 text-[11px] font-bold text-slate-400 mb-8 tracking-tight">
+        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 rounded-full">
+          <Eye className="w-3.5 h-3.5" /> 조회 {viewCount.toLocaleString()}
+        </span>
+        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 rounded-full">
+          <MessageCircle className="w-3.5 h-3.5" /> 댓글 {commentCount.toLocaleString()}
+        </span>
       </div>
 
-      <div className="flex items-center justify-center gap-8">
-        <div className="flex flex-col items-center gap-2">
+      {/* 2. 메인 리액션 컨트롤러 */}
+      <div className="flex items-center justify-center gap-6">
+        
+        {/* 👍 맛있다냥 영역 */}
+        <div className="flex flex-col items-center gap-3 min-w-[80px]">
           <button
             onClick={() => handleReact("good")}
-            className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "good" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
+            className={`text-4xl transition-all active:scale-90 hover:scale-110 
+              ${userReaction === "good" 
+                ? "drop-shadow-[0_4px_10px_rgba(16,185,129,0.4)] saturate-150" 
+                : "opacity-40 grayscale hover:grayscale-0 hover:opacity-100"}`}
           >
             🍲
           </button>
           <div className="text-center">
-            <p className={`text-sm font-extrabold ${userReaction === "good" ? "text-blue-600" : "text-slate-500"}`}>맛있다냥!</p>
-            <p className="text-xs font-medium text-slate-400">{goodPercent}% ({good})</p>
+            <p className={`text-[13px] font-black transition-colors ${userReaction === "good" ? "text-emerald-600" : "text-slate-500"}`}>
+              맛있다냥!
+            </p>
+            <p className="text-[11px] font-bold text-slate-400 mt-0.5">{goodPercent}% ({good})</p>
           </div>
         </div>
 
-        <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden flex shadow-inner mt-2">
-          <div className="bg-blue-500 h-full transition-all duration-500" style={{ width: `${goodPercent}%` }} />
-          <div className="bg-red-400 h-full transition-all duration-500" style={{ width: `${badPercent}%` }} />
+        {/* 📊 중앙 진행 바 (민트 vs 로즈) */}
+        <div className="flex-1 max-w-[120px] h-3 bg-slate-100 rounded-full overflow-hidden flex shadow-inner relative ring-4 ring-slate-50">
+          <div 
+            className="bg-emerald-500 h-full transition-all duration-700 ease-out shadow-[1px_0_4px_rgba(0,0,0,0.1)]" 
+            style={{ width: `${goodPercent}%` }} 
+          />
+          <div 
+            className="bg-rose-400 h-full transition-all duration-700 ease-out" 
+            style={{ width: `${badPercent}%` }} 
+          />
         </div>
 
-        <div className="flex flex-col items-center gap-2">
+        {/* 🍽️ 배고프냥 영역 */}
+        <div className="flex flex-col items-center gap-3 min-w-[80px]">
           <button
             onClick={() => handleReact("bad")}
-            className={`text-4xl transition-transform active:scale-90 hover:scale-110 ${userReaction === "bad" ? "drop-shadow-md" : "opacity-50 grayscale"}`}
+            className={`text-4xl transition-all active:scale-90 hover:scale-110 
+              ${userReaction === "bad" 
+                ? "drop-shadow-[0_4px_10px_rgba(244,63,94,0.4)] saturate-150" 
+                : "opacity-40 grayscale hover:grayscale-0 hover:opacity-100"}`}
           >
             🍽️
           </button>
           <div className="text-center">
-            <p className={`text-sm font-extrabold ${userReaction === "bad" ? "text-red-500" : "text-slate-500"}`}>배고프냥!</p>
-            <p className="text-xs font-medium text-slate-400">{badPercent}% ({bad})</p>
+            <p className={`text-[13px] font-black transition-colors ${userReaction === "bad" ? "text-rose-500" : "text-slate-500"}`}>
+              배고프냥...
+            </p>
+            <p className="text-[11px] font-bold text-slate-400 mt-0.5">{badPercent}% ({bad})</p>
           </div>
         </div>
+
       </div>
     </div>
   )

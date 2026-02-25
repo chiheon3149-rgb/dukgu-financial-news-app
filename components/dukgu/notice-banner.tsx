@@ -33,9 +33,11 @@ export function NoticeBanner() {
 
   return (
     <Link href={href} className="block">
-      <div className="bg-blue-50/60 border border-blue-100/80 rounded-xl p-3.5 flex items-center gap-3 shadow-sm transition-all hover:bg-blue-50 cursor-pointer">
-        <Bell className="w-4 h-4 text-blue-600 animate-pulse shrink-0" />
-        <p className="text-[13px] font-bold text-blue-900 leading-snug tracking-tight">
+      {/* 🍃 블루에서 민트(Emerald) 계열로 변경하여 전체 톤앤매너를 맞췄습니다. */}
+      <div className="bg-emerald-50/60 border border-emerald-100/80 rounded-xl p-3.5 flex items-center gap-3 shadow-sm transition-all hover:bg-emerald-100/50 cursor-pointer active:scale-[0.98]">
+        {/* 아이콘도 민트색으로! animate-pulse는 유지하여 주목도를 높였습니다. */}
+        <Bell className="w-4 h-4 text-emerald-600 animate-pulse shrink-0" />
+        <p className="text-[13px] font-bold text-emerald-900 leading-snug tracking-tight">
           {notice.title}
         </p>
       </div>

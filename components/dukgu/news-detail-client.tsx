@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Home, ExternalLink, Clock, Globe, Bookmark, Share2 } from "lucide-react"
+import { Home, ExternalLink, Clock, Globe, Bookmark, Share2, Loader2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
 import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
@@ -67,12 +67,15 @@ export function NewsDetailClient({ id }: { id: string }) {
         .select("id, category, tags, headline, summary, source, original_url, content, ai_summary, published_at, good_count, bad_count, comment_count, view_count")
         .eq("id", id)
         .single()
+      
       setNews(data ?? null)
+      
       if (data) {
-        const newViewCount = (data.view_count ?? 0) + 1
-        setLiveViewCount(newViewCount)
+        setLiveViewCount((data.view_count ?? 0) + 1)
         setLiveCommentCount(data.comment_count ?? 0)
-        await supabase.from("news").update({ view_count: newViewCount }).eq("id", id)
+        
+        // 🚀 [최적화] 단순히 update하는 대신 RPC를 사용하여 동시 접속 시에도 정확한 카운팅 보장
+        await supabase.rpc('increment_view_count', { row_id: id })
       }
     }
     load()
@@ -107,22 +110,23 @@ export function NewsDetailClient({ id }: { id: string }) {
           text: news.summary ?? undefined,
           url,
         })
-      } catch {
-        // 사용자가 취소한 경우 무시
-      }
+      } catch {}
     } else {
       await navigator.clipboard.writeText(url)
       setShareCopied(true)
+      toast.success("링크가 복사되었습니다!")
       setTimeout(() => setShareCopied(false), 2000)
     }
   }
 
+  // 로딩 상태 (민트색 스피너 추가)
   if (news === undefined) {
     return (
       <div className="min-h-dvh bg-white">
         <DetailHeader title="뉴스 상세" />
-        <div className="flex items-center justify-center h-60 text-slate-400 text-sm animate-pulse">
-          뉴스 불러오는 중...
+        <div className="flex flex-col items-center justify-center h-80 gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+          <p className="text-slate-400 text-xs font-medium">덕구가 뉴스를 가져오고 있다냥...</p>
         </div>
       </div>
     )
@@ -132,7 +136,7 @@ export function NewsDetailClient({ id }: { id: string }) {
     return (
       <div className="min-h-dvh bg-white">
         <DetailHeader title="뉴스 상세" />
-        <div className="flex items-center justify-center h-60 text-slate-400 text-sm">
+        <div className="flex items-center justify-center h-60 text-slate-400 text-sm font-medium">
           뉴스를 찾을 수 없습니다.
         </div>
       </div>
@@ -140,37 +144,43 @@ export function NewsDetailClient({ id }: { id: string }) {
   }
 
   const tags: string[] = Array.isArray(news.tags) ? news.tags : []
+  const isDukguPick = news.source === "덕구"
 
   return (
     <div className="min-h-dvh bg-white pb-24">
       <DetailHeader
         title="뉴스 상세"
         rightElement={
-          <Link href="/" className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
-            <Home className="w-5 h-5 text-slate-800" />
+          <Link href="/" className="p-1.5 hover:bg-emerald-50 rounded-full transition-colors group">
+            <Home className="w-5 h-5 text-slate-800 group-hover:text-emerald-600" />
           </Link>
         }
       />
 
       <main className="max-w-md mx-auto px-5 py-6">
 
-        {/* 카테고리 + 태그 */}
+        {/* 카테고리 + 태그 (민트 테마 적용) */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tight">
             {news.category}
           </span>
+          {isDukguPick && (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-600 text-white tracking-tight">
+              덕구 픽
+            </span>
+          )}
           <div className="flex items-center gap-1.5">
             {tags.map((tag) => (
-              <span key={tag} className="text-[11px] font-bold text-blue-400">
+              <span key={tag} className="text-[11px] font-bold text-emerald-500/80 tracking-tight">
                 {tag.startsWith("#") ? tag : `#${tag}`}
               </span>
             ))}
           </div>
         </div>
 
-        {/* 헤드라인 + 원문/북마크/공유 버튼 */}
+        {/* 헤드라인 + 액션 버튼 그룹 */}
         <div className="flex justify-between items-start gap-4 mb-3">
-          <h2 className="text-xl font-extrabold text-slate-900 leading-tight break-keep">
+          <h2 className="text-xl font-extrabold text-slate-900 leading-tight break-keep tracking-tight">
             {news.headline}
           </h2>
           <div className="flex flex-col gap-2 shrink-0">
@@ -179,7 +189,7 @@ export function NewsDetailClient({ id }: { id: string }) {
                 href={news.original_url.startsWith("http") ? news.original_url : `https://${news.original_url}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 hover:bg-slate-200 transition-colors"
+                className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors border border-transparent hover:border-emerald-100"
               >
                 원문보기 <ExternalLink className="w-3 h-3" />
               </a>
@@ -188,8 +198,8 @@ export function NewsDetailClient({ id }: { id: string }) {
               onClick={toggleBookmark}
               className={`flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
                 isBookmarked
-                  ? "bg-blue-500 text-white shadow-sm"
-                  : "bg-white border border-slate-200 text-slate-400 hover:border-slate-300"
+                  ? "bg-emerald-500 text-white shadow-md transform scale-105"
+                  : "bg-white border border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-500"
               }`}
             >
               <Bookmark className={`w-3 h-3 ${isBookmarked ? "fill-white" : ""}`} />
@@ -197,7 +207,7 @@ export function NewsDetailClient({ id }: { id: string }) {
             </button>
             <button
               onClick={handleShare}
-              className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-white border border-slate-200 text-slate-400 hover:border-slate-300"
+              className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-white border border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-500"
             >
               <Share2 className="w-3 h-3" />
               {shareCopied ? "복사됨!" : "공유하기"}
@@ -217,25 +227,33 @@ export function NewsDetailClient({ id }: { id: string }) {
           </span>
         </div>
 
-        {/* AI 요약 — ai_summary 있을 때만 표시 */}
-        {news.ai_summary && <DukguAiSummary summary={news.ai_summary} />}
+        {/* AI 요약 */}
+        {news.ai_summary && (
+          <div className="mb-8">
+            <DukguAiSummary summary={news.ai_summary} />
+          </div>
+        )}
 
-        {/* 본문 — content 있으면 본문, 없으면 summary 대체 */}
-        <article className="text-[15px] text-slate-600 leading-relaxed whitespace-pre-wrap font-medium mb-8">
+        {/* 본문 기사 */}
+        <article className="text-[15px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium mb-10 break-keep">
           {news.content ?? news.summary}
         </article>
 
         <AiDisclaimer />
 
-        <DukguReaction
-          initialGood={news.good_count}
-          initialBad={news.bad_count}
-          viewCount={liveViewCount}
-          commentCount={liveCommentCount}
-          newsId={news.id}
-          snapshot={{ headline: news.headline, category: news.category, timeAgo: getTimeAgo(news.published_at) }}
-        />
+        {/* 반응 섹션 (좋아요/싫어요) */}
+        <div className="my-10 border-t border-b border-slate-50 py-6">
+          <DukguReaction
+            initialGood={news.good_count}
+            initialBad={news.bad_count}
+            viewCount={liveViewCount}
+            commentCount={liveCommentCount}
+            newsId={news.id}
+            snapshot={{ headline: news.headline, category: news.category, timeAgo: getTimeAgo(news.published_at) }}
+          />
+        </div>
 
+        {/* 댓글 섹션 */}
         <NewsCommentSection
           newsId={id}
           onCountChange={(count) => {

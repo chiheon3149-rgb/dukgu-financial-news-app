@@ -80,6 +80,7 @@ export interface NewsItem {
   goodCount: number
   badCount: number
   commentCount: number
+  viewCount: number // 👈 [핵심 추가] 500명 동시접속 대비 조회수 정렬을 위해 추가되었습니다.
   isSaved?: boolean
   source?: string | null
 }

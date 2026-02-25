@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 
-// JPYKRW=X (엔화) 추가
 const SYMBOL_ORDER = ["^DJI", "^NDX", "^GSPC", "^RUT", "^KS11", "^KQ11", "KRW=X", "JPYKRW=X"]
 
 interface IndexQuote {
@@ -47,10 +46,7 @@ function IndexChip({ index, fresh }: { index: IndexQuote; fresh: boolean }) {
   const isUp = index.changeStatus === "up"
   const isDown = index.changeStatus === "down"
 
-  // 💡 센스 추가: 엔화(JPYKRW=X)면 100엔 기준으로 100을 곱해서 보여줍니다. (ex: 9.05 -> 905원)
   const displayPrice = index.symbol === "JPYKRW=X" ? index.price * 100 : index.price;
-  
-  // 이름도 센스있게 변경
   const displayName = index.symbol === "JPYKRW=X" ? "엔/원(100엔)" : index.name;
 
   const priceStr =
@@ -69,7 +65,8 @@ function IndexChip({ index, fresh }: { index: IndexQuote; fresh: boolean }) {
     >
       <span className="text-[11px] font-medium text-slate-500">{displayName}</span>
       <span className="text-[12px] font-bold text-slate-800 tracking-tight">{priceStr}</span>
-      <span className={`text-[11px] font-semibold ${isUp ? "text-rose-500" : isDown ? "text-blue-500" : "text-slate-400"}`}>
+      {/* 💡 [수정] 상승은 민트(emerald), 하락은 장미빛(rose)으로 변경하여 가독성 강화 */}
+      <span className={`text-[11px] font-semibold ${isUp ? "text-emerald-500" : isDown ? "text-rose-500" : "text-slate-400"}`}>
         {rateStr}
       </span>
     </div>
@@ -83,7 +80,6 @@ export function TickerBar() {
   const [fresh, setFresh] = useState(false)
   const freshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   
-  // 스크롤 및 드래그 관련 상태
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const isHovered = useRef(false)
@@ -135,14 +131,12 @@ export function TickerBar() {
     }
   }, [])
 
-  // 💡 마법의 '자동 롤링' 애니메이션 (JS requestAnimationFrame 사용)
   useEffect(() => {
     let animationId: number;
     const scroll = () => {
       if (scrollRef.current && !isDragging && !isHovered.current) {
-        scrollRef.current.scrollLeft += 1; // 1px씩 우에서 좌로 이동 (속도 조절 가능)
+        scrollRef.current.scrollLeft += 0.8; // 속도를 살짝 늦춰서 가독성 확보
         
-        // 무한 스크롤 트릭: 절반(원본 데이터 길이)만큼 스크롤되면 다시 0으로 몰래 되돌림
         if (scrollRef.current.scrollLeft >= scrollRef.current.scrollWidth / 2) {
           scrollRef.current.scrollLeft = 0;
         }
@@ -150,14 +144,12 @@ export function TickerBar() {
       animationId = requestAnimationFrame(scroll);
     }
     
-    // 데이터가 있을 때만 애니메이션 시작
     if (hasData) {
       animationId = requestAnimationFrame(scroll);
     }
     return () => cancelAnimationFrame(animationId);
   }, [isDragging, hasData]);
 
-  // 마우스 & 터치 드래그 이벤트 핸들러
   const handleDragStart = (pageX: number) => {
     if (!scrollRef.current) return
     setIsDragging(true)
@@ -168,13 +160,12 @@ export function TickerBar() {
   const handleDragMove = (pageX: number) => {
     if (!isDragging || !scrollRef.current) return
     const x = pageX - scrollRef.current.offsetLeft
-    const walk = (x - startX.current) * 1.5 // 드래그 감도 조절
+    const walk = (x - startX.current) * 1.5 
     scrollRef.current.scrollLeft = scrollLeft.current - walk
   }
 
   const handleDragEnd = () => setIsDragging(false)
 
-  // 무한 롤링을 위해 아이템을 2배로 복제하여 배치
   const tickerItems = useMemo(() => [...indices, ...indices], [indices])
 
   if (failed) return null
@@ -184,25 +175,24 @@ export function TickerBar() {
     <>
       <style>{`
         .hide-scrollbar {
-          -ms-overflow-style: none;  /* IE and Edge */
-          scrollbar-width: none;  /* Firefox */
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
         .hide-scrollbar::-webkit-scrollbar {
-          display: none; /* Chrome, Safari and Opera */
+          display: none;
         }
       `}</style>
 
       <div className="bg-white border-b border-slate-200 h-9 flex items-center relative w-full overflow-hidden">
-        {/* 'On' 고정 레이블 */}
+        {/* 'On' 고정 레이블 (민트 포인트) */}
         <div className="flex items-center px-3 bg-white z-20 h-full border-r border-slate-200 shadow-[4px_0_8px_rgba(0,0,0,0.03)] shrink-0">
           <span className="relative flex h-1.5 w-1.5 mr-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
           </span>
-          <span className="text-[11px] font-black text-slate-700 tracking-tighter whitespace-nowrap">On</span>
+          <span className="text-[11px] font-black text-slate-700 tracking-tighter whitespace-nowrap uppercase">On</span>
         </div>
 
-        {/* 💡 무한 자동 롤링 + 드래그 트랙 */}
         <div 
           ref={scrollRef}
           className="flex overflow-x-auto hide-scrollbar h-full cursor-grab active:cursor-grabbing w-full"

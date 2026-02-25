@@ -1,20 +1,23 @@
 "use client"
 
-import React, { useEffect, useRef } from "react" // 💡 React.Fragment 사용을 위해 React 추가
+import React, { useEffect, useRef } from "react"
 import Link from "next/link"
 import { NewsCard } from "./news-card"
-import { Clock, RefreshCw, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useNewsFeed } from "@/hooks/use-news-feed"
-import { AdBanner } from "./ad-banner" // 💡 AdBanner 임포트 추가
+import { AdBanner } from "./ad-banner"
+import { SortOption } from "./news-section" // 💡 SortOption 타입 임포트
 
 const SCROLL_KEY = "newsListScrollY"
 
 interface NewsFeedProps {
   searchKeyword?: string
+  sortBy: SortOption // 💡 이제 sortBy 택배를 받을 수 있도록 입구를 만들었습니다!
 }
 
-export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
-  const { news, isLoading, isLoadingMore, hasMore, fetchNextPage, refresh } = useNewsFeed()
+export function NewsFeed({ searchKeyword = "", sortBy }: NewsFeedProps) {
+  // 💡 훅에 sortBy를 전달하여 서버에서 정렬된 데이터를 가져오게 합니다.
+  const { news, isLoading, isLoadingMore, hasMore, fetchNextPage } = useNewsFeed(sortBy)
 
   const keyword = searchKeyword.trim().toLowerCase()
   const filteredNews = keyword
@@ -29,6 +32,7 @@ export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
   const observerTarget = useRef<HTMLDivElement>(null)
   const scrollRestored = useRef(false)
 
+  // 스크롤 복구 로직 (기존 유지)
   useEffect(() => {
     if (isLoading || news.length === 0 || scrollRestored.current) return
     scrollRestored.current = true
@@ -41,6 +45,7 @@ export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
     }
   }, [isLoading, news.length])
 
+  // 무한 스크롤 로직 (기존 유지)
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -56,29 +61,13 @@ export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
   }, [isLoadingMore, hasMore, fetchNextPage])
 
   return (
-    <section className="px-4 pb-24 max-w-lg mx-auto">
-      <div className="flex items-center justify-between mb-5 mt-4 px-1">
-        <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-slate-800" />
-          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
-            실시간 뉴스
-          </h2>
-        </div>
-
-        <button
-          onClick={refresh}
-          disabled={isLoading}
-          className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors active:opacity-70 disabled:opacity-50"
-        >
-          <span>업데이트</span>
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin text-blue-500" : ""}`} />
-        </button>
-      </div>
+    <section className="px-1 pb-24 max-w-lg mx-auto">
+      {/* 💡 [수정] 중복되던 "실시간 뉴스" 헤더를 제거했습니다. 
+          부모인 NewsSection에서 이미 예쁘게 그려주고 있기 때문에 훨씬 깔끔해집니다! */}
 
       <div className="flex flex-col gap-3">
         {filteredNews.map((item, index) => (
           <React.Fragment key={item.id}>
-            {/* 1. 기본 뉴스 카드 */}
             <Link
               href={`/news/${item.id}`}
               className="block"
@@ -87,7 +76,7 @@ export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
               <NewsCard {...item} />
             </Link>
 
-            {/* 💡 2. 8번째 뉴스마다 광고 배너 삽입 (index는 0부터 시작하므로 +1) */}
+            {/* 8번째 뉴스마다 광고 배너 */}
             {(index + 1) % 8 === 0 && (
               <div className="py-2">
                 <AdBanner />
@@ -103,6 +92,7 @@ export function NewsFeed({ searchKeyword = "" }: NewsFeedProps) {
         )}
       </div>
 
+      {/* 무한 스크롤 로딩 표시 */}
       <div ref={observerTarget} className="w-full py-8 flex justify-center items-center">
         {isLoadingMore ? (
           <div className="flex flex-col items-center gap-2 text-slate-400">
