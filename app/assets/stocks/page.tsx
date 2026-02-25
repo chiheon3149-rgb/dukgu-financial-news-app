@@ -6,10 +6,12 @@ import { TrendingUp, TrendingDown, Plus, RefreshCw, AlertCircle, Loader2, Trash2
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { AddTickerSheet } from "@/components/dukgu/add-ticker-sheet"
 import { useStockPortfolio } from "@/hooks/use-stock-portfolio"
+import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import type { StockHolding } from "@/types"
 
 export default function StocksPage() {
-  const { rows, isLoadingPrices, priceError, addHolding, removeHolding } = useStockPortfolio()
+  const usdToKrw = useExchangeRate()
+  const { rows, isLoadingPrices, priceError, addHolding, removeHolding } = useStockPortfolio(usdToKrw)
   const [isTickerSheetOpen, setIsTickerSheetOpen] = useState(false)
 
   // AddTickerSheet은 ticker/name/currency만 반환 → trades, dividends를 빈 배열로 채워 전달
@@ -18,7 +20,7 @@ export default function StocksPage() {
   }
 
   const totalValueKrw = rows.reduce((acc, row) => {
-    return acc + (row.holding.currency === "KRW" ? row.currentValue : row.currentValue * 1432)
+    return acc + (row.holding.currency === "KRW" ? row.currentValue : row.currentValue * usdToKrw)
   }, 0)
 
   return (

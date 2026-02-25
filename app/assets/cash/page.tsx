@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { Banknote, Plus, Trash2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
+import { useExchangeRate } from "@/hooks/use-exchange-rate"
 
 // =============================================================================
 // 💵 /assets/cash — 현금 자산
@@ -17,7 +18,6 @@ interface CashItem {
 }
 
 const STORAGE_KEY = "dukgu:cash-holdings"
-const EXCHANGE_RATE: Record<string, number> = { KRW: 1, USD: 1432, EUR: 1550, JPY: 9.8, CNY: 198 }
 
 function load(): CashItem[] {
   if (typeof window === "undefined") return []
@@ -28,13 +28,19 @@ function save(items: CashItem[]) {
 }
 
 export default function CashPage() {
+  const usdRate = useExchangeRate()
+  const EXCHANGE_RATE = useMemo<Record<string, number>>(
+    () => ({ KRW: 1, USD: usdRate, EUR: 1550, JPY: 9.8, CNY: 198 }),
+    [usdRate]
+  )
+
   const [items, setItems] = useState<CashItem[]>(() => load())
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [form, setForm] = useState({ label: "", currency: "KRW" as CashItem["currency"], amount: "", note: "" })
 
   const totalKrw = useMemo(() =>
     items.reduce((acc, i) => acc + i.amount * (EXCHANGE_RATE[i.currency] ?? 1), 0),
-    [items]
+    [items, EXCHANGE_RATE]
   )
 
   const handleAdd = () => {

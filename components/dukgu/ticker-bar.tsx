@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 
 // 지수 표시 순서
@@ -124,6 +124,8 @@ export function TickerBar() {
     }
   }, [])
 
+  const tickerItems = useMemo(() => [...indices, ...indices, ...indices], [indices])
+
   if (failed) return null
   if (!hasData) return <div className="h-9 bg-white border-b border-slate-200 animate-pulse w-full" />
 
@@ -157,7 +159,7 @@ export function TickerBar() {
 
         {/* 무한 롤링 트랙 */}
         <div className="ticker-track">
-          {[...indices, ...indices, ...indices].map((idx, i) => (
+          {tickerItems.map((idx, i) => (
             <IndexChip key={`${idx.symbol}-${i}`} index={idx} fresh={fresh} />
           ))}
         </div>

@@ -156,6 +156,7 @@ export function useCommunity(postId?: string): UseCommunityReturn {
             .select("*")
             .eq("is_deleted", false)
             .order("published_at", { ascending: false })
+            .limit(100)
           if (error || !postRows) return
           setPosts(postRows.map(mapPost))
         }

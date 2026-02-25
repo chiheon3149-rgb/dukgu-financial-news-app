@@ -1,36 +1,79 @@
 "use client"
 
-import { BarChart3, Activity } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Activity } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 interface MarketIndexLogProps {
   mode: "US" | "KR"
   items?: { name: string; val: string; change: string; status: string }[]
 }
 
+const US_SYMBOLS = ["^DJI", "^NDX", "^GSPC", "^RUT"]
+const KR_SYMBOLS = ["^KS11", "^KQ11"]
+
+function fmtPrice(symbol: string, price: number): string {
+  if (symbol.startsWith("^K")) return price.toLocaleString("ko-KR", { maximumFractionDigits: 2 })
+  return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function fmtChange(changeRate: number, changeStatus: string): string {
+  const prefix = changeStatus === "up" ? "+" : ""
+  return `${prefix}${changeRate.toFixed(2)}%`
+}
+
 export function MarketIndexLog({ mode, items }: MarketIndexLogProps) {
-  // 🇺🇸 미국 4대 지수 로그 (다우, 나스닥, S&P 500, 러셀 2000 추가!)
-  const usIndices = [
-    { name: "다우존스", val: "43,789.34", change: "+0.12%", color: "red", status: "전통 우량 기업 섹터 가동률 정상." },
-    { name: "나스닥 100", val: "24,754.25", change: "-0.81%", color: "blue", status: "기술주 섹터 트래픽 과부하 및 조정." },
-    { name: "S&P 500", val: "6,832.76", change: "-0.30%", color: "blue", status: "시장 전체 서버 리소스 분산 처리 중." },
-    { name: "러셀 2000", val: "2,234.15", change: "+1.25%", color: "red", status: "중소형주 섹터 트래픽 급증 및 자금 유입." } // 💡 러셀 2000 추가
-  ]
+  const [liveItems, setLiveItems] = useState<{ name: string; val: string; change: string; status: string }[]>([])
 
-  // 🇰🇷 국내 주요 지수 로그
-  const krIndices = [
-    { name: "코스피", val: "2,652.12", change: "+0.45%", color: "red", status: "반도체 메인 프레임 트래픽 회복." },
-    { name: "코스닥", val: "870.45", change: "-0.12%", color: "blue", status: "2차전지 가이던스 패치 후 하향 안정화." },
-    { name: "코스피 200", val: "348.90", change: "+0.32%", color: "red", status: "대형주 중심의 지수 데이터 양호." }
-  ]
+  useEffect(() => {
+    if (items) return
+    const symbols = mode === "US" ? US_SYMBOLS : KR_SYMBOLS
+    supabase
+      .from("market_indices")
+      .select("symbol, name, price, change_rate, change_status")
+      .in("symbol", symbols)
+      .then(({ data }) => {
+        if (!data || data.length === 0) return
+        const ordered = symbols
+          .map((sym) => data.find((r) => r.symbol === sym))
+          .filter(Boolean) as typeof data
+        setLiveItems(
+          ordered.map((r) => ({
+            name: r.name,
+            val: fmtPrice(r.symbol, r.price),
+            change: fmtChange(r.change_rate, r.change_status),
+            status: "",
+          }))
+        )
+      })
+  }, [mode, items])
 
-  const data = items ?? (mode === "US" ? usIndices : krIndices)
+  const data = items ?? liveItems
+
+  if (data.length === 0) {
+    return (
+      <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+        <div className="flex items-center gap-2 mb-5">
+          <Activity className="w-5 h-5 text-emerald-500" />
+          <h3 className="font-black text-lg text-slate-800">
+            {mode === "US" ? "미국 마켓 지표 로그" : "국내 마켓 지표 로그"}
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 gap-3">
+          {[1, 2, 3, 4].slice(0, mode === "US" ? 4 : 2).map((i) => (
+            <div key={i} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 h-14 animate-pulse" />
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
       {/* 헤더 섹션 */}
       <div className="flex items-center justify-between mb-5">
         <h3 className="flex items-center gap-2 font-black text-lg text-slate-800">
-          <Activity className="w-5 h-5 text-emerald-500" /> 
+          <Activity className="w-5 h-5 text-emerald-500" />
           {mode === "US" ? "미국 마켓 지표 로그" : "국내 마켓 지표 로그"}
         </h3>
         <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-full uppercase tracking-wider">
@@ -53,14 +96,16 @@ export function MarketIndexLog({ mode, items }: MarketIndexLogProps) {
                 </span>
               </div>
             </div>
-            
-            {/* 요약 상태 메시지 */}
-            <div className="mt-3 flex items-start gap-1.5">
-              <span className="text-[9px] font-black text-slate-300 mt-0.5 uppercase">요약</span>
-              <p className="text-[11px] text-slate-500 font-medium leading-tight">
-                {idx.status}
-              </p>
-            </div>
+
+            {/* 요약 상태 메시지 (briefing content에서 올 때만 표시) */}
+            {idx.status && (
+              <div className="mt-3 flex items-start gap-1.5">
+                <span className="text-[9px] font-black text-slate-300 mt-0.5 uppercase">요약</span>
+                <p className="text-[11px] text-slate-500 font-medium leading-tight">
+                  {idx.status}
+                </p>
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -4,12 +4,15 @@ import { NextRequest, NextResponse } from "next/server"
 // =============================================================================
 // 🛡️ proxy.ts — 접근 제어 (Next.js 16 proxy 컨벤션)
 //
-// 로그인 없이 접근 가능한 공개 경로를 화이트리스트로 관리합니다.
-// 비로그인 사용자가 비공개 경로에 접근하면 /login으로 리다이렉트합니다.
+// 업데이트 내용: 구글 애드센스 승인을 위한 /ads.txt 공개 경로 추가
 // =============================================================================
 
 /** 정확히 일치해야 하는 공개 경로 */
-const PUBLIC_EXACT = new Set(["/", "/login"])
+const PUBLIC_EXACT = new Set([
+  "/", 
+  "/login", 
+  "/ads.txt" // 👈 구글 크롤러를 위해 추가
+])
 
 /** 이 경로로 시작하면 공개 (하위 경로 포함) */
 const PUBLIC_PREFIXES = [
@@ -66,7 +69,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // _next/ 전체(정적파일·RSC데이터 요청 포함) 및 정적 에셋 제외
-    "/((?!_next/|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+    // _next/ 전체 및 정적 에셋, 그리고 ads.txt를 감시 대상에서 제외
+    "/((?!_next/|ads\\.txt|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 }
