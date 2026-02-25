@@ -22,9 +22,10 @@ const INDEX_META: Record<string, string> = {
   "^KS11": "코스피",
   "^KQ11": "코스닥",
   "KRW=X": "USD/KRW",
+  "JPYKRW=X": "엔/원",  // 👈 이 줄을 추가하세요!
 }
 
-const SYMBOLS = ["^DJI", "^NDX", "^GSPC", "^RUT", "^KS11", "^KQ11", "KRW=X"]
+const SYMBOLS = ["^DJI", "^NDX", "^GSPC", "^RUT", "^KS11", "^KQ11", "KRW=X", "JPYKRW=X"]
 
 // Set-Cookie 헤더를 단일 Cookie 문자열로 파싱
 function parseCookies(raw: string): string {

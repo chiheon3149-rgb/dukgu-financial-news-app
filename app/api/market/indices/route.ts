@@ -32,12 +32,13 @@ const INDEX_META: Record<string, string> = {
   "^KS11": "코스피",
   "^KQ11": "코스닥",
   "KRW=X": "USD/KRW",
+  "JPYKRW=X": "엔/원",  // 👈 이 줄을 추가하세요!
   "^IXIC": "나스닥",
   "^VIX":  "VIX",
   "^TNX":  "미국10년물",
 }
 
-const SYMBOLS = ["^DJI", "^NDX", "^GSPC", "^RUT", "^KS11", "^KQ11", "KRW=X"]
+const SYMBOLS = ["^DJI", "^NDX", "^GSPC", "^RUT", "^KS11", "^KQ11", "KRW=X", "JPYKRW=X"]
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
