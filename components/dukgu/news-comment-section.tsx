@@ -145,7 +145,7 @@ export function NewsCommentSection({ newsId, onCountChange }: { newsId: string; 
   const deleteComment = (id: string) => {
     toast("댓글을 삭제하시겠습니까?", {
       action: { label: "삭제", onClick: () => performDeleteComment(id) },
-      cancel: { label: "취소" },
+      cancel: { label: "취소", onClick: () => {} },
     })
   }
 

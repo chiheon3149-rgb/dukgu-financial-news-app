@@ -58,7 +58,7 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
     setMenuOpen(false)
     toast("게시글을 삭제하시겠습니까?", {
       action: { label: "삭제", onClick: () => onDelete?.(post.id).catch(() => toast.error("삭제 중 오류가 발생했습니다.")) },
-      cancel: { label: "취소" },
+      cancel: { label: "취소", onClick: () => {} },
     })
   }
 
