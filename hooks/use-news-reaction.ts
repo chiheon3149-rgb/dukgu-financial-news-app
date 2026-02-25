@@ -212,19 +212,25 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
 // news_reactions에서 실제 카운트를 집계해 news 테이블에 반영
 // 단, 더 최신의 반응이 있으면 store를 건드리지 않음 (낙관적 업데이트 보호)
 async function syncServerCounts(newsId: string, interactionTime: number) {
-  // news_reactions에서 실제 good/bad 카운트 집계 (트리거 대신 직접 계산)
-  const [{ count: goodCount }, { count: badCount }] = await Promise.all([
+  // news_reactions에서 실제 good/bad 카운트 집계
+  const [{ count: goodCount, error: goodErr }, { count: badCount, error: badErr }] = await Promise.all([
     supabase.from("news_reactions").select("*", { count: "exact", head: true })
       .eq("news_id", newsId).eq("type", "good"),
     supabase.from("news_reactions").select("*", { count: "exact", head: true })
       .eq("news_id", newsId).eq("type", "bad"),
   ])
 
-  const actualGood = goodCount ?? 0
-  const actualBad  = badCount  ?? 0
+  // 집계 쿼리 실패 or null 반환 시 → 낙관적 업데이트 값을 0으로 리셋하지 않고 그대로 유지
+  if (goodErr || badErr || goodCount === null || badCount === null) return
 
-  // news 테이블에 실제 카운트 반영 (DB 트리거가 없으므로 직접 업데이트)
-  await supabase.from("news").update({ good_count: actualGood, bad_count: actualBad }).eq("id", newsId)
+  const actualGood = goodCount
+  const actualBad  = badCount
+
+  // news 테이블에 실제 카운트 반영 (RLS 정책에 따라 실패할 수 있음 — 에러만 로깅)
+  supabase.from("news").update({ good_count: actualGood, bad_count: actualBad }).eq("id", newsId)
+    .then(({ error }) => {
+      if (error) console.warn("[useNewsReaction] news 카운트 업데이트 실패:", error.message)
+    })
 
   // 이 반응 이후 더 최신 반응이 생겼으면 store를 덮어쓰지 않음
   if (_lastInteractionTime.get(newsId) !== interactionTime) return

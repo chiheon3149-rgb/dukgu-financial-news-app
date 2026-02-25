@@ -27,7 +27,13 @@ const CATEGORY_COLOR: Record<CommunityPost["category"], string> = {
 
 export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onProfileClick }: CommunityPostCardProps) {
   const router = useRouter()
-  const [reaction, setReaction] = useState<"like" | "dislike" | null>(null)
+  const REACTION_KEY = "dukgu:community_post_reactions"
+  const [reaction, setReaction] = useState<"like" | "dislike" | null>(() => {
+    if (typeof window === "undefined") return null
+    try {
+      return (JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")[post.id] ?? null) as "like" | "dislike" | null
+    } catch { return null }
+  })
   const [counts, setCounts] = useState({ like: post.likeCount, dislike: post.dislikeCount })
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -42,6 +48,11 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
       }))
       onReact(post.id, type, reaction)
       setReaction(null)
+      try {
+        const cache = JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")
+        delete cache[post.id]
+        localStorage.setItem(REACTION_KEY, JSON.stringify(cache))
+      } catch {}
     } else {
       setCounts((prev) => ({
         like:    type === "like"    ? prev.like    + 1 : reaction === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
@@ -49,6 +60,11 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
       }))
       onReact(post.id, type, reaction)
       setReaction(type)
+      try {
+        const cache = JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")
+        cache[post.id] = type
+        localStorage.setItem(REACTION_KEY, JSON.stringify(cache))
+      } catch {}
     }
   }
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ChevronRight, Clock } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import type { IndexSummary } from "@/types"
 
@@ -62,9 +62,13 @@ export function HeroBanner() {
       setMorning(m)
       setAfternoon(a)
 
-      // 시간 기반 기본 선택 (7~15시 → 미국, 나머지 → 한국), 없으면 반대쪽으로 폴백
-      const hour = new Date().getHours()
-      const preferUS = hour >= 7 && hour < 16
+      // ✅ 15시 30분 정밀 판단 로직
+      const now = new Date()
+      const currentTime = now.getHours() * 100 + now.getMinutes()
+      
+      // 07:00 ~ 15:30 사이인 경우 미국 우선 (preferUS)
+      const preferUS = currentTime >= 700 && currentTime < 1530
+
       if (preferUS) {
         setMarket(m ? "US" : a ? "KR" : null)
       } else {
@@ -91,7 +95,7 @@ export function HeroBanner() {
         className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${theme.theme} p-5 text-white shadow-xl transition-all duration-500`}
       >
         {/* 투명 국기 배경 */}
-        <div className="absolute -bottom-6 -right-4 text-[130px] opacity-[0.12] pointer-events-none select-none transition-all duration-500 rotate-12">
+        <div className="absolute -bottom-6 -right-4 text-[130px] opacity-[0.13] pointer-events-none select-none transition-all duration-500 rotate-12">
           {theme.flag}
         </div>
 
@@ -100,7 +104,7 @@ export function HeroBanner() {
 
         <div className="relative z-10 flex flex-col gap-4">
 
-          {/* 1. 날짜 + 라디오 버튼 (상단 유지) */}
+          {/* 1. 날짜 + 라디오 버튼 */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-semibold text-white/90 drop-shadow-sm truncate mr-2">
               {dateLabel} 오늘의 {theme.briefingType}
@@ -127,7 +131,7 @@ export function HeroBanner() {
             </div>
           </div>
 
-          {/* 💡 2. 태그 영역 (제목 위로 전격 이동!) */}
+          {/* 2. 태그 영역 */}
           {indices.length > 0 && (
             <div className="flex flex-wrap gap-1.5 -mt-1">
               {indices.slice(0, 3).map(idx => (
@@ -157,7 +161,7 @@ export function HeroBanner() {
             <p className="text-sm font-bold text-white/70 py-2">브리핑 준비 중...</p>
           )}
 
-          {/* 4. 리포트읽기 버튼 (맨 하단 우측 배치) */}
+          {/* 4. 리포트읽기 버튼 */}
           <div className="flex justify-end mt-1">
             <Link
               href="/briefing"

@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState } from "react"
+import { use, useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { ThumbsUp, ThumbsDown, User, Loader2, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
@@ -21,15 +21,30 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
   const post = posts.find((p) => p.id === id)
   const comments = getComments(id)
 
-  const [reaction, setReaction] = useState<"like" | "dislike" | null>(null)
-  const [counts, setCounts] = useState({ like: post?.likeCount ?? 0, dislike: post?.dislikeCount ?? 0 })
+  const REACTION_KEY = "dukgu:community_post_reactions"
+  const [reaction, setReaction] = useState<"like" | "dislike" | null>(() => {
+    if (typeof window === "undefined") return null
+    try {
+      return (JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")[id] ?? null) as "like" | "dislike" | null
+    } catch { return null }
+  })
+  const [counts, setCounts] = useState({ like: 0, dislike: 0 })
+  const countsInitRef = useRef(false)
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // post 로드 완료 후 counts를 DB 값으로 초기화 (사용자가 클릭하기 전 최초 1회)
+  useEffect(() => {
+    if (!post || countsInitRef.current) return
+    countsInitRef.current = true
+    setCounts({ like: post.likeCount, dislike: post.dislikeCount })
+  }, [post])
   const [isDeleting, setIsDeleting] = useState(false)
 
   const isMyPost = !!profile && post?.authorId === profile.id
 
   const handleReact = (type: "like" | "dislike") => {
     if (!post) return
+    countsInitRef.current = true // 이후 post 업데이트가 counts를 덮어쓰지 않도록
     const isToggleOff = reaction === type
     if (isToggleOff) {
       setCounts((prev) => ({
@@ -38,6 +53,11 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
       }))
       setReaction(null)
       reactPost(post.id, type, reaction)
+      try {
+        const cache = JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")
+        delete cache[id]
+        localStorage.setItem(REACTION_KEY, JSON.stringify(cache))
+      } catch {}
     } else {
       setCounts((prev) => ({
         like:    type === "like"    ? prev.like    + 1 : reaction === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
@@ -45,6 +65,11 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
       }))
       setReaction(type)
       reactPost(post.id, type, reaction)
+      try {
+        const cache = JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")
+        cache[id] = type
+        localStorage.setItem(REACTION_KEY, JSON.stringify(cache))
+      } catch {}
     }
   }
 

@@ -164,6 +164,9 @@ export function useSavedArticles(): UseSavedArticlesReturn {
 
   useEffect(() => {
     _listeners.add(forceUpdate)
+    // onAuthStateChange가 컴포넌트 마운트 전에 이미 로드를 완료했을 경우
+    // notifyAll()이 listeners 없이 실행됐으므로 여기서 직접 렌더링 트리거
+    if (_loadState === "loaded") forceUpdate()
     ensureLoaded()
     return () => {
       _listeners.delete(forceUpdate)

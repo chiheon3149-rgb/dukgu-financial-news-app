@@ -284,15 +284,32 @@ export function useCommunity(postId?: string): UseCommunityReturn {
       })
     )
 
-    if (isToggleOff) {
-      supabase.from("community_post_reactions").delete()
-        .eq("post_id", postId).eq("user_key", userKey)
-        .then(({ error }) => { if (error) console.error("[useCommunity] reactPost 취소 실패:", error) })
-    } else {
-      supabase.from("community_post_reactions")
-        .upsert({ post_id: postId, user_key: userKey, reaction: type }, { onConflict: "post_id,user_key" })
-        .then(({ error }) => { if (error) console.error("[useCommunity] reactPost 실패:", error) })
+    // 반응 저장 후 실제 카운트를 community_posts에 동기화
+    const syncPostReaction = async () => {
+      if (isToggleOff) {
+        await supabase.from("community_post_reactions").delete()
+          .eq("post_id", postId).eq("user_key", userKey)
+      } else {
+        await supabase.from("community_post_reactions")
+          .upsert({ post_id: postId, user_key: userKey, reaction: type }, { onConflict: "post_id,user_key" })
+      }
+
+      // 실제 카운트 집계 후 community_posts 업데이트
+      const [{ count: likeCount, error: le }, { count: dislikeCount, error: de }] = await Promise.all([
+        supabase.from("community_post_reactions").select("*", { count: "exact", head: true })
+          .eq("post_id", postId).eq("reaction", "like"),
+        supabase.from("community_post_reactions").select("*", { count: "exact", head: true })
+          .eq("post_id", postId).eq("reaction", "dislike"),
+      ])
+      if (le || de || likeCount === null || dislikeCount === null) return
+
+      await supabase.from("community_posts").update({
+        like_count:    likeCount,
+        dislike_count: dislikeCount,
+      }).eq("id", postId)
     }
+
+    syncPostReaction().catch((e) => console.error("[useCommunity] reactPost 실패:", e))
   }, [userId])
 
   const addComment = useCallback(
@@ -391,17 +408,20 @@ export function useCommunity(postId?: string): UseCommunityReturn {
           .upsert({ comment_id: commentId, user_key: userKey, reaction: type }, { onConflict: "comment_id,user_key" })
       }
 
-      // 실제 카운트 집계 후 community_comments 테이블 업데이트 (트리거 대신 직접 계산)
-      const [{ count: likeCount }, { count: dislikeCount }] = await Promise.all([
+      // 실제 카운트 집계 후 community_comments 테이블 업데이트
+      const [{ count: likeCount, error: le }, { count: dislikeCount, error: de }] = await Promise.all([
         supabase.from("community_comment_reactions").select("*", { count: "exact", head: true })
           .eq("comment_id", commentId).eq("reaction", "like"),
         supabase.from("community_comment_reactions").select("*", { count: "exact", head: true })
           .eq("comment_id", commentId).eq("reaction", "dislike"),
       ])
 
+      // 집계 실패 시 낙관적 UI 값을 0으로 리셋하지 않음
+      if (le || de || likeCount === null || dislikeCount === null) return
+
       await supabase.from("community_comments").update({
-        like_count:    likeCount    ?? 0,
-        dislike_count: dislikeCount ?? 0,
+        like_count:    likeCount,
+        dislike_count: dislikeCount,
       }).eq("id", commentId)
     }
 
