@@ -130,7 +130,7 @@ export default function StocksPage() {
                     onClick={() => {
                       toast(`${holding.ticker} 종목을 삭제하시겠습니까?`, {
                         action: { label: "삭제", onClick: () => removeHolding(holding.ticker) },
-                        cancel: { label: "취소" },
+                        cancel: { label: "취소", onClick: () => {} }, // 👈 수정된 포인트
                       })
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all z-10"
