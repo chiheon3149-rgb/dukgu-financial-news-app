@@ -2,47 +2,41 @@ import { createServerClient } from "@supabase/ssr"
 import { NextRequest, NextResponse } from "next/server"
 
 // =============================================================================
-// 🛡️ proxy.ts — 접근 제어 (뉴스/브리핑/커뮤니티 상세페이지까지 100% 개방)
+// 🛡️ proxy.ts — 수정된 접근 제어 (닉네임 미설정 유저 차단 로직 포함)
 // =============================================================================
 
-/** * 💡 1. '정확히' 이 주소일 때만 비로그인 통과 (1depth 전용) 
- * 상세 페이지가 없는 단순 메뉴들이나 시스템 파일 위주입니다.
- */
+/** * 💡 1. '정확히' 이 주소일 때만 비로그인 통과 */
 const PUBLIC_EXACT = new Set([
   "/", 
   "/login", 
   "/ads.txt",
-  "/assets",    // 자산 메인 (내 돈 관리는 로그인이 필요하니까요!)
+  "/assets",
+  "/onboarding", // 👈 [추가] 온보딩 페이지는 당연히 열려 있어야 합니다!
 ])
 
-/** * 💡 2. 이 경로로 시작하면 하위 경로까지 전부 통과 (하이패스 구역) 
- * 기획자님의 '유입 극대화' 전략에 따라 주요 콘텐츠 상세페이지를 모두 개방합니다.
- */
 const PUBLIC_PREFIXES = [
-  "/auth",      // 카카오/구글 로그인 처리용
-  "/api",       // 내부 데이터 통신용
-  "/notice",    // 공지사항 상세
-  "/news",      // 👈 뉴스 상세페이지 (/news/123) 개방
-  "/briefing",  // 👈 브리핑 상세페이지 (/briefing/2026-02-26) 개방
-  "/community", // 👈 [추가] 이제 커뮤니티 게시글 상세 (/community/456) 개방!
+  "/auth",     
+  "/api",      
+  "/notice",   
+  "/news",     
+  "/briefing", 
+  "/community", 
 ]
 
 function isPublicPath(pathname: string): boolean {
-  // 1. 정확히 일치하는 경로인가?
   if (PUBLIC_EXACT.has(pathname)) return true
-  // 2. 허용된 단어로 시작하는 하위 경로인가?
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // 1. 비로그인 허용 경로면 즉시 통과 (검문 통과!)
-  if (isPublicPath(pathname)) {
-    return NextResponse.next({ request })
+  // 1. 비로그인 허용 경로면 일단 하이패스!
+  // (단, 로그인 유저가 닉네임이 없는 경우는 아래 2번에서 따로 잡습니다.)
+  if (isPublicPath(pathname) && pathname === "/login") {
+     return NextResponse.next({ request })
   }
 
-  // 2. 그 외 보안 구역(프로필, 설정, 글쓰기 등)은 로그인 검사 시작
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -63,19 +57,35 @@ export async function proxy(request: NextRequest) {
   )
 
   try {
-    // 세션 정보를 가져와 실제 유저인지 확인합니다.
     const { data: { user } } = await supabase.auth.getUser()
     
-    // 로그인이 되어 있다면 보안 구역도 무사 통과!
-    if (user) return response 
+    // 💡 2. 로그인된 유저라면 '닉네임'이 있는지 추가 검문합니다.
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nickname")
+        .eq("id", user.id)
+        .single()
+
+      // 🚨 로그인은 했으나 닉네임이 없고, 현재 페이지가 온보딩이 아니라면?
+      // -> 온보딩 페이지로 강제 압송!
+      if (!profile?.nickname && pathname !== "/onboarding" && !pathname.startsWith('/api')) {
+        return NextResponse.redirect(new URL("/onboarding", request.url))
+      }
+
+      // 닉네임이 있다면 가려던 길 가게 해줍니다.
+      return response 
+    }
   } catch (error) {
-    // 에러 발생 시 안전하게 응답 반환
     return response
   }
 
-  // 🚨 3. 로그인이 안 된 상태로 보안 구역(Profile 등)을 누른 경우 -> 로그인으로 안내
-  // 나중에 로그인 후 다시 이 페이지로 돌아오도록 ?next= 주소를 붙여줍니다.
-  return NextResponse.redirect(new URL(`/login?next=${pathname}`, request.url))
+  // 3. 비로그인 유저가 공공장소가 아닌 곳(프로필 등)에 가려고 하면 로그인으로 보냄
+  if (!isPublicPath(pathname)) {
+    return NextResponse.redirect(new URL(`/login?next=${pathname}`, request.url))
+  }
+
+  return response
 }
 
 export const config = {

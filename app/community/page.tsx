@@ -8,7 +8,7 @@ import { SearchBar } from "@/components/dukgu/search-bar"
 import { AdBanner } from "@/components/dukgu/ad-banner" 
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
-import type { CommunityCategory } from "@/types"
+import type { CommunityPost, CommunityCategory } from "@/types"
 
 const TABS: { id: CommunityCategory | "all"; label: string }[] = [
   { id: "all",     label: "전체" },
@@ -64,10 +64,7 @@ export default function CommunityPage() {
           />
         </section>
 
-        {/* 💡 [광고] 최상단 고정 광고 */}
-        <section>
-          <AdBanner />
-        </section>
+        {/* 💡 [기획 수정] 최상단 고정 광고 제거됨 */}
 
         <div className="space-y-3">
           {isLoading && (
@@ -76,27 +73,32 @@ export default function CommunityPage() {
             </div>
           )}
 
-          {!isLoading && filteredPosts.map((post: any, index: number) => (
-            <div key={post.id} className="space-y-3">
-              <CommunityPostCard
-                post={post}
-                onReact={reactPost}
-                onDelete={deletePost}
-                currentUserId={profile?.id}
-                onProfileClick={(authorId: string) => router.push(`/profile/${authorId}`)}
-              />
-              
-              {/* 💡 [수정된 광고 로직] 
-                  상단에 이미 광고가 있으므로, 리스트 안에서는 7번째 글 다음에만 광고를 보여줍니다.
-                  글이 7개 미만일 때는 리스트 마지막에 광고를 또 보여주지 않아 피로도를 낮췄습니다.
-              */}
-              {(index + 1) % 7 === 0 && (
-                <div className="py-2 animate-in fade-in duration-500">
-                  <AdBanner />
-                </div>
-              )}
-            </div>
-          ))}
+          {!isLoading && filteredPosts.map((post: CommunityPost, index: number) => {
+            // 💡 [핵심 로직] 광고 노출 여부 결정
+            // 1. 7번째 게시물마다 (7, 14, 21...)
+            const isEverySeven = (index + 1) % 7 === 0;
+            // 2. 전체 개수가 7개가 아닌데 리스트의 마지막일 때 (예: 글이 3개면 3번째 글 아래)
+            const isLastAndNotSeven = (index === filteredPosts.length - 1) && (filteredPosts.length % 7 !== 0);
+            
+            return (
+              <div key={post.id} className="space-y-3">
+                <CommunityPostCard
+                  post={post}
+                  onReact={reactPost}
+                  onDelete={deletePost}
+                  currentUserId={profile?.id}
+                  onProfileClick={(authorId: string) => router.push(`/profile/${authorId}`)}
+                />
+                
+                {/* 💡 기획하신 광고 조건문 */}
+                {(isEverySeven || isLastAndNotSeven) && (
+                  <div className="py-2 animate-in fade-in zoom-in-95 duration-500">
+                    <AdBanner />
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {!isLoading && filteredPosts.length === 0 && (
             <div className="py-20 text-center text-slate-300">

@@ -3,13 +3,10 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from "react"
 import type { UserProfile, XpEvent, XpSource } from "@/types"
 import { LEVEL_TABLE, getLevelMeta } from "@/lib/mock/user"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase" // 👈 프로젝트 설정에 맞는 경로 확인!
 
 // =============================================================================
-// 👤 UserContext — 실제 Supabase Auth 연동 버전
-//
-// 로그인한 유저 정보를 Supabase에서 가져와서 앱 전체에 공유합니다.
-// 마이페이지에서 바꾸면 헤더도 즉시 반영됩니다 ✅
+// 👤 UserContext — 최종 수정 버전
 // =============================================================================
 
 export interface XpResult {
@@ -28,6 +25,7 @@ interface UserContextValue {
   updateNickname: (nickname: string) => void
   updateAvatar: (emoji: string) => void
   updatePortfolioPublic: (value: boolean) => void
+  refreshProfile: () => Promise<void> // 👈 1. 설계도에 '새로고침' 기능 추가
 }
 
 const UserContext = createContext<UserContextValue | null>(null)
@@ -36,98 +34,74 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const isLoadingRef = useRef(false)
-  // profile의 최신값을 동기적으로 읽기 위한 ref (addXp 반환값 동기화용)
   const profileRef = useRef<UserProfile | null>(null)
 
-  // 로그인한 유저 정보 불러오기
-  useEffect(() => {
-    const loadUser = async () => {
-      // 동시 호출 방지 (onAuthStateChange가 마운트 직후 중복 호출하는 문제 차단)
-      if (isLoadingRef.current) return
-      isLoadingRef.current = true
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
+  // 💡 [기능 추출] 유저 정보를 불러오는 핵심 로직 (재사용을 위해 분리)
+  const loadUser = useCallback(async () => {
+    if (isLoadingRef.current) return
+    isLoadingRef.current = true
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
 
-        if (!user) {
-          setProfile(null)
-          return
-        }
-
-        // profiles 테이블에서 유저 정보 불러오기
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single()
-
-        if (profileData) {
-          // 기존 프로필 있으면 불러오기
-          const { data: xpData } = await supabase
-            .from("xp_events")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("earned_at", { ascending: false })
-
-          setProfile({
-            id: user.id,
-            nickname: profileData.nickname,
-            email: user.email ?? "",
-            joinedAt: profileData.joined_at,
-            avatarEmoji: profileData.avatar_emoji ?? "🐱",
-            totalXp: profileData.total_xp ?? 0,
-            portfolioPublic: profileData.portfolio_public ?? false,
-            xpHistory: (xpData ?? []).map((e: any) => ({
-              id: e.id,
-              source: e.source,
-              amount: e.amount,
-              label: e.label,
-              earnedAt: e.earned_at,
-            })),
-          })
-        } else {
-          // 처음 로그인 — profiles 테이블에 새 유저 생성
-          const nickname = user.user_metadata?.name ?? user.email?.split("@")[0] ?? "새 유저"
-          const newProfile = {
-            id: user.id,
-            nickname,
-            email: user.email ?? "",
-            avatar_emoji: "🐱",
-            total_xp: 0,
-            joined_at: new Date().toISOString(),
-          }
-
-          await supabase.from("profiles").insert(newProfile)
-
-          setProfile({
-            id: user.id,
-            nickname,
-            email: user.email ?? "",
-            joinedAt: newProfile.joined_at,
-            avatarEmoji: "🐱",
-            totalXp: 0,
-            portfolioPublic: false,
-            xpHistory: [],
-          })
-        }
-      } catch (e) {
-        console.error("[UserContext] 유저 로딩 실패:", e)
-      } finally {
-        setIsLoading(false)
-        isLoadingRef.current = false
+      if (!user) {
+        setProfile(null)
+        return
       }
-    }
 
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single()
+
+      if (profileData) {
+        const { data: xpData } = await supabase
+          .from("xp_events")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("earned_at", { ascending: false })
+
+        setProfile({
+          id: user.id,
+          nickname: profileData.nickname,
+          email: user.email ?? "",
+          joinedAt: profileData.joined_at,
+          avatarEmoji: profileData.avatar_emoji ?? "🐱", // 👈 2. DB(snake) -> 앱(camel) 매핑
+          totalXp: profileData.total_xp ?? 0,
+          portfolioPublic: profileData.portfolio_public ?? false,
+          xpHistory: (xpData ?? []).map((e: any) => ({
+            id: e.id,
+            source: e.source,
+            amount: e.amount,
+            label: e.label,
+            earnedAt: e.earned_at,
+          })),
+        })
+      }
+    } catch (e) {
+      console.error("[UserContext] 유저 로딩 실패:", e)
+    } finally {
+      setIsLoading(false)
+      isLoadingRef.current = false
+    }
+  }, [])
+
+  // 3. 외부(EditPage 등)에서 호출할 새로고침 기능
+  const refreshProfile = async () => {
+    await loadUser()
+  }
+
+  useEffect(() => {
     loadUser()
 
-    // 로그인/로그아웃 상태 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       loadUser()
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [loadUser])
 
-  // profileRef를 항상 최신 profile로 동기화
   useEffect(() => { profileRef.current = profile }, [profile])
 
   const currentLevel = useMemo(
@@ -148,7 +122,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const addXp = useCallback(
     (source: XpSource, amount: number, label: string): XpResult => {
-      // profileRef.current로 동기적으로 현재 프로필 읽기 → setProfile updater 비동기 실행 문제 해결
       const prev = profileRef.current
       if (!prev) return { newTotalXp: 0, leveledUp: false, newLevel: 1 }
 
@@ -162,14 +135,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         newLevel: afterLevel.level,
       }
 
-      const event: XpEvent = {
-        id: `xp-${Date.now()}`,
-        source,
-        amount,
-        label,
-        earnedAt: new Date().toISOString(),
-      }
-
       setProfile((p) => {
         if (!p) return p
         const actualNewXp = p.totalXp + amount
@@ -178,10 +143,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           source,
           amount,
           label,
-          earned_at: event.earnedAt,
+          earned_at: new Date().toISOString(),
         })
         supabase.from("profiles").update({ total_xp: actualNewXp }).eq("id", p.id)
-        return { ...p, totalXp: actualNewXp, xpHistory: [event, ...p.xpHistory] }
+        return { ...p, totalXp: actualNewXp }
       })
 
       return result
@@ -189,7 +154,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     []
   )
 
-  // 로컬 상태만 업데이트 — 실제 Supabase 저장은 mypage/edit/page.tsx에서 처리
   const updateNickname = useCallback((nickname: string) => {
     setProfile((prev) => (prev ? { ...prev, nickname } : prev))
   }, [])
@@ -218,6 +182,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         updateNickname,
         updateAvatar,
         updatePortfolioPublic,
+        refreshProfile, // 👈 4. 기능을 하위 컴포넌트에 배포
       }}
     >
       {children}

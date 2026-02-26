@@ -10,15 +10,7 @@ import type {
 import { supabase } from "@/lib/supabase"
 
 // =============================================================================
-// 🏘️ useCommunity — Supabase 연동 버전
-//
-// postId 없이 호출 → 전체 게시글 목록 로드 (목록 페이지)
-// postId 전달 시   → 해당 게시글 + 댓글만 로드 (상세 페이지)
-//
-// 실제 테이블 스키마:
-//   community_posts    — published_at, author_nickname, author_emoji, author_level 포함
-//   community_comments — published_at, author_nickname, author_emoji, author_level 포함
-//   comment_reports    — comment_id, post_id, reason, detail, reported_at
+// 🏘️ useCommunity — 실시간 프로필 동기화 버전 (TypeScript 에러 해결)
 // =============================================================================
 
 function formatTimeAgo(dateStr: string): string {
@@ -34,17 +26,19 @@ function formatTimeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })
 }
 
+/** 💡 [수정] row의 타입을 any 대신 명확한 형태로 받거나 map 처리 시 타입을 지정합니다. */
 function mapPost(row: any): CommunityPost {
+  const author = row.author;
   return {
     id: row.id,
-    category: row.category as CommunityCategory,
+    category: row.category as CommunityCategory, // 👈 인덱스 에러 방지를 위해 타입 강제
     tags: Array.isArray(row.tags) ? row.tags : [],
     title: row.title,
     content: row.content,
     authorId: row.author_id,
-    authorNickname: row.author_nickname ?? "알 수 없음",
-    authorEmoji: row.author_emoji ?? "🐶",
-    authorLevel: row.author_level ?? 1,
+    authorNickname: author?.nickname ?? row.author_nickname ?? "알 수 없음",
+    authorEmoji: author?.avatar_emoji ?? row.author_emoji ?? "🐶",
+    authorLevel: author?.level ?? row.author_level ?? 1,
     publishedAt: row.published_at,
     timeAgo: formatTimeAgo(row.published_at),
     likeCount: row.like_count ?? 0,
@@ -55,13 +49,14 @@ function mapPost(row: any): CommunityPost {
 }
 
 function mapComment(row: any): CommunityComment {
+  const author = row.author;
   return {
     id: row.id,
     postId: row.post_id,
     authorId: row.author_id,
-    authorNickname: row.author_nickname ?? "알 수 없음",
-    authorEmoji: row.author_emoji ?? "🐶",
-    authorLevel: row.author_level ?? 1,
+    authorNickname: author?.nickname ?? row.author_nickname ?? "알 수 없음",
+    authorEmoji: author?.avatar_emoji ?? row.author_emoji ?? "🐶",
+    authorLevel: author?.level ?? row.author_level ?? 1,
     content: row.content,
     publishedAt: row.published_at,
     timeAgo: formatTimeAgo(row.published_at),
@@ -71,8 +66,6 @@ function mapComment(row: any): CommunityComment {
     isRemovedByAdmin: row.is_removed_by_admin ?? false,
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const DEVICE_KEY_STORAGE = "dukgu_device_id"
 
@@ -86,6 +79,7 @@ function getOrCreateDeviceKey(): string {
   return key
 }
 
+/** 💡 인터페이스 정의 - 컴포넌트에서 사용할 때 에러가 나지 않도록 타입을 맞춥니다. */
 interface UseCommunityReturn {
   posts: CommunityPost[]
   comments: CommunityComment[]
@@ -136,13 +130,20 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     const load = async () => {
       setIsLoading(true)
       try {
+        const selectQuery = `
+          *,
+          author:profiles (
+            nickname,
+            avatar_emoji,
+            level
+          )
+        `
         if (postId) {
-          // 상세 페이지: 특정 게시글 + 댓글 로드
           const [{ data: postRow, error: postErr }, { data: commentRows }] = await Promise.all([
-            supabase.from("community_posts").select("*").eq("id", postId).single(),
+            supabase.from("community_posts").select(selectQuery).eq("id", postId).single(),
             supabase
               .from("community_comments")
-              .select("*")
+              .select(selectQuery)
               .eq("post_id", postId)
               .order("published_at", { ascending: true }),
           ])
@@ -150,10 +151,9 @@ export function useCommunity(postId?: string): UseCommunityReturn {
           setPosts([mapPost(postRow)])
           setComments((commentRows ?? []).map(mapComment))
         } else {
-          // 목록 페이지: 전체 게시글 로드
           const { data: postRows, error } = await supabase
             .from("community_posts")
-            .select("*")
+            .select(selectQuery)
             .eq("is_deleted", false)
             .order("published_at", { ascending: false })
             .limit(100)
@@ -169,11 +169,12 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     load()
   }, [postId])
 
+  /** 💡 [에러 해결] 필터링 시 p의 타입을 CommunityPost로 명시합니다. */
   const filteredPosts = useMemo(() => {
     return posts
-      .filter((p) => !p.isDeleted)
-      .filter((p) => activeCategory === "all" || p.category === activeCategory)
-      .filter((p) => {
+      .filter((p: CommunityPost) => !p.isDeleted)
+      .filter((p: CommunityPost) => activeCategory === "all" || p.category === activeCategory)
+      .filter((p: CommunityPost) => {
         if (!searchQuery.trim()) return true
         const q = searchQuery.toLowerCase()
         return (
@@ -265,9 +266,8 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     const isToggleOff = currentReaction === type
     const userKey = userId ?? getOrCreateDeviceKey()
 
-    // 낙관적 UI 업데이트
     setPosts((prev) =>
-      prev.map((p) => {
+      prev.map((p: CommunityPost) => {
         if (p.id !== postId) return p
         if (isToggleOff) {
           return {
@@ -284,228 +284,101 @@ export function useCommunity(postId?: string): UseCommunityReturn {
       })
     )
 
-    // 반응 저장 후 실제 카운트를 community_posts에 동기화
     const syncPostReaction = async () => {
       if (isToggleOff) {
-        await supabase.from("community_post_reactions").delete()
-          .eq("post_id", postId).eq("user_key", userKey)
+        await supabase.from("community_post_reactions").delete().eq("post_id", postId).eq("user_key", userKey)
       } else {
-        await supabase.from("community_post_reactions")
-          .upsert({ post_id: postId, user_key: userKey, reaction: type }, { onConflict: "post_id,user_key" })
+        await supabase.from("community_post_reactions").upsert({ post_id: postId, user_key: userKey, reaction: type }, { onConflict: "post_id,user_key" })
       }
-
-      // 실제 카운트 집계 후 community_posts 업데이트
-      const [{ count: likeCount, error: le }, { count: dislikeCount, error: de }] = await Promise.all([
-        supabase.from("community_post_reactions").select("*", { count: "exact", head: true })
-          .eq("post_id", postId).eq("reaction", "like"),
-        supabase.from("community_post_reactions").select("*", { count: "exact", head: true })
-          .eq("post_id", postId).eq("reaction", "dislike"),
+      const [{ count: likeCount }, { count: dislikeCount }] = await Promise.all([
+        supabase.from("community_post_reactions").select("*", { count: "exact", head: true }).eq("post_id", postId).eq("reaction", "like"),
+        supabase.from("community_post_reactions").select("*", { count: "exact", head: true }).eq("post_id", postId).eq("reaction", "dislike"),
       ])
-      if (le || de || likeCount === null || dislikeCount === null) return
-
-      await supabase.from("community_posts").update({
-        like_count:    likeCount,
-        dislike_count: dislikeCount,
-      }).eq("id", postId)
+      await supabase.from("community_posts").update({ like_count: likeCount ?? 0, dislike_count: dislikeCount ?? 0 }).eq("id", postId)
     }
-
-    syncPostReaction().catch((e) => console.error("[useCommunity] reactPost 실패:", e))
+    syncPostReaction().catch((e) => console.error(e))
   }, [userId])
 
-  const addComment = useCallback(
-    (
-      data: Omit<CommunityComment, "id" | "publishedAt" | "timeAgo" | "likeCount" | "dislikeCount" | "reportCount" | "isRemovedByAdmin">
-    ) => {
-      // DB 저장 (CommentSection이 로컬 UI 자체 관리)
-      supabase
-        .from("community_comments")
-        .insert({
-          post_id: data.postId,
-          author_id: data.authorId,
-          author_nickname: data.authorNickname,
-          author_emoji: data.authorEmoji,
-          author_level: data.authorLevel,
-          content: data.content,
-          like_count: 0,
-          dislike_count: 0,
-          report_count: 0,
-          is_removed_by_admin: false,
-          published_at: new Date().toISOString(),
-        })
-        .then(({ error }) => {
-          if (error) console.error("[useCommunity] 댓글 저장 실패:", error)
-        })
+  const addComment = useCallback((data: any) => {
+    supabase.from("community_comments").insert({
+      post_id: data.postId,
+      author_id: data.authorId,
+      author_nickname: data.authorNickname,
+      author_emoji: data.authorEmoji,
+      author_level: data.authorLevel,
+      content: data.content,
+      published_at: new Date().toISOString(),
+    }).then(({ error }) => { if (error) console.error(error) })
 
-      // 낙관적 UI 업데이트 (DB 카운트는 트리거가 처리)
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id !== data.postId ? p : { ...p, commentCount: p.commentCount + 1 }
-        )
-      )
-    },
-    []
-  )
+    setPosts((prev) => prev.map((p: CommunityPost) => p.id !== data.postId ? p : { ...p, commentCount: p.commentCount + 1 }))
+  }, [])
 
   const editComment = useCallback(async (commentId: string, content: string) => {
-    const { error } = await supabase
-      .from("community_comments")
-      .update({ content })
-      .eq("id", commentId)
-    if (error) throw error
-    setComments((prev) =>
-      prev.map((c) => (c.id === commentId ? { ...c, content } : c))
-    )
+    await supabase.from("community_comments").update({ content }).eq("id", commentId)
+    setComments((prev) => prev.map((c: CommunityComment) => (c.id === commentId ? { ...c, content } : c)))
   }, [])
 
   const deleteComment = useCallback(async (commentId: string) => {
     const target = comments.find((c) => c.id === commentId)
-    const { error } = await supabase
-      .from("community_comments")
-      .delete()
-      .eq("id", commentId)
-    if (error) throw error
-    setComments((prev) => prev.filter((c) => c.id !== commentId))
-    // 낙관적 UI 업데이트 (DB 카운트는 트리거가 처리)
+    await supabase.from("community_comments").delete().eq("id", commentId)
+    setComments((prev) => prev.filter((c: CommunityComment) => c.id !== commentId))
     if (target) {
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id !== target.postId ? p : { ...p, commentCount: Math.max(0, p.commentCount - 1) }
-        )
-      )
+      setPosts((prev) => prev.map((p: CommunityPost) => p.id !== target.postId ? p : { ...p, commentCount: Math.max(0, p.commentCount - 1) }))
     }
   }, [comments])
 
   const reactComment = useCallback((commentId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => {
-    const isToggleOff = currentReaction === type
     const userKey = userId ?? getOrCreateDeviceKey()
-
-    // 낙관적 UI 업데이트
-    setComments((prev) =>
-      prev.map((c) => {
+    const isToggleOff = currentReaction === type
+    
+    setComments((prev) => prev.map((c: CommunityComment) => {
         if (c.id !== commentId) return c
         if (isToggleOff) {
           return {
             ...c,
-            likeCount:    type === "like"    ? Math.max(0, c.likeCount    - 1) : c.likeCount,
+            likeCount: type === "like" ? Math.max(0, c.likeCount - 1) : c.likeCount,
             dislikeCount: type === "dislike" ? Math.max(0, c.dislikeCount - 1) : c.dislikeCount,
           }
         }
         return {
           ...c,
-          likeCount:    type === "like"    ? c.likeCount    + 1 : currentReaction === "like"    ? Math.max(0, c.likeCount    - 1) : c.likeCount,
+          likeCount: type === "like" ? c.likeCount + 1 : currentReaction === "like" ? Math.max(0, c.likeCount - 1) : c.likeCount,
           dislikeCount: type === "dislike" ? c.dislikeCount + 1 : currentReaction === "dislike" ? Math.max(0, c.dislikeCount - 1) : c.dislikeCount,
         }
-      })
-    )
+      }))
 
-    // community_comment_reactions upsert/delete 후 실제 카운트를 community_comments에 반영
-    const syncCounts = async () => {
+    const sync = async () => {
       if (isToggleOff) {
-        await supabase.from("community_comment_reactions").delete()
-          .eq("comment_id", commentId).eq("user_key", userKey)
+        await supabase.from("community_comment_reactions").delete().eq("comment_id", commentId).eq("user_key", userKey)
       } else {
-        await supabase.from("community_comment_reactions")
-          .upsert({ comment_id: commentId, user_key: userKey, reaction: type }, { onConflict: "comment_id,user_key" })
+        await supabase.from("community_comment_reactions").upsert({ comment_id: commentId, user_key: userKey, reaction: type })
       }
-
-      // 실제 카운트 집계 후 community_comments 테이블 업데이트
-      const [{ count: likeCount, error: le }, { count: dislikeCount, error: de }] = await Promise.all([
-        supabase.from("community_comment_reactions").select("*", { count: "exact", head: true })
-          .eq("comment_id", commentId).eq("reaction", "like"),
-        supabase.from("community_comment_reactions").select("*", { count: "exact", head: true })
-          .eq("comment_id", commentId).eq("reaction", "dislike"),
+      const [{ count: l }, { count: d }] = await Promise.all([
+        supabase.from("community_comment_reactions").select("*", { count: "exact", head: true }).eq("comment_id", commentId).eq("reaction", "like"),
+        supabase.from("community_comment_reactions").select("*", { count: "exact", head: true }).eq("comment_id", commentId).eq("reaction", "dislike"),
       ])
-
-      // 집계 실패 시 낙관적 UI 값을 0으로 리셋하지 않음
-      if (le || de || likeCount === null || dislikeCount === null) return
-
-      await supabase.from("community_comments").update({
-        like_count:    likeCount,
-        dislike_count: dislikeCount,
-      }).eq("id", commentId)
+      await supabase.from("community_comments").update({ like_count: l ?? 0, dislike_count: d ?? 0 }).eq("id", commentId)
     }
-
-    syncCounts().catch((e) => console.error("[useCommunity] reactComment 실패:", e))
+    sync().catch(e => console.error(e))
   }, [userId])
 
-  const reportComment = useCallback(
-    async (report: {
-      commentId: string
-      postId: string
-      reason: CommentReportReason
-      detail?: string
-    }) => {
-      // Supabase에 신고 저장
-      const { error } = await supabase.from("comment_reports").insert({
-        comment_id: report.commentId,
-        post_id: report.postId,
-        reason: report.reason,
-        detail: report.detail ?? null,
-        reported_at: new Date().toISOString(),
-      })
-      if (error) console.error("[useCommunity] 신고 저장 실패:", error)
-
-      // 신고 횟수 증가 + 3회 이상 자동 블라인드
-      setComments((prev) =>
-        prev.map((c) => {
-          if (c.id !== report.commentId) return c
-          const newCount = c.reportCount + 1
-          supabase
-            .from("community_comments")
-            .update({
-              report_count: newCount,
-              ...(newCount >= 3 ? { is_removed_by_admin: true } : {}),
-            })
-            .eq("id", c.id)
-          return { ...c, reportCount: newCount, isRemovedByAdmin: newCount >= 3 }
-        })
-      )
-
-      // 관리자 알림 API
-      try {
-        await fetch("/api/community/report", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...report, reportedAt: new Date().toISOString() }),
-        })
-      } catch {
-        // silent
-      }
-    },
-    []
-  )
+  const reportComment = useCallback(async (report: { commentId: string, postId: string, reason: CommentReportReason, detail?: string }) => {
+    await supabase.from("comment_reports").insert({
+      comment_id: report.commentId, post_id: report.postId, reason: report.reason, detail: report.detail, reported_at: new Date().toISOString(),
+    })
+    setComments((prev) => prev.map((c: CommunityComment) => {
+      if (c.id !== report.commentId) return c
+      const newCount = c.reportCount + 1
+      supabase.from("community_comments").update({ report_count: newCount, is_removed_by_admin: newCount >= 3 }).eq("id", c.id)
+      return { ...c, reportCount: newCount, isRemovedByAdmin: newCount >= 3 }
+    }))
+  }, [])
 
   const reportPost = useCallback(async (postId: string) => {
-    try {
-      await fetch("/api/community/report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId, reportedAt: new Date().toISOString() }),
-      })
-    } catch {
-      // silent
-    }
+    await fetch("/api/community/report", { method: "POST", body: JSON.stringify({ postId }) })
   }, [])
 
   return {
-    posts,
-    comments,
-    isLoading,
-    activeCategory,
-    setActiveCategory,
-    searchQuery,
-    setSearchQuery,
-    filteredPosts,
-    getComments,
-    reportPost,
-    createPost,
-    updatePost,
-    deletePost,
-    reactPost,
-    addComment,
-    editComment,
-    deleteComment,
-    reactComment,
-    reportComment,
+    posts, comments, isLoading, activeCategory, setActiveCategory, searchQuery, setSearchQuery, filteredPosts, getComments, reportPost, createPost, updatePost, deletePost, reactPost, addComment, editComment, deleteComment, reactComment, reportComment,
   }
 }
