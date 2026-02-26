@@ -2,25 +2,25 @@ import { createServerClient } from "@supabase/ssr"
 import { NextRequest, NextResponse } from "next/server"
 
 // =============================================================================
-// 🛡️ proxy.ts — 수정된 접근 제어 (닉네임 미설정 유저 차단 로직 포함)
+// 🛡️ proxy.ts — 고속 패스 버전 (인증만 확인, DB 조회 제거)
 // =============================================================================
 
-/** * 💡 1. '정확히' 이 주소일 때만 비로그인 통과 */
+/** 💡 1. 로그인 없이도 들어갈 수 있는 '공공장소' 목록 */
 const PUBLIC_EXACT = new Set([
   "/", 
   "/login", 
   "/ads.txt",
   "/assets",
-  "/onboarding", // 👈 [추가] 온보딩 페이지는 당연히 열려 있어야 합니다!
+  "/onboarding", // 온보딩은 입국 심사대이므로 열어둡니다.
 ])
 
 const PUBLIC_PREFIXES = [
-  "/auth",     
-  "/api",      
-  "/notice",   
-  "/news",     
-  "/briefing", 
-  "/community", 
+  "/auth",      // 인증 관련 API
+  "/api",       // 각종 데이터 API
+  "/notice",    // 공지사항
+  "/news",      // 뉴스 목록/상세
+  "/briefing",  // 브리핑 데이터
+  "/community", // 커뮤니티 목록/상세
 ]
 
 function isPublicPath(pathname: string): boolean {
@@ -30,15 +30,9 @@ function isPublicPath(pathname: string): boolean {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
-
-  // 1. 비로그인 허용 경로면 일단 하이패스!
-  // (단, 로그인 유저가 닉네임이 없는 경우는 아래 2번에서 따로 잡습니다.)
-  if (isPublicPath(pathname) && pathname === "/login") {
-     return NextResponse.next({ request })
-  }
-
   let response = NextResponse.next({ request })
 
+  // Supabase 서버 클라이언트 생성 (쿠키 핸들링 포함)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -56,40 +50,32 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    // 💡 2. 로그인된 유저라면 '닉네임'이 있는지 추가 검문합니다.
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("nickname")
-        .eq("id", user.id)
-        .single()
+  /**
+   * 💡 핵심 로직 수정
+   * 1. 미들웨어에서는 auth.getUser()만 호출하여 '로그인 여부'만 판단합니다.
+   * 2. profiles 테이블 조회(DB I/O)를 제거하여 페이지 로딩 속도를 극대화합니다.
+   */
+  const { data: { user } } = await supabase.auth.getUser()
 
-      // 🚨 로그인은 했으나 닉네임이 없고, 현재 페이지가 온보딩이 아니라면?
-      // -> 온보딩 페이지로 강제 압송!
-      if (!profile?.nickname && pathname !== "/onboarding" && !pathname.startsWith('/api')) {
-        return NextResponse.redirect(new URL("/onboarding", request.url))
-      }
-
-      // 닉네임이 있다면 가려던 길 가게 해줍니다.
-      return response 
-    }
-  } catch (error) {
-    return response
-  }
-
-  // 3. 비로그인 유저가 공공장소가 아닌 곳(프로필 등)에 가려고 하면 로그인으로 보냄
-  if (!isPublicPath(pathname)) {
+  // Case A: 비로그인 유저가 비공개 경로(마이페이지, 자산관리 등)에 접근할 때
+  if (!user && !isPublicPath(pathname)) {
     return NextResponse.redirect(new URL(`/login?next=${pathname}`, request.url))
   }
 
+  // Case B: 이미 로그인했거나, 공공장소에 접근하는 경우 하이패스!
+  // (닉네임 체크는 Client-side의 UserContext에서 처리하여 무한 루프를 방지합니다.)
   return response
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/|ads\\.txt|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+    /*
+     * 아래 경로를 제외한 모든 경로에서 미들웨어 실행:
+     * - _next/static (정적 파일)
+     * - _next/image (이미지 최적화)
+     * - favicon.ico, ads.txt 등 루트 정적 파일
+     * - 이미지, 폰트 등 확장자 파일
+     */
+    "/((?!_next/static|_next/image|favicon.ico|ads\\.txt|robots\\.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 }

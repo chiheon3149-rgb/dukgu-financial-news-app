@@ -24,11 +24,17 @@ export function DukguReaction({ initialGood, initialBad, viewCount, commentCount
     initialBad
   )
 
+  // 💡 [핵심 수정] 리액션 클릭 시 통일된 로그인 유도 팝업 적용
   const handleReact = (type: "good" | "bad") => {
     if (!profile) {
-      toast.error("로그인 후 이용 가능합니다.")
-      router.push("/login")
-      return
+      toast("로그인이 필요한 기능이다냥! 🐾", {
+        description: "이 뉴스가 유익했다면 덕구네 식구가 되어 달라냥.",
+        action: {
+          label: "로그인하기",
+          onClick: () => router.push("/login"),
+        },
+      })
+      return // ⚠️ 강제 이동을 제거하고 팝업만 띄운 뒤 함수를 종료합니다.
     }
     react(type, snapshot)
   }

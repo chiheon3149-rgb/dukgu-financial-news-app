@@ -10,7 +10,7 @@ import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
 import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
 import { DukguAiSummary } from "@/components/dukgu/dukgu-ai-summary"
 import { NewsCommentSection } from "@/components/dukgu/news-comment-section"
-import { ShareButton } from "@/components/dukgu/share-button" // 👈 새로 만든 컴포넌트 추가
+import { ShareButton } from "@/components/dukgu/share-button"
 import { supabase } from "@/lib/supabase"
 import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
@@ -58,7 +58,6 @@ export function NewsDetailClient({ id }: { id: string }) {
   const [news, setNews] = useState<NewsDetail | null | undefined>(undefined)
   const [liveViewCount, setLiveViewCount] = useState(0)
   const [liveCommentCount, setLiveCommentCount] = useState(0)
-  // 💡 shareCopied 상태는 ShareButton 컴포넌트 내부로 옮겼으므로 여기서 삭제했습니다.
   const { isSaved, toggleSave } = useSavedArticles()
 
   useEffect(() => {
@@ -82,10 +81,16 @@ export function NewsDetailClient({ id }: { id: string }) {
 
   const isBookmarked = news ? isSaved(news.id) : false
 
+  // 💡 [수정] 북마크 클릭 시 통일된 로그인 팝업 적용
   const toggleBookmark = () => {
     if (!profile) {
-      toast.error("로그인 후 북마크를 사용할 수 있습니다.")
-      router.push("/login")
+      toast("로그인이 필요한 기능이다냥! 🐾", {
+        description: "기사를 저장하려면 덕구네 식구가 되어 달라냥.",
+        action: {
+          label: "로그인하기",
+          onClick: () => router.push("/login"),
+        },
+      })
       return
     }
     if (!news) return
@@ -98,8 +103,6 @@ export function NewsDetailClient({ id }: { id: string }) {
     })
     if (!isBookmarked) toast.success("간식 창고(북마크)에 저장했다냥! 🐾")
   }
-
-  // 💡 handleShare 함수는 ShareButton 컴포넌트가 대신 수행하므로 삭제했습니다.
 
   if (news === undefined) {
     return (
@@ -139,7 +142,6 @@ export function NewsDetailClient({ id }: { id: string }) {
       />
 
       <main className="max-w-md mx-auto px-5 py-6">
-
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tight">
             {news.category}
@@ -185,7 +187,6 @@ export function NewsDetailClient({ id }: { id: string }) {
               {isBookmarked ? "저장됨" : "저장하기"}
             </button>
 
-            {/* 🔥 [교체] 재사용 가능한 ShareButton 컴포넌트로 변경 (디자인 스타일 유지) */}
             <ShareButton
               title={`[덕구의 뉴스] ${news.headline}`}
               text={news.summary || "매일 아침, 당신을 위한 금융 뉴스 브리핑"}

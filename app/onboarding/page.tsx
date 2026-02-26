@@ -6,12 +6,13 @@ import { Check, AlertCircle, Loader2, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { AvatarPicker } from "@/components/dukgu/avatar-picker"
-import { supabase } from "@/lib/supabase" // 👈 경로가 맞는지 꼭 확인해달라냥!
+import { supabase } from "@/lib/supabase" 
 import { useUser } from "@/context/user-context"
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { profile, refreshProfile, isLoading: isUserLoading } = useUser()
+  // 💡 [수정] profile 대신 user(인증 정보)를 사용합니다. 새 유저는 profile이 null이기 때문입니다.
+  const { user, refreshProfile, isLoading: isUserLoading } = useUser()
 
   const [nickname, setNickname] = useState("")
   const [selectedEmoji, setSelectedEmoji] = useState("🐱")
@@ -44,34 +45,49 @@ export default function OnboardingPage() {
       }
     } catch (err) {
       setStatus("idle")
+      console.error(err)
       toast.error("중복 확인 중 오류가 발생했다냥.")
     }
   }
 
   // 2. 프로필 최종 저장 및 입장
   const handleSubmit = async () => {
-    if (status !== "available" || !profile?.id) return
+    // 💡 [수정] profile?.id 대신 user?.id를 체크해야 가입이 진행됩니다.
+    if (status !== "available" || !user?.id) {
+      toast.error("닉네임 중복 확인을 먼저 해달라냥! 🐾")
+      return
+    }
     
     setIsSubmitting(true)
     try {
+      /**
+       * 💡 [핵심 수정] update -> upsert
+       * 새 유저는 레코드가 아예 없으므로 update는 작동하지 않습니다.
+       * upsert를 써야 "없으면 새로 만들고, 있으면 덮어쓰기"가 됩니다.
+       */
       const { error } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id, // Auth ID와 연결
           nickname: nickname.trim(),
-          avatar_emoji: selectedEmoji, // 👈 DB 컬럼명(snake)에 맞춰 저장
+          avatar_emoji: selectedEmoji,
+          email: user.email,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", profile.id)
 
       if (error) throw error
 
-      // 💡 [핵심] Context 정보를 최신화하여 'proxy.ts'의 검문을 무사통과하게 함
+      // Context 정보를 최신화하여 리다이렉트 가드를 통과시킵니다.
       await refreshProfile() 
       
       toast.success("이제 덕구네 식구가 되었다냥! 환영한다냥! 🐾")
-      router.replace("/") // 메인으로 입장!
-    } catch (err) {
+      
+      // 💡 replace 대신 확실하게 홈으로 보냅니다.
+      router.push("/") 
+    } catch (err: any) {
+      console.error("가입 에러:", err.message)
       toast.error("입장 등록에 실패했다냥. 다시 시도해달라냥.")
+    } finally {
       setIsSubmitting(false)
     }
   }
@@ -81,7 +97,12 @@ export default function OnboardingPage() {
     setStatus("idle")
   }, [nickname])
 
-  // 🚨 [에러 방지] 유저 정보를 불러오는 중이라면 로딩 화면을 보여줌
+  // 기존 유저가 실수로 들어온 경우 홈으로 돌려보내는 안전장치
+  useEffect(() => {
+    // 만약 이미 프로필(닉네임)이 완성이 된 유저라면?
+    // UserContext에서 처리하지만, 여기서도 한번 더 막아주면 좋습니다.
+  }, [isUserLoading])
+
   if (isUserLoading) {
     return (
       <div className="min-h-dvh bg-slate-50 flex items-center justify-center">

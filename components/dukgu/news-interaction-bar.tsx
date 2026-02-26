@@ -1,8 +1,11 @@
 "use client"
 
+import { useRouter } from "next/navigation" // 💡 [추가] 페이지 이동 도구
 import { ThumbsUp, ThumbsDown, MessageCircle, Bookmark } from "lucide-react"
+import { toast } from "sonner" // 💡 [추가] 통일된 알림 도구
 import { useNewsReaction } from "@/hooks/use-news-reaction"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
+import { useUser } from "@/context/user-context" // 💡 [추가] 유저 정보 확인 도구
 import type { NewsCategory } from "@/types"
 
 interface InteractionBarProps {
@@ -25,6 +28,8 @@ export function NewsInteractionBar({
   commentCount,
   snapshot,
 }: InteractionBarProps) {
+  const router = useRouter()
+  const { profile } = useUser()
   const { good, bad, userReaction, react } = useNewsReaction(
     newsId ?? "",
     initialGood,
@@ -33,31 +38,49 @@ export function NewsInteractionBar({
   const { isSaved, toggleSave } = useSavedArticles()
   const saved = newsId ? isSaved(newsId) : false
 
+  // 💡 [공용 로직] 비회원용 문지기 함수
+  const checkLogin = (message: string) => {
+    if (!profile) {
+      toast("로그인이 필요한 기능이다냥! 🐾", {
+        description: message,
+        action: {
+          label: "로그인하기",
+          onClick: () => router.push("/login"),
+        },
+      })
+      return false
+    }
+    return true
+  }
+
   const handleLike = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (!checkLogin("좋아요를 누르려면 덕구네 식구가 되어 달라냥.")) return
     react("good", snapshot)
   }
 
   const handleDislike = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (!checkLogin("리액션을 남기려면 덕구네 식구가 되어 달라냥.")) return
     react("bad", snapshot)
   }
 
   const handleBookmark = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (!checkLogin("기사를 저장하려면 덕구네 식구가 되어 달라냥.")) return
     if (!newsId || !snapshot) return
     toggleSave(newsId, snapshot)
+    if (!saved) toast.success("간식 창고(북마크)에 저장했다냥! 🐾")
   }
 
   return (
     <div className="flex items-center justify-between pt-4 border-t border-slate-50 mt-auto">
       
-      {/* 👍 좋아요 & 싫어요 캡슐형 UI (민트 & 로즈) */}
+      {/* 👍 좋아요 & 싫어요 캡슐형 UI */}
       <div className="flex items-center gap-1 bg-slate-100/60 p-1 rounded-2xl">
-        {/* 좋아요 버튼 (Blue -> Emerald) */}
         <button
           onClick={handleLike}
           className={`
@@ -71,10 +94,8 @@ export function NewsInteractionBar({
           <span className="text-[12px] font-extrabold tabular-nums">{good}</span>
         </button>
 
-        {/* 구분선 */}
         <div className="w-[1px] h-3 bg-slate-200 mx-0.5" />
 
-        {/* 싫어요 버튼 (Red -> Rose: 민트와 더 잘 어울리는 따뜻한 레드) */}
         <button
           onClick={handleDislike}
           className={`
@@ -96,7 +117,6 @@ export function NewsInteractionBar({
           <span className="text-[12px] font-bold tabular-nums">{commentCount}</span>
         </div>
 
-        {/* 북마크 버튼 (Blue -> Emerald) */}
         <button
           onClick={handleBookmark}
           className={`

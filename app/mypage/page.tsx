@@ -8,6 +8,7 @@ import {
   Trophy, Pencil, Zap, Settings, LogOut, Users,
   Eye, EyeOff, MessageSquare, HelpCircle,
 } from "lucide-react"
+import { toast } from "sonner" // 💡 [추가] 로그아웃 알림창을 띄우기 위한 도구
 import { XpLevelBadge } from "@/components/dukgu/xp-level-badge"
 import { PolicyModal, type PolicyType } from "@/components/dukgu/policy-modal"
 import { useUser } from "@/context/user-context"
@@ -49,9 +50,11 @@ export default function MyPage() {
   const [showLevelMap, setShowLevelMap] = useState(false)
   const [openPolicy, setOpenPolicy] = useState<PolicyType | null>(null)
 
+  // 💡 [핵심 수정] 로그아웃 시 로그인 페이지가 아닌 메인 홈('/')으로 쫓아냅니다!
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push("/login")
+    toast("다음에 또 보냥! 🐾", { description: "안전하게 로그아웃 되었다냥." })
+    router.push("/")
   }
 
   if (!profile) return null
@@ -179,7 +182,7 @@ export default function MyPage() {
           <MenuRow icon={<BookMarked className="w-4 h-4" />}    label="저장한 기사"           href="/mypage/saved"             badge={savedArticles.length}  color="text-blue-500" />
           <MenuRow icon={<ThumbsUp className="w-4 h-4" />}      label="내가 반응한 기사"      href="/mypage/saved?tab=reactions" badge={reactions.length}    color="text-emerald-500" />
           <MenuRow icon={<Zap className="w-4 h-4" />}           label="XP 획득 내역"          href="/mypage/saved?tab=xp"                                    color="text-amber-500" />
-          <MenuRow icon={<MessageSquare className="w-4 h-4" />} label="문의하기"              href="/mypage/inquiry"                                          color="text-purple-400" />
+          <MenuRow icon={<MessageSquare className="w-4 h-4" />} label="문의하기"              href="/mypage/inquiry"                                         color="text-purple-400" />
           <MenuRow icon={<Settings className="w-4 h-4" />}      label="회원정보 수정"         href="/mypage/edit"                                            color="text-slate-500" />
         </section>
 

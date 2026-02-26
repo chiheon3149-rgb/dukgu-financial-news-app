@@ -1,43 +1,52 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Search, X } from "lucide-react"
 
-// 1. 설계도(Interface)에 placeholder를 '선택 사항(?)'으로 추가했습니다.
 interface SearchBarProps {
   value: string
   onChange: (value: string) => void
-  placeholder?: string // 👈 ?를 붙여서 넣어도 되고 안 넣어도 되게 만들었어요!
+  placeholder?: string
 }
 
 export function SearchBar({ 
   value, 
   onChange, 
-  placeholder = "태그, 제목, 내용으로 검색" // 👈 기본값도 설정해서 안전하게!
+  placeholder = "태그, 제목, 내용으로 검색" 
 }: SearchBarProps) {
+  // 하이드레이션 오류 방지를 위한 마운트 상태 관리
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // 서버와 클라이언트의 결과가 다를 수 있는 부분은 마운트 후에만 렌더링하거나 
+  // suppressHydrationWarning을 사용합니다.
   return (
     <form
       onSubmit={(e) => e.preventDefault()}
       className="relative flex items-center w-full mb-1 group"
+      suppressHydrationWarning // 브라우저 확장 프로그램의 개입 허용
     >
-      {/* 1. 돋보기 아이콘 - 포커스 시 민트색(emerald-500)으로 변해요! */}
+      {/* 1. 돋보기 아이콘 */}
       <div className="absolute left-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors">
         <Search className="w-4 h-4" />
       </div>
 
-      {/* 2. 입력 필드 - 기획자님이 설정하신 세련된 디자인 유지 */}
+      {/* 2. 입력 필드 */}
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        // 브라우저의 자동 완성 기능이 DOM을 조작해도 에러를 띄우지 않도록 설정
+        suppressHydrationWarning 
+        autoComplete="off" 
         className={`
           w-full text-[14px] font-medium text-slate-800 rounded-xl 
           py-2.5 pl-11 pr-10 transition-all placeholder:text-slate-400
-          
-          /* 비활성 상태: 배경을 살짝 더 진하게 하고, 테두리를 명확히 부여 */
           bg-slate-100/80 border border-slate-200 
-          
-          /* 활성 상태 (민트 포인트) */
           focus:outline-none focus:bg-white 
           focus:ring-4 focus:ring-emerald-500/10 
           focus:border-emerald-400
@@ -45,8 +54,8 @@ export function SearchBar({
         `}
       />
 
-      {/* 3. X 버튼 - 글자가 있을 때만 나타나고 누르면 싹 지워집니다. */}
-      {value && (
+      {/* 3. 삭제 버튼 */}
+      {mounted && value && (
         <button
           type="button"
           onClick={() => onChange("")}

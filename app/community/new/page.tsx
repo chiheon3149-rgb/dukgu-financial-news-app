@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation"
 import { X, Plus, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
-import { YoutubePlayer } from "@/components/dukgu/youtube-player" // 👈 영상 출력 부품
-import { getYoutubeIds } from "@/lib/youtube" // 👈 링크 추출 부품
+import { YoutubePlayer } from "@/components/dukgu/youtube-player"
+import { getYoutubeIds } from "@/lib/youtube"
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
@@ -24,11 +24,21 @@ export default function NewPostPage() {
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // 💡 [핵심] 실시간 추출된 유튜브 ID들을 담는 저장소
   const [previewIds, setPreviewIds] = useState<string[]>([])
 
-  // 💡 [실시간 감시] 본문 내용이 바뀔 때마다 유튜브 링크가 있는지 샅샅이 뒤집니다.
+  useEffect(() => {
+    if (profile === null) {
+      toast("로그인이 필요한 기능이다냥! 🐾", {
+        description: "글을 작성하려면 덕구네 식구가 되어 달라냥.",
+        action: {
+          label: "로그인하기", // 💡 [수정] 로그인으로 라벨 변경
+          onClick: () => router.push("/login"), // 💡 [수정] 경로 변경
+        },
+      })
+      router.replace("/community") 
+    }
+  }, [profile, router])
+
   useEffect(() => {
     if (content.trim()) {
       const ids = getYoutubeIds(content)
@@ -99,7 +109,6 @@ export default function NewPostPage() {
       />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-5">
-        {/* 카테고리 선택 */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">카테고리</p>
           <div className="flex gap-2">
@@ -119,7 +128,6 @@ export default function NewPostPage() {
           </div>
         </section>
 
-        {/* 태그 영역 (기존 유지) */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">
             태그 ({tags.length}/5)
@@ -168,7 +176,6 @@ export default function NewPostPage() {
           </div>
         </section>
 
-        {/* 제목 + 내용 + 💡 미리보기 */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 space-y-4">
           <div>
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">제목</p>
@@ -194,7 +201,6 @@ export default function NewPostPage() {
             />
           </div>
 
-          {/* 💡 실시간 영상 미리보기 영역 */}
           {previewIds.length > 0 && (
             <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-300">
               <div className="flex items-center gap-2 mb-2">

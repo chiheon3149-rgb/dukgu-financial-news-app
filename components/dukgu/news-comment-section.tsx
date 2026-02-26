@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ThumbsUp, ThumbsDown, Send, Check, X, Flag } from "lucide-react"
+import { ThumbsUp, ThumbsDown, Check, X, Flag } from "lucide-react"
 import { toast } from "sonner"
 import type { CommentReportReason } from "@/types"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@/context/user-context"
+import { CommentInput } from "@/components/dukgu/comment-input" // 💡 새로 만든 부품 임포트
 
 interface NewsComment {
   id: string
@@ -22,15 +23,6 @@ interface NewsComment {
   is_removed: boolean
   published_at: string
 }
-
-const REPORT_REASONS: { value: CommentReportReason; label: string }[] = [
-  { value: "spam",           label: "스팸 / 도배" },
-  { value: "hate",           label: "혐오 발언" },
-  { value: "sexual",         label: "음란 / 성적 콘텐츠" },
-  { value: "violence",       label: "폭력 / 위협" },
-  { value: "misinformation", label: "허위 정보" },
-  { value: "other",           label: "기타" },
-]
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -72,20 +64,14 @@ export function NewsCommentSection({
     } catch { return {} }
   })
   const [reportModal, setReportModal] = useState<ReportModalState | null>(null)
-  const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
 
-  // =============================================================================
-  // 💡 [핵심 수정] 댓글 개수 보고 전담 보안관 (useEffect)
-  // 모든 개별 함수에서 onCountChange를 호출하던 것을 중단하고, 여기서만 처리합니다.
-  // =============================================================================
   useEffect(() => {
     if (!isLoading) {
       onCountChange?.(comments.length)
     }
   }, [comments.length, onCountChange, isLoading])
 
-  // 데이터 가져오기
   useEffect(() => {
     const fetchComments = async () => {
       const { data } = await supabase
@@ -97,18 +83,23 @@ export function NewsCommentSection({
       const rows = data ?? []
       setComments(rows.map(r => ({ ...r, timeAgo: formatTimeAgo(r.published_at) })))
       setIsLoading(false)
-      // 💡 여기서 직접 onCountChange를 호출하지 않습니다. (useEffect가 처리)
     }
     fetchComments()
   }, [newsId])
 
-  // 댓글 작성
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputText.trim()) return
+
+    // 💡 통일된 로그인 팝업 (강제 이동 X)
     if (!profile) {
-      toast.error("로그인 후 댓글을 남길 수 있습니다.")
-      router.push("/login")
+      toast("로그인이 필요한 기능이다냥! 🐾", {
+        description: "댓글을 작성하려면 덕구네 식구가 되어 달라냥.",
+        action: {
+          label: "로그인하기",
+          onClick: () => router.push("/login"),
+        },
+      })
       return
     }
 
@@ -131,29 +122,15 @@ export function NewsCommentSection({
     setInputText("")
   }
 
-  // 댓글 수정 저장
-  const saveEdit = async (id: string) => {
-    await supabase.from("news_comments").update({ content: editText }).eq("id", id)
-    setComments(prev => prev.map(c => c.id === id ? { ...c, content: editText } : c))
-    setEditingId(null)
-  }
-
-  // 댓글 삭제 실행
-  const performDeleteComment = async (id: string) => {
-    await supabase.from("news_comments").delete().eq("id", id)
-    setComments(prev => prev.filter(c => c.id !== id))
-    await supabase.rpc("decrement_news_comment_count", { target_news_id: newsId })
-    setOpenMenuId(null)
-  }
-
-  const deleteComment = (id: string) => {
-    toast("댓글을 삭제하시겠습니까?", {
-      action: { label: "삭제", onClick: () => performDeleteComment(id) },
-    })
-  }
-
-  // 좋아요/싫어요 반응
   const handleReact = async (id: string, type: "like" | "dislike") => {
+    if (!profile) {
+      toast("로그인이 필요한 기능이다냥! 🐾", {
+        description: "좋아요를 누르려면 덕구네 식구가 되어 달라냥.",
+        action: { label: "로그인하기", onClick: () => router.push("/login") },
+      })
+      return
+    }
+
     const prev = reactions[id]
     if (prev === type) return
     const target = comments.find(c => c.id === id)
@@ -169,28 +146,25 @@ export function NewsCommentSection({
     await supabase.from("news_comments").update({ like_count: newLike, dislike_count: newDislike }).eq("id", id)
   }
 
-  // 신고 제출
-  const handleReportSubmit = async () => {
-    if (!reportModal?.reason) return
-    setIsSubmittingReport(true)
-    try {
-      await fetch("/api/community/report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          commentId: reportModal.commentId,
-          postId: `news-${newsId}`,
-          reason: reportModal.reason,
-          detail: reportModal.detail || undefined,
-          reportedAt: new Date().toISOString(),
-        }),
-      })
-      setComments(prev => prev.map(c => c.id === reportModal.commentId ? { ...c, report_count: c.report_count + 1, is_removed: c.report_count + 1 >= 3 } : c))
-      setReportedIds(prev => new Set(prev).add(reportModal.commentId))
-    } finally {
-      setIsSubmittingReport(false)
-      setReportModal(null)
-    }
+  const saveEdit = async (id: string) => {
+    await supabase.from("news_comments").update({ content: editText }).eq("id", id)
+    setComments(prev => prev.map(c => c.id === id ? { ...c, content: editText } : c))
+    setEditingId(null)
+  }
+
+  const deleteComment = (id: string) => {
+    toast("댓글을 삭제하시겠습니까?", {
+      action: { 
+        label: "삭제", 
+        onClick: async () => {
+          await supabase.from("news_comments").delete().eq("id", id)
+          setComments(prev => prev.filter(c => c.id !== id))
+          await supabase.rpc("decrement_news_comment_count", { target_news_id: newsId })
+          setOpenMenuId(null)
+        } 
+      },
+      cancel: { label: "취소", onClick: () => {} },
+    })
   }
 
   return (
@@ -199,23 +173,14 @@ export function NewsCommentSection({
         댓글 {comments.length}개
       </h4>
 
-      <form onSubmit={handleSubmit} className="flex items-center gap-3 mb-7">
-        <div className="w-9 h-9 rounded-full bg-emerald-50 border border-emerald-100 shrink-0 flex items-center justify-center text-base">
-          {profile?.avatarEmoji ?? "🐱"}
-        </div>
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="댓글을 입력하세요"
-            className="w-full bg-slate-50 border border-slate-100 rounded-full py-2.5 pl-4 pr-10 text-[13px] focus:outline-none focus:bg-white focus:border-emerald-200 transition-all"
-          />
-          <button type="submit" disabled={!inputText.trim()} className={`absolute right-3 top-2.5 transition-colors ${inputText.trim() ? "text-emerald-500" : "text-slate-300"}`}>
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-      </form>
+      {/* 💡 [수정] 공용 부품 사용! 버튼이 정중앙에 오고 잘 눌립니다. */}
+      <CommentInput
+        value={inputText}
+        onChange={setInputText}
+        onSubmit={handleSubmit}
+        userEmoji={profile?.avatarEmoji}
+        placeholder="댓글을 입력하세요"
+      />
 
       {isLoading && <div className="text-center text-slate-400 text-xs py-6 animate-pulse">댓글 불러오는 중...</div>}
       {!isLoading && comments.length === 0 && <div className="text-center text-slate-300 text-xs py-6">첫 댓글을 남겨보세요!</div>}
@@ -240,7 +205,7 @@ export function NewsCommentSection({
                       <span className="text-[10px] font-medium text-slate-400 tabular-nums">{comment.timeAgo}</span>
                     </div>
                     <div className="relative">
-                      <button onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)} className="p-1 text-slate-300 hover:text-slate-500 transition-colors">···</button>
+                      <button onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)} className="p-1 text-slate-300 hover:text-slate-500 transition-colors font-bold">···</button>
                       {openMenuId === comment.id && (
                         <div className="absolute right-0 top-7 bg-white border border-slate-100 shadow-xl rounded-2xl py-1.5 z-20 min-w-[100px] flex flex-col">
                           {isMyComment ? (
@@ -249,7 +214,21 @@ export function NewsCommentSection({
                               <button onClick={() => deleteComment(comment.id)} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left">삭제하기</button>
                             </>
                           ) : (
-                            <button onClick={() => { setOpenMenuId(null); if (!alreadyReported) setReportModal({ commentId: comment.id, reason: null, detail: "" }) }} disabled={alreadyReported} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left flex items-center gap-1.5">
+                            <button 
+                              onClick={() => { 
+                                setOpenMenuId(null); 
+                                if (!profile) {
+                                  toast("로그인이 필요한 기능이다냥! 🐾", {
+                                    description: "신고하려면 덕구네 식구가 되어 달라냥.",
+                                    action: { label: "로그인하기", onClick: () => router.push("/login") },
+                                  })
+                                  return
+                                }
+                                if (!alreadyReported) setReportModal({ commentId: comment.id, reason: null, detail: "" }) 
+                              }} 
+                              disabled={alreadyReported} 
+                              className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left flex items-center gap-1.5"
+                            >
                               <Flag className="w-3 h-3" />{alreadyReported ? "신고완료" : "신고하기"}
                             </button>
                           )}
@@ -269,10 +248,10 @@ export function NewsCommentSection({
                     <p className="text-[13px] text-slate-600 leading-relaxed mb-2.5 font-medium break-keep">{comment.content}</p>
                   )}
                   <div className="flex items-center gap-2">
-                    <button onClick={() => handleReact(comment.id, "like")} className={`flex items-center gap-1 px-2 py-1 rounded-full transition-all active:scale-95 text-[10px] font-bold ${myReaction === "like" ? "bg-emerald-50 text-emerald-600" : "text-slate-400 hover:bg-slate-50"}`}>
+                    <button onClick={() => handleReact(comment.id, "like")} className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all active:scale-95 text-[10px] font-bold ${myReaction === "like" ? "bg-emerald-50 text-emerald-600" : "text-slate-400 hover:bg-slate-50"}`}>
                       <ThumbsUp className={`w-3 h-3 ${myReaction === "like" ? "fill-emerald-500" : ""}`} /> <span className="tabular-nums">{comment.like_count}</span>
                     </button>
-                    <button onClick={() => handleReact(comment.id, "dislike")} className={`flex items-center gap-1 px-2 py-1 rounded-full transition-all active:scale-95 text-[10px] font-bold ${myReaction === "dislike" ? "bg-rose-50 text-rose-500" : "text-slate-400 hover:bg-slate-50"}`}>
+                    <button onClick={() => handleReact(comment.id, "dislike")} className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all active:scale-95 text-[10px] font-bold ${myReaction === "dislike" ? "bg-rose-50 text-rose-500" : "text-slate-400 hover:bg-slate-50"}`}>
                       <ThumbsDown className={`w-3 h-3 ${myReaction === "dislike" ? "fill-rose-500" : ""}`} /> <span className="tabular-nums">{comment.dislike_count}</span>
                     </button>
                   </div>
@@ -282,8 +261,6 @@ export function NewsCommentSection({
           )
         })}
       </div>
-
-      {/* 신고 모달 등 나머지 UI 동일 */}
     </section>
   )
 }

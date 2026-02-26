@@ -1,7 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { PenSquare, Users, Loader2 } from "lucide-react"
+import { PenSquare, Users, Loader2, RefreshCw } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommunityPostCard } from "@/components/dukgu/community-post-card"
 import { SearchBar } from "@/components/dukgu/search-bar" 
@@ -9,7 +10,9 @@ import { AdBanner } from "@/components/dukgu/ad-banner"
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityPost, CommunityCategory } from "@/types"
+import { toast } from "sonner" 
 
+// 💡 [수정] 스포츠를 제외하고 기존 카테고리만 유지합니다.
 const TABS: { id: CommunityCategory | "all"; label: string }[] = [
   { id: "all",     label: "전체" },
   { id: "free",    label: "자유" },
@@ -18,6 +21,7 @@ const TABS: { id: CommunityCategory | "all"; label: string }[] = [
 
 export default function CommunityPage() {
   const router = useRouter()
+  
   const { 
     filteredPosts, 
     isLoading, 
@@ -26,13 +30,27 @@ export default function CommunityPage() {
     searchQuery, 
     setSearchQuery, 
     reactPost, 
-    deletePost 
+    deletePost,
+    fetchPosts 
   } = useCommunity()
+  
   const { profile } = useUser()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefresh = async () => {
+    if (isRefreshing || isLoading) return
+    setIsRefreshing(true)
+    try {
+      if (fetchPosts) {
+        await fetchPosts()
+      }
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 300)
+    }
+  }
 
   return (
     <div className="min-h-dvh bg-slate-50 pb-28">
-      {/* 상단 헤더: 뒤로가기 없이 커뮤니티 정체성 강조 */}
       <DetailHeader
         showBack={false}
         title={
@@ -44,7 +62,6 @@ export default function CommunityPage() {
       />
 
       <main className="max-w-md mx-auto px-5 py-5 space-y-5">
-        
         {/* 1. 카테고리 탭 메뉴 */}
         <div className="flex gap-2">
           {TABS.map((tab) => (
@@ -65,28 +82,34 @@ export default function CommunityPage() {
           </span>
         </div>
 
-        {/* 2. 서치바: 상단 광고가 없어서 유저가 바로 검색 기능을 인지할 수 있음 */}
-        <section className="animate-in fade-in slide-in-from-top-1 duration-300">
-          <SearchBar 
-            value={searchQuery} 
-            onChange={setSearchQuery} 
-            placeholder="제목, 내용, 작성자 검색"
-          />
+        {/* 2. 서치바 & 새로고침 버튼 */}
+        <section className="flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300">
+          <div className="flex-1">
+            <SearchBar 
+              value={searchQuery} 
+              onChange={setSearchQuery} 
+              placeholder="제목, 내용, 작성자 검색"
+            />
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing || isLoading}
+            className="flex-shrink-0 bg-white border border-slate-200 text-slate-500 hover:text-emerald-500 hover:border-emerald-300 rounded-xl transition-all active:scale-95 disabled:opacity-50 h-[44px] w-[44px] flex items-center justify-center mb-1 shadow-sm"
+          >
+            <RefreshCw className={`w-5 h-5 ${isRefreshing ? "animate-spin text-emerald-500" : ""}`} />
+          </button>
         </section>
 
-        {/* 3. 게시글 리스트 및 동적 광고 배치 */}
+        {/* 3. 게시글 리스트 */}
         <div className="space-y-3">
-          {isLoading && (
+          {isLoading && !isRefreshing && (
             <div className="flex items-center justify-center py-16 text-slate-300">
               <Loader2 className="w-6 h-6 animate-spin" />
             </div>
           )}
 
           {!isLoading && filteredPosts.map((post: CommunityPost, index: number) => {
-            // 💡 기획 핵심 로직: 광고 노출 여부 결정
-            // 조건 1: 7, 14, 21번째 등 7의 배수 위치일 때
             const isEverySeven = (index + 1) % 7 === 0;
-            // 조건 2: 리스트의 맨 마지막이면서, 동시에 7의 배수 자리가 아닐 때 (중복 방지)
             const isLastButNotSeven = (index === filteredPosts.length - 1) && ((index + 1) % 7 !== 0);
             
             return (
@@ -99,7 +122,7 @@ export default function CommunityPage() {
                   onProfileClick={(authorId: string) => router.push(`/profile/${authorId}`)}
                 />
                 
-                {/* 💡 설정된 조건에 맞을 때만 광고 배너 삽입 */}
+                {/* 광고 노출 로직 */}
                 {(isEverySeven || isLastButNotSeven) && (
                   <div className="py-2 animate-in fade-in zoom-in-95 duration-500">
                     <AdBanner />
@@ -109,7 +132,6 @@ export default function CommunityPage() {
             );
           })}
 
-          {/* 검색 결과나 게시글이 없을 때의 예외 처리 */}
           {!isLoading && filteredPosts.length === 0 && (
             <div className="py-20 text-center text-slate-300">
               <Users className="w-10 h-10 mx-auto mb-3 opacity-20" />
@@ -119,9 +141,21 @@ export default function CommunityPage() {
         </div>
       </main>
 
-      {/* 우측 하단 플로팅 글쓰기 버튼 */}
+      {/* 우측 하단 플로팅 글쓰기 버튼 - 로그인 체크 유지 */}
       <button
-        onClick={() => router.push("/community/new")}
+        onClick={() => {
+          if (!profile) {
+            toast("로그인이 필요한 기능이다냥! 🐾", {
+              description: "글을 작성하려면 덕구네 식구가 되어 달라냥.",
+              action: {
+                label: "로그인하기", 
+                onClick: () => router.push("/login"),
+              },
+            })
+            return
+          }
+          router.push("/community/new")
+        }}
         className="fixed bottom-20 right-4 w-14 h-14 bg-emerald-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-90 z-40"
       >
         <PenSquare className="w-6 h-6" />

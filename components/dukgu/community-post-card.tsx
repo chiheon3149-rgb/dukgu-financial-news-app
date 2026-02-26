@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ThumbsUp, ThumbsDown, MessageCircle, MoreVertical, Pencil, Trash2, Eye } from "lucide-react"
@@ -15,19 +15,19 @@ interface CommunityPostCardProps {
   onProfileClick?: (authorId: string) => void
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  free: "자유",
-  economy: "경제",
-}
-
+const CATEGORY_LABEL: Record<string, string> = { free: "자유", economy: "경제", sports: "스포츠" }
 const CATEGORY_COLOR: Record<string, string> = {
   free: "bg-slate-100 text-slate-600",
   economy: "bg-emerald-50 text-emerald-700",
+  sports: "bg-blue-50 text-blue-700",
 }
 
 export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onProfileClick }: CommunityPostCardProps) {
   const router = useRouter()
-  const REACTION_KEY = "dukgu:community_post_reactions"
+  
+  const REACTION_KEY = currentUserId 
+    ? `dukgu:reactions_${currentUserId}` 
+    : "dukgu:reactions_guest"
   
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(() => {
     if (typeof window === "undefined") return null
@@ -40,9 +40,24 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
   const [counts, setCounts] = useState({ like: post.likeCount, dislike: post.dislikeCount })
   const [menuOpen, setMenuOpen] = useState(false)
 
+  useEffect(() => {
+    setCounts({ like: post.likeCount, dislike: post.dislikeCount })
+  }, [post.likeCount, post.dislikeCount])
+
   const isMyPost = !!currentUserId && post.authorId === currentUserId
 
   const handleReact = (type: "like" | "dislike") => {
+    if (!currentUserId) {
+      toast("로그인이 필요한 기능이다냥! 🐾", {
+        description: "좋아요를 누르려면 덕구네 식구가 되어 달라냥.",
+        action: {
+          label: "로그인하기", // 💡 [수정] 로그인으로 라벨 변경
+          onClick: () => router.push("/login"), // 💡 [수정] 경로 변경
+        },
+      })
+      return
+    }
+
     const isToggleOff = reaction === type
     const newReaction = isToggleOff ? null : type
 
@@ -71,7 +86,6 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
     e.stopPropagation()
     setMenuOpen(false)
 
-    // ✨ 비서가 지적한 에러 완벽 해결: onClick 추가
     toast("게시글을 삭제하시겠습니까?", {
       action: { 
         label: "삭제", 
@@ -81,7 +95,10 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
             .catch(() => toast.error("삭제 중 오류가 발생했다냥! 😿"))
         } 
       },
-      cancel: { label: "취소", onClick: () => {} },
+      cancel: { 
+        label: "취소", 
+        onClick: () => {} 
+      },
     })
   }
 
