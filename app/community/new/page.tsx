@@ -16,6 +16,8 @@ const PRESET_TAGS = ["금리", "주식", "ETF", "환율", "부동산", "코인",
 export default function NewPostPage() {
   const router = useRouter()
   const { createPost } = useCommunity()
+  
+  // 💡 [수정] currentLevel도 함께 가져와서 DB에 넘겨줘야 합니다.
   const { profile, currentLevel } = useUser()
 
   const [category, setCategory] = useState<CommunityCategory>("free")
@@ -26,19 +28,21 @@ export default function NewPostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewIds, setPreviewIds] = useState<string[]>([])
 
+  // 💡 [로그인 체크]
   useEffect(() => {
     if (profile === null) {
       toast("로그인이 필요한 기능이다냥! 🐾", {
         description: "글을 작성하려면 덕구네 식구가 되어 달라냥.",
         action: {
-          label: "로그인하기", // 💡 [수정] 로그인으로 라벨 변경
-          onClick: () => router.push("/login"), // 💡 [수정] 경로 변경
+          label: "로그인하기",
+          onClick: () => router.push("/login"),
         },
       })
       router.replace("/community") 
     }
   }, [profile, router])
 
+  // 💡 [유튜브 미리보기]
   useEffect(() => {
     if (content.trim()) {
       const ids = getYoutubeIds(content)
@@ -64,24 +68,29 @@ export default function NewPostPage() {
     }
   }
 
+  // 💡 [핵심 수리] handleSubmit: DB가 요구하는 모든 이름표를 꼼꼼히 붙여줍니다.
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim() || isSubmitting || !profile) return
     setIsSubmitting(true)
+    
     try {
       const newPost = await createPost({
         category,
         title: title.trim(),
         content: content.trim(),
         tags,
-        authorId: profile.id,
-        authorNickname: profile.nickname,
-        authorEmoji: profile.avatarEmoji,
-        authorLevel: currentLevel.level,
+        author_id: profile.id,             // 작성자 ID (고유번호)
+        author_nickname: profile.nickname, // 👈 [필수] 작성자 닉네임 (에러 해결사!)
+        author_emoji: profile.avatarEmoji, // 👈 [추가] 작성자 이모지
+        author_level: currentLevel.level,  // 👈 [추가] 작성자 레벨
       })
+
       toast.success("게시글이 성공적으로 등록되었다냥! 🐾")
       router.replace(`/community/${newPost.id}`)
-    } catch (error) {
-      toast.error("등록 중 오류가 발생했다냥. 다시 시도해달라냥.")
+    } catch (error: any) {
+      // 이제 에러가 나더라도 어떤 이유인지 상세히 보여줍니다.
+      console.error("등록 에러 상세:", error.message || error);
+      toast.error(`등록 실패: ${error.message || "데이터 입력 오류가 발생했다냥"}`);
     } finally {
       setIsSubmitting(false)
     }
@@ -109,6 +118,7 @@ export default function NewPostPage() {
       />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-5">
+        {/* 카테고리 선택 */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">카테고리</p>
           <div className="flex gap-2">
@@ -128,6 +138,7 @@ export default function NewPostPage() {
           </div>
         </section>
 
+        {/* 태그 입력 */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">
             태그 ({tags.length}/5)
@@ -176,6 +187,7 @@ export default function NewPostPage() {
           </div>
         </section>
 
+        {/* 제목 및 내용 */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 space-y-4">
           <div>
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">제목</p>
@@ -201,6 +213,7 @@ export default function NewPostPage() {
             />
           </div>
 
+          {/* 유튜브 미리보기 */}
           {previewIds.length > 0 && (
             <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-300">
               <div className="flex items-center gap-2 mb-2">
@@ -212,9 +225,6 @@ export default function NewPostPage() {
                   <YoutubePlayer key={vId} videoId={vId} />
                 ))}
               </div>
-              <p className="text-center text-[10px] font-bold text-slate-400">
-                영상이 잘 나오는지 확인하고 등록해달라냥! 🐾
-              </p>
             </div>
           )}
         </section>
