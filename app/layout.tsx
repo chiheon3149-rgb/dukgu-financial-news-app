@@ -5,6 +5,7 @@ import { Toaster } from 'sonner'
 import './globals.css'
 import { BottomNav } from "@/components/dukgu/bottom-nav"
 import { UserProvider } from "@/context/user-context"
+import Script from 'next/script' // 💡 Next.js 최적화 스크립트 컴포넌트
 
 // 폰트 설정: 최대한 다양한 두께를 가져와서 디자인의 유연성을 높였습니다.
 const notoSansKR = Noto_Sans_KR({ 
@@ -33,6 +34,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
+      <head>
+        {/* 💰 구글 애드센스 광고 엔진 스크립트 적용 */}
+        {/* 기획자님의 게시자 ID(ca-pub-4762124054224861)가 정상 반영되었습니다. */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4762124054224861"
+          crossOrigin="anonymous"
+          strategy="afterInteractive" // 페이지 상호작용 후 로드하여 성능 최적화
+        />
+      </head>
       <body 
         className={`${notoSansKR.className} antialiased selection:bg-blue-100 selection:text-blue-900`} 
         suppressHydrationWarning
