@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr"
 import { NextRequest, NextResponse } from "next/server"
 
 // =============================================================================
-// 🛡️ proxy.ts — 접근 제어 (1depth 허용, 2depth/Profile 차단)
+// 🛡️ proxy.ts — 접근 제어 (1depth 허용, 2depth/Profile 차단, 공지사항 완전 개방)
 // =============================================================================
 
 /** * 💡 1. '정확히' 이 주소일 때만 비로그인 통과 (1depth 메뉴들) 
@@ -12,16 +12,18 @@ const PUBLIC_EXACT = new Set([
   "/", 
   "/login", 
   "/ads.txt",
+  "/news",       // 👈 뉴스 1depth 열림
   "/briefing",   // 👈 브리핑 1depth 열림 (단, /briefing/123 은 튕김)
   "/assets",     // 👈 자산 1depth 열림
   "/community",  // 👈 커뮤니티 1depth 열림
 ])
 
-/** * 💡 2. 이 경로로 시작하면 하위 경로까지 전부 통과 (시스템/인증 필수 요소) 
+/** * 💡 2. 이 경로로 시작하면 하위 경로까지 전부 통과 (시스템/인증/공지사항) 
  */
 const PUBLIC_PREFIXES = [
   "/auth",    // /auth/callback 등 카카오/구글 로그인 처리용
   "/api",     // API는 내부에서 따로 검사하므로 일단 통과
+  "/notice",  // 👈 공지사항은 상세페이지(/notice/123)까지 100% 개방!
 ]
 
 function isPublicPath(pathname: string): boolean {
