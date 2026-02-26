@@ -1,18 +1,15 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react" // 💡 useRef 추가
-import Image from "next/image"
-import { useRouter } from "next/navigation" // 💡 useRouter 추가
+import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-
-const USE_IMAGE_LOGO = false
-const LOGO_PATH = "/logo.png"
+import { Mail, Lock } from "lucide-react" // 💡 아이콘 추가
 
 export default function LoginPage() {
   const router = useRouter()
   const [loginError, setLoginError] = useState<string | null>(null)
+  const [isEmailVisible, setIsEmailVisible] = useState(false) // 💡 토글 상태 추가
   
-  // 💡 로봇 로그인을 위한 Ref
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
@@ -36,7 +33,6 @@ export default function LoginPage() {
     })
   }
 
-  // 💡 로봇(크롤러)용 이메일 로그인 처리 함수
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     const email = emailRef.current?.value
@@ -70,7 +66,7 @@ export default function LoginPage() {
 
       {/* 에러 메시지 */}
       {loginError && (
-        <div className="w-full max-w-sm mb-4 px-4 py-3 bg-rose-50 border border-rose-100 rounded-2xl">
+        <div className="w-full max-w-sm mb-4 px-4 py-3 bg-rose-50 border border-rose-100 rounded-2xl animate-bounce">
           <p className="text-[12px] font-bold text-rose-500 text-center">{loginError}</p>
         </div>
       )}
@@ -86,28 +82,47 @@ export default function LoginPage() {
           <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#3C1E1E" d="M12 3C6.477 3 2 6.477 2 10.5c0 2.542 1.467 4.778 3.687 6.18L4.5 21l4.664-2.53A11.3 11.3 0 0012 18c5.523 0 10-3.477 10-7.5S17.523 3 12 3z"/></svg>
           <span className="text-[15px] font-black text-[#3C1E1E]">카카오로 시작하기</span>
         </button>
-      </div>
 
-      {/* 🤖 [로봇 전용 비밀 통로] 이메일 로그인 폼 */}
-      <div className="w-full max-w-sm mt-10 pt-6 border-t border-slate-100">
-        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest text-center mb-4">Robot Access Only</p>
-        <form onSubmit={handleEmailLogin} className="space-y-2 opacity-20 hover:opacity-100 focus-within:opacity-100 transition-all duration-300">
-          <input 
-            ref={emailRef}
-            type="email" 
-            placeholder="Email for Crawler" 
-            className="w-full text-[12px] p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-300 transition-colors"
-          />
-          <input 
-            ref={passwordRef}
-            type="password" 
-            placeholder="Password" 
-            className="w-full text-[12px] p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-300 transition-colors"
-          />
-          <button type="submit" className="w-full py-2 text-[11px] font-bold text-slate-400 hover:text-emerald-600 transition-colors">
-            Login to Index Content
+        {/* 💡 구글 크롤러가 찾기 쉬운 이메일 로그인 버튼 */}
+        {!isEmailVisible ? (
+          <button 
+            onClick={() => setIsEmailVisible(true)}
+            className="w-full py-3 text-[12px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            다른 방법으로 로그인하기
           </button>
-        </form>
+        ) : (
+          <div className="w-full pt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <form onSubmit={handleEmailLogin} className="space-y-2">
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-300" />
+                <input 
+                  ref={emailRef}
+                  type="email" 
+                  name="email" // 💡 크롤러가 필드를 인식하도록 name 추가
+                  placeholder="Email ID" 
+                  className="w-full text-[13px] py-3 pl-10 pr-4 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-300 transition-all font-medium"
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-300" />
+                <input 
+                  ref={passwordRef}
+                  type="password" 
+                  name="password" // 💡 크롤러가 필드를 인식하도록 name 추가
+                  placeholder="Password" 
+                  className="w-full text-[13px] py-3 pl-10 pr-4 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-300 transition-all font-medium"
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-[13px] font-black shadow-sm active:scale-95 transition-all"
+              >
+                이메일로 로그인
+              </button>
+            </form>
+          </div>
+        )}
       </div>
 
       <p className="mt-8 text-[11px] font-medium text-slate-400 text-center leading-relaxed">
