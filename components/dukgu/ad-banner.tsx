@@ -6,7 +6,7 @@ import { ShieldCheck } from "lucide-react"
 export function AdBanner() {
   useEffect(() => {
     try {
-      // 💡 구글 광고 엔진 호출
+      // 💡 광고 로드
       ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
     } catch (e) {
       console.error("AdSense error:", e);
@@ -14,14 +14,18 @@ export function AdBanner() {
   }, []);
 
   return (
-    <div className="w-full px-4 mb-6">
-      {/* 💡 버튼을 없애고 광고가 카드 전체를 채우도록 설정 */}
+    // 💡 1. 부모 컨테이너의 너비와 마진을 기사 카드와 똑같이 맞춥니다.
+    // 만약 리스트 부모에서 이미 여백을 준다면 여기서 px-4는 제거하세요.
+    <div className="w-full mb-4"> 
       <div className="group relative overflow-hidden rounded-[24px] bg-white border border-slate-100 shadow-sm transition-all hover:shadow-md">
         
-        {/* 1. 광고 영역: 구글이 쏴주는 디자인이 그대로 노출됩니다. */}
-        <div className="relative z-10 p-0 overflow-hidden">
+        {/* 2. 광고 영역: 좌우 여백을 기사 텍스트 시작점과 맞추고 싶다면 p-4~5를 조절하세요. */}
+        <div className="relative z-10 overflow-hidden">
           <ins className="adsbygoogle"
-               style={{ display: 'block' }}
+               style={{ 
+                 display: 'block',
+                 minHeight: '200px' // 💡 로딩 전 영역 확보 (레이아웃 시프트 방지)
+               }}
                data-ad-format="fluid"
                data-ad-layout-key="-hy-4+2d-1u-4h"
                data-ad-client="ca-pub-4762124054224861"
@@ -29,8 +33,8 @@ export function AdBanner() {
           ></ins>
         </div>
 
-        {/* 2. 슬림 하단 바: 버튼 대신 '신뢰'를 주는 문구만 작게 배치 */}
-        <div className="px-5 py-2.5 border-t border-slate-50 flex items-center justify-start bg-slate-50/20">
+        {/* 3. 하단 바: 기사 카드의 하단 여백과 느낌을 통일 */}
+        <div className="px-5 py-3 border-t border-slate-50 flex items-center justify-start bg-slate-50/20">
           <div className="flex items-center gap-1.5 opacity-60">
             <ShieldCheck className="w-3 h-3 text-slate-400" />
             <span className="text-[10px] font-medium text-slate-500 tracking-tight">
@@ -38,9 +42,6 @@ export function AdBanner() {
             </span>
           </div>
         </div>
-
-        {/* 배경 장식 포인트 (은은하게) */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/20 blur-3xl -z-10" />
       </div>
     </div>
   )
