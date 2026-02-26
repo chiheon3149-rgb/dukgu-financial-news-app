@@ -6,7 +6,6 @@ import { ShieldCheck } from "lucide-react"
 export function AdBanner() {
   useEffect(() => {
     try {
-      // 💡 광고 로드
       ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
     } catch (e) {
       console.error("AdSense error:", e);
@@ -14,18 +13,25 @@ export function AdBanner() {
   }, []);
 
   return (
-    // 💡 1. 부모 컨테이너의 너비와 마진을 기사 카드와 똑같이 맞춥니다.
-    // 만약 리스트 부모에서 이미 여백을 준다면 여기서 px-4는 제거하세요.
-    <div className="w-full mb-4"> 
+    // 💡 기사 리스트와의 간격을 위해 위아래 마진(my-6)을 넉넉히 줍니다.
+    <div className="w-full my-6 px-4">
       <div className="group relative overflow-hidden rounded-[24px] bg-white border border-slate-100 shadow-sm transition-all hover:shadow-md">
         
-        {/* 2. 광고 영역: 좌우 여백을 기사 텍스트 시작점과 맞추고 싶다면 p-4~5를 조절하세요. */}
-        <div className="relative z-10 overflow-hidden">
+        {/* 1. 상단 마진 및 노란색 뱃지 영역: 기사의 IT/금융 뱃지 디자인 상속 */}
+        <div className="pt-5 px-5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider">
+              Ad
+            </span>
+            <span className="text-[11px] font-bold text-slate-400">Sponsored</span>
+          </div>
+          <ShieldCheck className="w-3.5 h-3.5 text-slate-200" />
+        </div>
+
+        {/* 2. 광고 본체 영역: 패딩을 적절히 주어 뱃지와 본문 사이 간격 확보 */}
+        <div className="relative z-10 p-2 overflow-hidden min-h-[180px]">
           <ins className="adsbygoogle"
-               style={{ 
-                 display: 'block',
-                 minHeight: '200px' // 💡 로딩 전 영역 확보 (레이아웃 시프트 방지)
-               }}
+               style={{ display: 'block' }}
                data-ad-format="fluid"
                data-ad-layout-key="-hy-4+2d-1u-4h"
                data-ad-client="ca-pub-4762124054224861"
@@ -33,15 +39,15 @@ export function AdBanner() {
           ></ins>
         </div>
 
-        {/* 3. 하단 바: 기사 카드의 하단 여백과 느낌을 통일 */}
-        <div className="px-5 py-3 border-t border-slate-50 flex items-center justify-start bg-slate-50/20">
-          <div className="flex items-center gap-1.5 opacity-60">
-            <ShieldCheck className="w-3 h-3 text-slate-400" />
-            <span className="text-[10px] font-medium text-slate-500 tracking-tight">
-              덕구 파트너스의 안전한 광고 콘텐츠입니다
-            </span>
-          </div>
+        {/* 3. 하단 안내 바: 더 연하고 깔끔하게 처리 */}
+        <div className="px-5 py-3 border-t border-slate-50 bg-slate-50/10">
+          <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+            덕구는 유용한 정보 공유를 위해 파트너사의 콘텐츠를 선별하여 제공합니다.
+          </p>
         </div>
+
+        {/* 배경 장식: 덕구만의 은은한 노란색 빛 효과 */}
+        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50/40 blur-3xl -z-10" />
       </div>
     </div>
   )
