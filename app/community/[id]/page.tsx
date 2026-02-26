@@ -6,7 +6,9 @@ import { ThumbsUp, ThumbsDown, User, Loader2, MoreVertical, Pencil, Trash2, Shar
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommentSection } from "@/components/dukgu/comment-section"
-import { ShareButton } from "@/components/dukgu/share-button" // 👈 재사용 컴포넌트 임포트
+import { ShareButton } from "@/components/dukgu/share-button"
+import { YoutubePlayer } from "@/components/dukgu/youtube-player" // 👈 부품 추가
+import { getYoutubeId } from "@/lib/youtube" // 👈 집게 추가
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
@@ -21,6 +23,9 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
 
   const post = posts.find((p) => p.id === id)
   const comments = getComments(id)
+
+  // 💡 [유튜브 로직] 본문에서 유튜브 ID가 있는지 찾아봅니다.
+  const videoId = post?.content ? getYoutubeId(post.content) : null
 
   const REACTION_KEY = "dukgu:community_post_reactions"
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(() => {
@@ -125,14 +130,11 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
         title={CATEGORY_LABEL[post.category] + " 게시판"}
         rightElement={
           <div className="flex items-center gap-1">
-            {/* 🔥 공유 버튼 추가: 모든 사용자가 글을 공유할 수 있도록 배치 */}
             <ShareButton
               title={`[덕구의 커뮤니티] ${post.title}`}
               text="덕구 커뮤니티의 흥미로운 이야기를 확인해보세요! 🐾"
               className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
             />
-            
-            {/* 작성자 메뉴: 내 글일 때만 노출 */}
             {isMyPost && (
               <div className="relative" onClick={(e) => e.stopPropagation()}>
                 <button
@@ -199,6 +201,13 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
             {post.tags.map((tag) => (
               <span key={tag} className="text-[11px] font-bold text-blue-500">#{tag}</span>
             ))}
+          </div>
+        )}
+
+        {/* 💡 [수정] 본문 텍스트 위에 유튜브 영상이 있다면 렌더링 */}
+        {videoId && (
+          <div className="mb-6 animate-in fade-in zoom-in-95 duration-500">
+            <YoutubePlayer videoId={videoId} />
           </div>
         )}
 

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { PenSquare, Users, Loader2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommunityPostCard } from "@/components/dukgu/community-post-card"
-import { SearchBar } from "@/components/dukgu/search-bar" // 👈 공통 서치바 임포트
+import { SearchBar } from "@/components/dukgu/search-bar" 
 import { AdBanner } from "@/components/dukgu/ad-banner" 
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
@@ -31,7 +31,6 @@ export default function CommunityPage() {
             <span className="text-lg font-black text-slate-900 tracking-tight">커뮤니티</span>
           </div>
         }
-        // 🛠️ [수정] 우측의 돋보기(Search) 버튼 제거
       />
 
       <main className="max-w-md mx-auto px-5 py-5 space-y-5">
@@ -56,17 +55,16 @@ export default function CommunityPage() {
           </span>
         </div>
 
-        {/* 2. 🛠️ [수정] 탭 메뉴 밑으로 상시 노출되는 서치바 배치 */}
+        {/* 2. 서치바 */}
         <section className="animate-in fade-in slide-in-from-top-1 duration-300">
           <SearchBar 
             value={searchQuery} 
             onChange={setSearchQuery} 
-            // 💡 SearchBar 컴포넌트 내부에서 placeholder를 props로 받게 수정했다면 
-            // placeholder="제목, 내용, 작성자 검색" 을 추가해보세요!
+            placeholder="제목, 내용, 작성자 검색"
           />
         </section>
 
-        {/* 💡 [추가] 커뮤니티 최상단 광고 영역 */}
+        {/* 💡 [광고] 최상단 고정 광고 */}
         <section>
           <AdBanner />
         </section>
@@ -88,17 +86,15 @@ export default function CommunityPage() {
                 onProfileClick={(authorId: string) => router.push(`/profile/${authorId}`)}
               />
               
-              {/* 광고 노출 로직 동일 */}
-              {(() => {
-                const isLastItem = index === filteredPosts.length - 1;
-                const isEverySeventh = (index + 1) % 7 === 0;
-                if (filteredPosts.length >= 7) {
-                  if (isEverySeventh) return <div className="py-2"><AdBanner /></div>;
-                } else if (isLastItem) {
-                  return <div className="py-2"><AdBanner /></div>;
-                }
-                return null;
-              })()}
+              {/* 💡 [수정된 광고 로직] 
+                  상단에 이미 광고가 있으므로, 리스트 안에서는 7번째 글 다음에만 광고를 보여줍니다.
+                  글이 7개 미만일 때는 리스트 마지막에 광고를 또 보여주지 않아 피로도를 낮췄습니다.
+              */}
+              {(index + 1) % 7 === 0 && (
+                <div className="py-2 animate-in fade-in duration-500">
+                  <AdBanner />
+                </div>
+              )}
             </div>
           ))}
 
@@ -111,6 +107,7 @@ export default function CommunityPage() {
         </div>
       </main>
 
+      {/* 글쓰기 버튼 */}
       <button
         onClick={() => router.push("/community/new")}
         className="fixed bottom-20 right-4 w-14 h-14 bg-emerald-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-90 z-40"
