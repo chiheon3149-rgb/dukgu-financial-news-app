@@ -2,10 +2,11 @@
 
 import { use, useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { ThumbsUp, ThumbsDown, User, Loader2, MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { ThumbsUp, ThumbsDown, User, Loader2, MoreVertical, Pencil, Trash2, Share2 } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommentSection } from "@/components/dukgu/comment-section"
+import { ShareButton } from "@/components/dukgu/share-button" // 👈 재사용 컴포넌트 임포트
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
@@ -32,19 +33,18 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
   const countsInitRef = useRef(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // post 로드 완료 후 counts를 DB 값으로 초기화 (사용자가 클릭하기 전 최초 1회)
   useEffect(() => {
     if (!post || countsInitRef.current) return
     countsInitRef.current = true
     setCounts({ like: post.likeCount, dislike: post.dislikeCount })
   }, [post])
-  const [isDeleting, setIsDeleting] = useState(false)
 
+  const [isDeleting, setIsDeleting] = useState(false)
   const isMyPost = !!profile && post?.authorId === profile.id
 
   const handleReact = (type: "like" | "dislike") => {
     if (!post) return
-    countsInitRef.current = true // 이후 post 업데이트가 counts를 덮어쓰지 않도록
+    countsInitRef.current = true
     const isToggleOff = reaction === type
     if (isToggleOff) {
       setCounts((prev) => ({
@@ -89,7 +89,7 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
     if (!post) return
     toast("게시글을 삭제하시겠습니까?", {
       action: { label: "삭제", onClick: () => performDelete() },
-      cancel: { label: "취소", onClick: () => {} }, // ✅ 이 부분을 수정했습니다.
+      cancel: { label: "취소", onClick: () => {} },
     })
   }
 
@@ -124,40 +124,50 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
       <DetailHeader
         title={CATEGORY_LABEL[post.category] + " 게시판"}
         rightElement={
-          isMyPost ? (
-            <div className="relative" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
-                disabled={isDeleting}
-              >
-                <MoreVertical className="w-4.5 h-4.5 text-slate-500" />
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-9 bg-white border border-slate-100 shadow-xl rounded-2xl py-1.5 z-30 min-w-[120px] animate-in fade-in-0 zoom-in-95 duration-100">
-                  <button
-                    onClick={() => { setMenuOpen(false); router.push(`/community/${post.id}/edit`) }}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 text-left"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    수정하기
-                  </button>
-                  <button
-                    onClick={() => { setMenuOpen(false); handleDelete() }}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-rose-500 hover:bg-rose-50 text-left"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    삭제하기
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : undefined
+          <div className="flex items-center gap-1">
+            {/* 🔥 공유 버튼 추가: 모든 사용자가 글을 공유할 수 있도록 배치 */}
+            <ShareButton
+              title={`[덕구의 커뮤니티] ${post.title}`}
+              text="덕구 커뮤니티의 흥미로운 이야기를 확인해보세요! 🐾"
+              className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
+            />
+            
+            {/* 작성자 메뉴: 내 글일 때만 노출 */}
+            {isMyPost && (
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+                  disabled={isDeleting}
+                >
+                  <MoreVertical className="w-5 h-5 text-slate-500" />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-9 bg-white border border-slate-100 shadow-xl rounded-2xl py-1.5 z-30 min-w-[120px] animate-in fade-in-0 zoom-in-95 duration-100">
+                    <button
+                      onClick={() => { setMenuOpen(false); router.push(`/community/${post.id}/edit`) }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 text-left"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      수정하기
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); handleDelete() }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-rose-500 hover:bg-rose-50 text-left"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      삭제하기
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         }
       />
 
       <main className="max-w-md mx-auto px-5 py-6">
-        {/* 작성자 */}
+        {/* 작성자 정보 */}
         <button
           onClick={() => router.push(`/profile/${post.authorId}`)}
           className="flex items-center gap-3 mb-5 hover:opacity-70 transition-opacity active:scale-95"
@@ -174,19 +184,16 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
           <User className="w-4 h-4 text-slate-300 ml-auto" />
         </button>
 
-        {/* 카테고리 뱃지 */}
         <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full mb-3 inline-block ${
           post.category === "economy" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
         }`}>
           {CATEGORY_LABEL[post.category]}
         </span>
 
-        {/* 제목 */}
         <h1 className="text-[20px] font-black text-slate-900 leading-snug mb-3">
           {post.title}
         </h1>
 
-        {/* 태그 */}
         {post.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
             {post.tags.map((tag) => (
@@ -195,12 +202,10 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
           </div>
         )}
 
-        {/* 본문 */}
         <p className="text-[14px] text-slate-600 leading-relaxed font-medium whitespace-pre-wrap mb-6">
           {post.content}
         </p>
 
-        {/* 반응 바 */}
         <div className="flex items-center gap-3 py-4 border-t border-b border-slate-100 mb-2">
           <button
             onClick={() => handleReact("like")}
@@ -222,7 +227,6 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
           </button>
         </div>
 
-        {/* 댓글 섹션 */}
         <CommentSection
           postId={post.id}
           initialComments={comments}

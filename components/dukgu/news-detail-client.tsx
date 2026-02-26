@@ -10,6 +10,7 @@ import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
 import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
 import { DukguAiSummary } from "@/components/dukgu/dukgu-ai-summary"
 import { NewsCommentSection } from "@/components/dukgu/news-comment-section"
+import { ShareButton } from "@/components/dukgu/share-button" // 👈 새로 만든 컴포넌트 추가
 import { supabase } from "@/lib/supabase"
 import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
@@ -57,7 +58,7 @@ export function NewsDetailClient({ id }: { id: string }) {
   const [news, setNews] = useState<NewsDetail | null | undefined>(undefined)
   const [liveViewCount, setLiveViewCount] = useState(0)
   const [liveCommentCount, setLiveCommentCount] = useState(0)
-  const [shareCopied, setShareCopied] = useState(false)
+  // 💡 shareCopied 상태는 ShareButton 컴포넌트 내부로 옮겼으므로 여기서 삭제했습니다.
   const { isSaved, toggleSave } = useSavedArticles()
 
   useEffect(() => {
@@ -73,8 +74,6 @@ export function NewsDetailClient({ id }: { id: string }) {
       if (data) {
         setLiveViewCount((data.view_count ?? 0) + 1)
         setLiveCommentCount(data.comment_count ?? 0)
-        
-        // 🚀 [최적화] 단순히 update하는 대신 RPC를 사용하여 동시 접속 시에도 정확한 카운팅 보장
         await supabase.rpc('increment_view_count', { row_id: id })
       }
     }
@@ -100,26 +99,8 @@ export function NewsDetailClient({ id }: { id: string }) {
     if (!isBookmarked) toast.success("간식 창고(북마크)에 저장했다냥! 🐾")
   }
 
-  const handleShare = async () => {
-    if (!news) return
-    const url = window.location.href
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: news.headline,
-          text: news.summary ?? undefined,
-          url,
-        })
-      } catch {}
-    } else {
-      await navigator.clipboard.writeText(url)
-      setShareCopied(true)
-      toast.success("링크가 복사되었습니다!")
-      setTimeout(() => setShareCopied(false), 2000)
-    }
-  }
+  // 💡 handleShare 함수는 ShareButton 컴포넌트가 대신 수행하므로 삭제했습니다.
 
-  // 로딩 상태 (민트색 스피너 추가)
   if (news === undefined) {
     return (
       <div className="min-h-dvh bg-white">
@@ -159,7 +140,6 @@ export function NewsDetailClient({ id }: { id: string }) {
 
       <main className="max-w-md mx-auto px-5 py-6">
 
-        {/* 카테고리 + 태그 (민트 테마 적용) */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tight">
             {news.category}
@@ -178,7 +158,6 @@ export function NewsDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* 헤드라인 + 액션 버튼 그룹 */}
         <div className="flex justify-between items-start gap-4 mb-3">
           <h2 className="text-xl font-extrabold text-slate-900 leading-tight break-keep tracking-tight">
             {news.headline}
@@ -205,17 +184,19 @@ export function NewsDetailClient({ id }: { id: string }) {
               <Bookmark className={`w-3 h-3 ${isBookmarked ? "fill-white" : ""}`} />
               {isBookmarked ? "저장됨" : "저장하기"}
             </button>
-            <button
-              onClick={handleShare}
+
+            {/* 🔥 [교체] 재사용 가능한 ShareButton 컴포넌트로 변경 (디자인 스타일 유지) */}
+            <ShareButton
+              title={`[덕구의 뉴스] ${news.headline}`}
+              text={news.summary || "매일 아침, 당신을 위한 금융 뉴스 브리핑"}
               className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-white border border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-500"
             >
               <Share2 className="w-3 h-3" />
-              {shareCopied ? "복사됨!" : "공유하기"}
-            </button>
+              공유하기
+            </ShareButton>
           </div>
         </div>
 
-        {/* 출처 + 시간 */}
         <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium mb-8">
           {news.source && (
             <span className="flex items-center gap-1">
@@ -227,21 +208,18 @@ export function NewsDetailClient({ id }: { id: string }) {
           </span>
         </div>
 
-        {/* AI 요약 */}
         {news.ai_summary && (
           <div className="mb-8">
             <DukguAiSummary summary={news.ai_summary} />
           </div>
         )}
 
-        {/* 본문 기사 */}
         <article className="text-[15px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium mb-10 break-keep">
           {news.content ?? news.summary}
         </article>
 
         <AiDisclaimer />
 
-        {/* 반응 섹션 (좋아요/싫어요) */}
         <div className="my-10 border-t border-b border-slate-50 py-6">
           <DukguReaction
             initialGood={news.good_count}
@@ -253,7 +231,6 @@ export function NewsDetailClient({ id }: { id: string }) {
           />
         </div>
 
-        {/* 댓글 섹션 */}
         <NewsCommentSection
           newsId={id}
           onCountChange={(count) => {

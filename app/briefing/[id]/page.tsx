@@ -10,6 +10,7 @@ import { MarketIndexLog } from "@/components/dukgu/market-index-board"
 import { DbriefingSchedule } from "@/components/dukgu/dbriefing-schedule"
 import { BriefingNews } from "@/components/dukgu/briefing-news"
 import { BriefingSummary } from "@/components/dukgu/briefing-summary"
+import { ShareButton } from "@/components/dukgu/share-button" // 👈 공유 버튼 추가
 import { supabase } from "@/lib/supabase"
 import type { IndexSummary } from "@/types"
 
@@ -78,7 +79,15 @@ export default function BriefingDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="min-h-dvh bg-slate-50 pb-20">
-      <DetailHeader title={marketMode === "US" ? "Global Briefing" : "K-Market Report"} />
+      {/* 상단 헤더 영역: 우측에 공유 버튼 배치 */}
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between pr-2">
+        <DetailHeader title={marketMode === "US" ? "Global Briefing" : "K-Market Report"} />
+        <ShareButton 
+          title={`[덕구의 뉴스 곳간] ${current?.headline}`} 
+          text="오늘의 금융 뉴스 브리핑을 확인해보세요! 🐾" 
+        />
+      </div>
+
       <main className="container max-w-md mx-auto px-4 py-6 space-y-8">
         <MarketSwitcher mode={marketMode} setMode={setMarketMode} isKrAvailable={!!afternoon} />
 
