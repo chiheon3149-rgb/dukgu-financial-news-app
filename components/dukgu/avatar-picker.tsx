@@ -1,7 +1,7 @@
 "use client"
 
 // 💡 기획자님, 나중에 옵션을 늘리고 싶으면 이 배열만 수정하면 됩니다!
-const EMOJI_OPTIONS = ["🐱", "🐶", "🦊", "🦁", "🐼", "🐻", "🐰", "🐯", "🐨", "🐹"]
+const EMOJI_OPTIONS = ["🐱", "🐶", "🦊", "🦁", "🐼", "🐻", "🐰", "🐯", "🐨", "🐹", "🐸", "🐷","🦄", "🐣", "🐝", "🦖"]
 
 interface AvatarPickerProps {
   selectedEmoji: string
