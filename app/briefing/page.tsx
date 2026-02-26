@@ -1,28 +1,26 @@
 "use client"
 
+import { useState } from "react" // 💡 로컬 상태 관리를 위해 추가
 import { useRouter } from "next/navigation"
 import { Zap, Calendar } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { BriefingLogCard } from "@/components/dukgu/briefing-log-card"
-import { BriefingSearchBar } from "@/components/dukgu/briefing-search-bar"
+import { SearchBar } from "@/components/dukgu/search-bar" // 👈 공통 서치바 임포트
 import { useBriefingLogs } from "@/hooks/use-briefing-logs"
-// 💡 [추가] 방금 만드신 예쁜 광고 배너를 불러옵니다 (경로는 실제 파일 위치에 맞게 수정해주세요!)
 import { AdBanner } from "@/components/dukgu/ad-banner" 
-
-// =============================================================================
-// ⚡ BriefingPage
-//
-// 변경 사항:
-// 1. 하드코딩된 dailyLogs 배열 + 내부 useMemo 필터 → useBriefingLogs() 훅으로 이전
-// 2. page.tsx 가 데이터를 알 필요가 없어졌습니다. 조립만 합니다.
-// 3. 최상단 가로 밀림 현상 방지 (w-full overflow-x-hidden)
-// 4. 검색바 상단에 네이티브 애드 배너 추가
-// =============================================================================
 
 export default function BriefingPage() {
   const router = useRouter()
   const { logs, isLoading, setSearchQuery, setDateRange } = useBriefingLogs()
+  
+  // 💡 입력 중인 텍스트를 담을 로컬 상태
+  const [query, setQuery] = useState("")
+
+  const handleSearch = (val: string) => {
+    setQuery(val)
+    setSearchQuery(val) // 훅에 전달하여 필터링 로직 실행
+  }
 
   const goToDetail = (id: string, mode: "US" | "KR", isReady: boolean) => {
     if (!isReady) {
@@ -33,7 +31,6 @@ export default function BriefingPage() {
   }
 
   return (
-    // 🚨 [수정] w-full과 overflow-x-hidden을 추가하여 화면 밀림 원천 차단!
     <div className="min-h-screen bg-slate-50 pb-32 transition-colors w-full overflow-x-hidden">
       <DetailHeader
         showBack={false}
@@ -45,19 +42,19 @@ export default function BriefingPage() {
         }
       />
 
-      {/* 💡 [수정] space-y-8을 space-y-6으로 살짝 줄여서 배너와 검색바 간격을 예쁘게 맞췄습니다 */}
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
-        
-        {/* 💰 [추가] 검색바 위 최상단에 광고 배너 배치 */}
         <section className="relative z-10 w-full">
           <AdBanner />
         </section>
 
+        {/* 🛠️ [교체] 기존 BriefingSearchBar 대신 공통 SearchBar 적용 */}
         <section className="relative z-20">
-          <BriefingSearchBar
-            onSearch={setSearchQuery}
-            onRangeChange={(start, end) => setDateRange({ start, end })}
+          <SearchBar 
+            value={query} 
+            onChange={handleSearch} 
           />
+          {/* 💡 기획자님 참고: 기간 검색(DateRange) 기능이 필요하다면 
+              서치바 바로 옆이나 아래에 작은 달력 아이콘 버튼을 추가하는 기획을 추천드려요! */}
         </section>
 
         <div className="space-y-8 pt-2">
@@ -77,9 +74,7 @@ export default function BriefingPage() {
                 </div>
                 <div className="flex items-center gap-1 opacity-40">
                   <Calendar className="w-3 h-3 text-slate-400" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                    History
-                  </span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">History</span>
                 </div>
               </div>
 
