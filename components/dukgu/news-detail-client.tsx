@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Home, ExternalLink, Clock, Globe, Bookmark, Share2, Loader2 } from "lucide-react"
+import { Home, ExternalLink, Clock, Globe, Bookmark, Share2, Loader2, Eye } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
 import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
@@ -33,6 +33,7 @@ interface NewsDetail {
   view_count: number
 }
 
+/** 💡 시간 포맷팅: YYYY-MM-DD HH:mm */
 function formatDate(iso: string): string {
   const d = new Date(iso)
   const y = d.getFullYear()
@@ -43,9 +44,11 @@ function formatDate(iso: string): string {
   return `${y}-${m}-${day} ${h}:${min}`
 }
 
+/** 💡 상대 시간 표시: n분 전, n시간 전 등 */
 function getTimeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return "방금 전"
   if (minutes < 60) return `${minutes}분 전`
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}시간 전`
@@ -60,28 +63,47 @@ export function NewsDetailClient({ id }: { id: string }) {
   const [liveCommentCount, setLiveCommentCount] = useState(0)
   const { isSaved, toggleSave } = useSavedArticles()
 
+  // 💡 [핵심] 조회수 중복 방지: 입구에서 바로 사인을 하고 문을 잠급니다.
+  const hasIncremented = useRef(false);
+
   useEffect(() => {
+    // 💡 [수정] 비동기 함수(load) 밖에서 즉시 체크하고 잠급니다.
+    if (!id || hasIncremented.current) return;
+    hasIncremented.current = true; // "나 조회수 올리러 들어간다!" 하고 즉시 사인
+
     const load = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("news")
-        .select("id, category, tags, headline, summary, source, original_url, content, ai_summary, published_at, good_count, bad_count, comment_count, view_count")
+        .select("*")
         .eq("id", id)
         .single()
       
-      setNews(data ?? null)
+      if (error || !data) {
+        setNews(null)
+        // 만약 에러로 실패했다면 나중에 다시 시도할 수 있게 열어줄 수 있습니다.
+        // hasIncremented.current = false; 
+        return
+      }
+
+      setNews(data)
+      setLiveCommentCount(data.comment_count ?? 0)
       
-      if (data) {
-        setLiveViewCount((data.view_count ?? 0) + 1)
-        setLiveCommentCount(data.comment_count ?? 0)
-        await supabase.rpc('increment_view_count', { row_id: id })
+      // UI 즉시 반영 (DB 값 + 1)
+      setLiveViewCount((data.view_count ?? 0) + 1)
+      
+      // DB RPC 함수 호출 (송장 이름: target_news_id)
+      try {
+        await supabase.rpc('increment_news_view_count', { target_news_id: id })
+      } catch (rpcError) {
+        console.error("RPC 조회수 증가 실패:", rpcError)
       }
     }
+
     load()
   }, [id])
 
   const isBookmarked = news ? isSaved(news.id) : false
 
-  // 💡 [수정] 북마크 클릭 시 통일된 로그인 팝업 적용
   const toggleBookmark = () => {
     if (!profile) {
       toast("로그인이 필요한 기능이다냥! 🐾", {
@@ -142,6 +164,7 @@ export function NewsDetailClient({ id }: { id: string }) {
       />
 
       <main className="max-w-md mx-auto px-5 py-6">
+        {/* 카테고리 및 태그 */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tight">
             {news.category}
@@ -160,6 +183,7 @@ export function NewsDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
+        {/* 헤드라인 및 액션 버튼 */}
         <div className="flex justify-between items-start gap-4 mb-3">
           <h2 className="text-xl font-extrabold text-slate-900 leading-tight break-keep tracking-tight">
             {news.headline}
@@ -198,6 +222,7 @@ export function NewsDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
+        {/* 메타 정보 (날짜, 조회수) */}
         <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium mb-8">
           {news.source && (
             <span className="flex items-center gap-1">
@@ -207,20 +232,27 @@ export function NewsDetailClient({ id }: { id: string }) {
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" /> {formatDate(news.published_at)}
           </span>
+          <div className="flex items-center gap-1 ml-auto">
+            <Eye className="w-3 h-3 text-slate-300" />
+            <span className="font-bold">{liveViewCount}</span>
+          </div>
         </div>
 
+        {/* AI 요약 섹션 */}
         {news.ai_summary && (
           <div className="mb-8">
             <DukguAiSummary summary={news.ai_summary} />
           </div>
         )}
 
+        {/* 뉴스 본문 */}
         <article className="text-[15px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium mb-10 break-keep">
           {news.content ?? news.summary}
         </article>
 
         <AiDisclaimer />
 
+        {/* 리액션 섹션 */}
         <div className="my-10 border-t border-b border-slate-50 py-6">
           <DukguReaction
             initialGood={news.good_count}
@@ -232,6 +264,7 @@ export function NewsDetailClient({ id }: { id: string }) {
           />
         </div>
 
+        {/* 댓글 섹션 */}
         <NewsCommentSection
           newsId={id}
           onCountChange={(count) => {

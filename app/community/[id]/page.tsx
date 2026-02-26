@@ -19,7 +19,6 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
   const { id } = use(params)
   const router = useRouter()
   
-  // 💡 incrementViewCount를 훅에서 가져옵니다.
   const { 
     posts, 
     isLoading, 
@@ -39,15 +38,18 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
   const post = posts.find((p: CommunityPost) => p.id === id)
   const comments = getComments(id)
 
-  // 유튜브 로직
-  const videoIds = post?.content ? getYoutubeIds(post.content) : []
+  // 💡 [조회수 중복 방지] "이미 카운트했는지" 기억하는 메모장
+  const hasIncremented = useRef(false);
 
-  // 💡 [조회수 로직] 글을 성공적으로 불러오면 조회수를 1 올립니다.
+  // 💡 [조회수 로직] 렌더링이 두 번 되어도 한 번만 실행되도록 제어
   useEffect(() => {
-    if (id) {
+    if (id && !hasIncremented.current) {
       incrementViewCount(id);
+      hasIncremented.current = true; // "이번 방문엔 카운트 완료!" 표시
     }
   }, [id, incrementViewCount]);
+
+  const videoIds = post?.content ? getYoutubeIds(post.content) : []
 
   const REACTION_KEY = "dukgu:community_post_reactions"
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(null)
@@ -55,7 +57,6 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
   const countsInitRef = useRef(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // 반응 상태 초기화
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
@@ -112,13 +113,12 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  /** 💡 [에러 해결] action 객체 안에 onClick을 확실히 연결했습니다. */
   const handleDelete = () => {
     if (!post) return
     toast("게시글을 삭제하시겠습니까?", {
       action: { 
         label: "삭제", 
-        onClick: () => performDelete() // 👈 비서가 찾던 '진짜 실행 전선'
+        onClick: () => performDelete() 
       },
       cancel: { label: "취소", onClick: () => {} },
     })

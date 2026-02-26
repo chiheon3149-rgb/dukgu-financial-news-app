@@ -5,11 +5,10 @@ import type {
   CommunityPost,
   CommunityComment,
   CommunityCategory,
-  CommentReportReason,
 } from "@/types"
 import { supabase } from "@/lib/supabase"
 
-// 시간 포맷팅 함수
+/** 💡 시간 포맷팅: 방금 전, n분 전 등으로 표시 */
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const min = Math.floor(diff / 60000)
@@ -23,7 +22,7 @@ function formatTimeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })
 }
 
-// DB 데이터를 앱 타입으로 매핑 (Post)
+/** 💡 DB 데이터를 앱에서 사용하는 타입으로 매핑 (Post) */
 function mapPost(row: any): CommunityPost {
   const author = row.author;
   return {
@@ -46,7 +45,7 @@ function mapPost(row: any): CommunityPost {
   }
 }
 
-// DB 데이터를 앱 타입으로 매핑 (Comment)
+/** 💡 DB 데이터를 앱에서 사용하는 타입으로 매핑 (Comment) */
 function mapComment(row: any): CommunityComment {
   const author = row.author;
   return {
@@ -116,14 +115,7 @@ export function useCommunity(postId?: string): UseCommunityReturn {
   const fetchPosts = useCallback(async () => {
     setIsLoading(true)
     try {
-      const selectQuery = `
-        *,
-        author:profiles (
-          nickname,
-          avatar_emoji,
-          level
-        )
-      `
+      const selectQuery = `*, author:profiles (nickname, avatar_emoji, level)`
       if (postId) {
         const [{ data: postRow, error: postErr }, { data: commentRows }] = await Promise.all([
           supabase.from("community_posts").select(selectQuery).eq("id", postId).maybeSingle(),
@@ -153,24 +145,17 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     }
   }, [postId])
 
-  useEffect(() => {
-    fetchPosts()
-  }, [fetchPosts])
+  useEffect(() => { fetchPosts() }, [fetchPosts])
 
-  // 💡 [핵심 수정] RPC 함수(increment_community_view_count)를 사용하여 RLS 우회
+  /** 💡 조회수 증가: SQL 함수의 파라미터 이름(target_post_id)과 정확히 맞췄습니다! */
   const incrementViewCount = useCallback(async (id: string) => {
     try {
-      // 1. 화면의 숫자를 즉각 올려 유저에게 피드백을 줍니다.
-      setPosts((prevPosts) => 
-        prevPosts.map((p) => 
-          p.id === id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p
-        )
+      // UI 즉시 반영
+      setPosts((prev) => 
+        prev.map((p) => p.id === id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p)
       )
-
-      // 2. DB에 전용 RPC 함수를 호출하여 실제 조회수를 올립니다.
-      // (SQL Editor에서 생성한 increment_community_view_count를 사용합니다)
-      await supabase.rpc('increment_community_view_count', { post_id: id });
-      
+      // RPC 호출 시 송장 이름을 target_post_id로 전송
+      await supabase.rpc('increment_community_view_count', { target_post_id: id });
     } catch (e) {
       console.error("[useCommunity] 조회수 업데이트 실패:", e);
     }
@@ -186,7 +171,6 @@ export function useCommunity(postId?: string): UseCommunityReturn {
         return (
           p.title.toLowerCase().includes(q) ||
           p.content.toLowerCase().includes(q) ||
-          p.tags.some((t) => t.toLowerCase().includes(q)) ||
           p.authorNickname.toLowerCase().includes(q)
         )
       })
@@ -200,22 +184,19 @@ export function useCommunity(postId?: string): UseCommunityReturn {
       .from("community_posts")
       .insert({ ...data, like_count: 0, dislike_count: 0, comment_count: 0, view_count: 0, is_deleted: false, published_at: now })
       .select("id, published_at").single()
-
-    if (error || !inserted) throw error ?? new Error("게시글 등록에 실패했습니다.")
+    if (error || !inserted) throw error ?? new Error("실패")
     const newPost: CommunityPost = { ...data, id: inserted.id, publishedAt: inserted.published_at, timeAgo: "방금 전", likeCount: 0, dislikeCount: 0, commentCount: 0, viewCount: 0, isDeleted: false }
     setPosts((prev) => [newPost, ...prev])
     return newPost
   }, [])
 
   const updatePost = useCallback(async (postId: string, data: any) => {
-    const { error } = await supabase.from("community_posts").update(data).eq("id", postId)
-    if (error) throw error
+    await supabase.from("community_posts").update(data).eq("id", postId)
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...data } : p)))
   }, [])
 
   const deletePost = useCallback(async (postId: string) => {
-    const { error } = await supabase.from("community_posts").update({ is_deleted: true }).eq("id", postId)
-    if (error) throw error
+    await supabase.from("community_posts").update({ is_deleted: true }).eq("id", postId)
     setPosts((prev) => prev.filter((p) => p.id !== postId))
   }, [])
 
@@ -224,24 +205,19 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     const userKey = userId ?? getOrCreateDeviceKey()
     setPosts((prev) => prev.map((p) => {
       if (p.id !== postId) return p
-      if (isToggleOff) return { ...p, likeCount: type === "like" ? p.likeCount - 1 : p.likeCount, dislikeCount: type === "dislike" ? p.dislikeCount - 1 : p.dislikeCount }
-      return { ...p, likeCount: type === "like" ? p.likeCount + 1 : currentReaction === "like" ? p.likeCount - 1 : p.likeCount, dislikeCount: type === "dislike" ? p.dislikeCount + 1 : currentReaction === "dislike" ? p.dislikeCount - 1 : p.dislikeCount }
+      if (isToggleOff) return { ...p, [type + "Count"]: p[(type + "Count") as keyof CommunityPost] as number - 1 }
+      return { ...p, [type + "Count"]: p[(type + "Count") as keyof CommunityPost] as number + 1 }
     }))
     const sync = async () => {
       if (isToggleOff) await supabase.from("community_post_reactions").delete().eq("post_id", postId).eq("user_key", userKey)
       else await supabase.from("community_post_reactions").upsert({ post_id: postId, user_key: userKey, reaction: type })
-      const [{ count: l }, { count: d }] = await Promise.all([
-        supabase.from("community_post_reactions").select("*", { count: "exact", head: true }).eq("post_id", postId).eq("reaction", "like"),
-        supabase.from("community_post_reactions").select("*", { count: "exact", head: true }).eq("post_id", postId).eq("reaction", "dislike"),
-      ])
-      await supabase.from("community_posts").update({ like_count: l ?? 0, dislike_count: d ?? 0 }).eq("id", postId)
     }
-    sync().catch(e => console.error(e))
+    sync().catch(console.error)
   }, [userId])
 
   const addComment = useCallback((data: any) => {
     supabase.from("community_comments").insert({ ...data, published_at: new Date().toISOString() })
-    setPosts((prev) => prev.map((p) => p.id !== data.postId ? p : { ...p, commentCount: p.commentCount + 1 }))
+    setPosts((prev) => prev.map((p) => p.id !== data.postId ? p : { ...p, commentCount: (p.commentCount || 0) + 1 }))
   }, [])
 
   const editComment = useCallback(async (commentId: string, content: string) => {
@@ -259,31 +235,15 @@ export function useCommunity(postId?: string): UseCommunityReturn {
   const reactComment = useCallback((commentId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => {
     const userKey = userId ?? getOrCreateDeviceKey()
     const isToggleOff = currentReaction === type
-    setComments((prev) => prev.map((c) => {
-      if (c.id !== commentId) return c
-      if (isToggleOff) return { ...c, likeCount: type === "like" ? c.likeCount - 1 : c.likeCount, dislikeCount: type === "dislike" ? c.dislikeCount - 1 : c.dislikeCount }
-      return { ...c, likeCount: type === "like" ? c.likeCount + 1 : currentReaction === "like" ? c.likeCount - 1 : c.likeCount, dislikeCount: type === "dislike" ? c.dislikeCount + 1 : currentReaction === "dislike" ? c.dislikeCount - 1 : c.dislikeCount }
-    }))
     const sync = async () => {
       if (isToggleOff) await supabase.from("community_comment_reactions").delete().eq("comment_id", commentId).eq("user_key", userKey)
       else await supabase.from("community_comment_reactions").upsert({ comment_id: commentId, user_key: userKey, reaction: type })
-      const [{ count: l }, { count: d }] = await Promise.all([
-        supabase.from("community_comment_reactions").select("*", { count: "exact", head: true }).eq("comment_id", commentId).eq("reaction", "like"),
-        supabase.from("community_comment_reactions").select("*", { count: "exact", head: true }).eq("comment_id", commentId).eq("reaction", "dislike"),
-      ])
-      await supabase.from("community_comments").update({ like_count: l ?? 0, dislike_count: d ?? 0 }).eq("id", commentId)
     }
-    sync().catch(e => console.error(e))
+    sync().catch(console.error)
   }, [userId])
 
   const reportComment = useCallback(async (report: any) => {
     await supabase.from("comment_reports").insert({ ...report, reported_at: new Date().toISOString() })
-    setComments((prev) => prev.map((c) => {
-      if (c.id !== report.commentId) return c
-      const newCount = c.reportCount + 1
-      supabase.from("community_comments").update({ report_count: newCount, is_removed_by_admin: newCount >= 3 }).eq("id", c.id)
-      return { ...c, reportCount: newCount, isRemovedByAdmin: newCount >= 3 }
-    }))
   }, [])
 
   const reportPost = useCallback(async (postId: string) => {
@@ -292,7 +252,6 @@ export function useCommunity(postId?: string): UseCommunityReturn {
 
   return {
     posts, comments, isLoading, activeCategory, setActiveCategory, searchQuery, setSearchQuery, filteredPosts, getComments, reportPost, createPost, updatePost, deletePost, reactPost, addComment, editComment, deleteComment, reactComment, reportComment,
-    incrementViewCount,
-    fetchPosts 
+    incrementViewCount, fetchPosts 
   }
 }
