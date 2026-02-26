@@ -65,7 +65,6 @@ function IndexChip({ index, fresh }: { index: IndexQuote; fresh: boolean }) {
     >
       <span className="text-[11px] font-medium text-slate-500">{displayName}</span>
       <span className="text-[12px] font-bold text-slate-800 tracking-tight">{priceStr}</span>
-      {/* 💡 [수정] 상승은 민트(emerald), 하락은 장미빛(rose)으로 변경하여 가독성 강화 */}
       <span className={`text-[11px] font-semibold ${isUp ? "text-emerald-500" : isDown ? "text-rose-500" : "text-slate-400"}`}>
         {rateStr}
       </span>
@@ -80,11 +79,8 @@ export function TickerBar() {
   const [fresh, setFresh] = useState(false)
   const freshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   
+  // 🚀 모바일 성능 최적화용 Ref
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const isHovered = useRef(false)
-  const startX = useRef(0)
-  const scrollLeft = useRef(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -131,42 +127,8 @@ export function TickerBar() {
     }
   }, [])
 
-  useEffect(() => {
-    let animationId: number;
-    const scroll = () => {
-      if (scrollRef.current && !isDragging && !isHovered.current) {
-        scrollRef.current.scrollLeft += 0.8; // 속도를 살짝 늦춰서 가독성 확보
-        
-        if (scrollRef.current.scrollLeft >= scrollRef.current.scrollWidth / 2) {
-          scrollRef.current.scrollLeft = 0;
-        }
-      }
-      animationId = requestAnimationFrame(scroll);
-    }
-    
-    if (hasData) {
-      animationId = requestAnimationFrame(scroll);
-    }
-    return () => cancelAnimationFrame(animationId);
-  }, [isDragging, hasData]);
-
-  const handleDragStart = (pageX: number) => {
-    if (!scrollRef.current) return
-    setIsDragging(true)
-    startX.current = pageX - scrollRef.current.offsetLeft
-    scrollLeft.current = scrollRef.current.scrollLeft
-  }
-  
-  const handleDragMove = (pageX: number) => {
-    if (!isDragging || !scrollRef.current) return
-    const x = pageX - scrollRef.current.offsetLeft
-    const walk = (x - startX.current) * 1.5 
-    scrollRef.current.scrollLeft = scrollLeft.current - walk
-  }
-
-  const handleDragEnd = () => setIsDragging(false)
-
-  const tickerItems = useMemo(() => [...indices, ...indices], [indices])
+  // 💡 [수정] 아이템을 충분히 복사 (3세트) 하여 모바일에서도 끊김 없게 처리
+  const tickerItems = useMemo(() => [...indices, ...indices, ...indices], [indices])
 
   if (failed) return null
   if (!hasData) return <div className="h-9 bg-white border-b border-slate-200 animate-pulse w-full" />
@@ -174,6 +136,20 @@ export function TickerBar() {
   return (
     <>
       <style>{`
+        @keyframes ticker-scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-33.33%); }
+        }
+        .animate-ticker {
+          display: flex;
+          width: max-content;
+          animation: ticker-scroll 40s linear infinite;
+          will-change: transform; /* 🚀 GPU 가속 강제 */
+        }
+        /* 마우스 호버 시 일시정지 (선택사항) */
+        .animate-ticker:hover {
+          animation-play-state: paused;
+        }
         .hide-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
@@ -184,7 +160,7 @@ export function TickerBar() {
       `}</style>
 
       <div className="bg-white border-b border-slate-200 h-9 flex items-center relative w-full overflow-hidden">
-        {/* 'On' 고정 레이블 (민트 포인트) */}
+        {/* 'On' 고정 레이블 */}
         <div className="flex items-center px-3 bg-white z-20 h-full border-r border-slate-200 shadow-[4px_0_8px_rgba(0,0,0,0.03)] shrink-0">
           <span className="relative flex h-1.5 w-1.5 mr-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -193,21 +169,13 @@ export function TickerBar() {
           <span className="text-[11px] font-black text-slate-700 tracking-tighter whitespace-nowrap uppercase">On</span>
         </div>
 
-        <div 
-          ref={scrollRef}
-          className="flex overflow-x-auto hide-scrollbar h-full cursor-grab active:cursor-grabbing w-full"
-          onMouseEnter={() => isHovered.current = true}
-          onMouseLeave={() => { isHovered.current = false; handleDragEnd(); }}
-          onMouseDown={(e) => handleDragStart(e.pageX)}
-          onMouseMove={(e) => { e.preventDefault(); handleDragMove(e.pageX); }}
-          onMouseUp={handleDragEnd}
-          onTouchStart={(e) => handleDragStart(e.touches[0].pageX)}
-          onTouchMove={(e) => handleDragMove(e.touches[0].pageX)}
-          onTouchEnd={handleDragEnd}
-        >
-          {tickerItems.map((idx, i) => (
-            <IndexChip key={`${idx.symbol}-${i}`} index={idx} fresh={fresh} />
-          ))}
+        {/* 🚀 [핵심] JS 스크롤 대신 CSS transform 애니메이션 사용 */}
+        <div className="flex-1 overflow-hidden h-full">
+          <div className="animate-ticker h-full items-center">
+            {tickerItems.map((idx, i) => (
+              <IndexChip key={`${idx.symbol}-${i}`} index={idx} fresh={fresh} />
+            ))}
+          </div>
         </div>
       </div>
     </>

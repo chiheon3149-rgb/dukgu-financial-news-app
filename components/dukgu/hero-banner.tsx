@@ -15,17 +15,18 @@ interface BriefingRow {
   content: { summary?: string } | null
 }
 
+// 💡 [수정] 미장(US)은 덕구민트(emerald), 국장(KR)은 붉은로즈(rose)로 변경
 const THEME = {
   US: {
-    theme: "from-red-500 to-red-600 shadow-red-500/30",
+    theme: "from-emerald-400 to-emerald-600 shadow-emerald-500/30",
     flag: "🇺🇸",
-    textColor: "text-red-700",
+    textColor: "text-emerald-700",
     briefingType: "오전브리핑",
   },
   KR: {
-    theme: "from-blue-500 to-blue-600 shadow-blue-500/30",
+    theme: "from-rose-400 to-rose-600 shadow-rose-500/30",
     flag: "🇰🇷",
-    textColor: "text-blue-700",
+    textColor: "text-rose-700",
     briefingType: "오후브리핑",
   },
 }
@@ -114,7 +115,7 @@ export function HeroBanner() {
                 onClick={() => morning && setMarket("US")}
                 disabled={!morning}
                 className={`text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold transition-all duration-300 ${
-                  market === "US" ? "bg-white text-red-700 shadow-md" : "text-white/70 hover:text-white"
+                  market === "US" ? `bg-white ${theme.textColor} shadow-md` : "text-white/70 hover:text-white"
                 } ${!morning ? "opacity-40 cursor-not-allowed" : ""}`}
               >
                 미국
@@ -123,7 +124,7 @@ export function HeroBanner() {
                 onClick={() => afternoon && setMarket("KR")}
                 disabled={!afternoon}
                 className={`text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold transition-all duration-300 ${
-                  market === "KR" ? "bg-white text-blue-700 shadow-md" : "text-white/70 hover:text-white"
+                  market === "KR" ? `bg-white ${theme.textColor} shadow-md` : "text-white/70 hover:text-white"
                 } ${!afternoon ? "opacity-40 cursor-not-allowed" : ""}`}
               >
                 한국
