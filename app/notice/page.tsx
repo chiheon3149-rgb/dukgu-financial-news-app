@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Bell } from "lucide-react"
+import { Bell, ChevronRight } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { supabase } from "@/lib/supabase"
 
@@ -42,33 +42,44 @@ export default function NoticeListPage() {
     <div className="min-h-dvh bg-slate-50 pb-20">
       <DetailHeader title="공지사항" />
 
-      <main className="p-4 space-y-3">
+      <main className="max-w-md mx-auto p-4 space-y-3">
         {notices.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-16">공지사항이 없습니다</p>
+          <div className="flex flex-col items-center justify-center py-20 opacity-40">
+            <Bell className="w-10 h-10 text-slate-400 mb-3" />
+            <p className="text-sm font-bold text-slate-500">등록된 공지사항이 없습니다</p>
+          </div>
         ) : (
           notices.map((notice) => {
             const href = notice.link_url ?? `/notice/${notice.id}`
             const categoryLabel = notice.category ? (CATEGORY_LABEL[notice.category] ?? notice.category) : null
+            
             return (
               <Link
                 key={notice.id}
                 href={href}
-                className="block bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+                className="flex items-center justify-between bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:border-emerald-200 transition-all group active:scale-[0.98]"
               >
-                <div className="flex items-start gap-3">
-                  <Bell className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="bg-emerald-50 p-2 rounded-full shrink-0 group-hover:bg-emerald-100 transition-colors">
+                    <Bell className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                       {categoryLabel && (
-                        <span className="px-1.5 py-0.5 bg-blue-100 text-blue-600 text-[10px] font-bold rounded shrink-0">
+                        <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-600 text-[10px] font-black tracking-tight rounded-md shrink-0">
                           {categoryLabel}
                         </span>
                       )}
-                      <h2 className="text-sm font-bold text-slate-800 line-clamp-1">{notice.title}</h2>
+                      <h2 className="text-[14px] font-bold text-slate-800 line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                        {notice.title}
+                      </h2>
                     </div>
                     <p className="text-[11px] text-slate-400 font-medium">{formatDate(notice.created_at)}</p>
                   </div>
                 </div>
+
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-400 shrink-0 ml-2 transition-colors" />
               </Link>
             )
           })

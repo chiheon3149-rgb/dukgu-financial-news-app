@@ -1,16 +1,22 @@
 import { Metadata } from "next"
 import { supabase } from "@/lib/supabase"
-
-// 💡 [핵심] 기획자님이 만들어두신 컴포넌트의 실제 경로로 연결합니다!
-// 만약 components 폴더 안의 다른 위치라면 이 경로를 살짝 수정해주세요.
 import { NewsDetailClient } from "@/components/dukgu/news-detail-client" 
 
-// 1. [서버 사이드] 링크 복사용 메타데이터 생성
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+// 💡 Next.js 최신 버전에 맞춰 params 상자(Promise) 타입을 정의합니다.
+type Props = {
+  params: Promise<{ id: string }>
+}
+
+// 1. [서버 사이드] 메타데이터 생성
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  // 💡 상자(Promise)를 까서 id를 확실하게 꺼냅니다!
+  const resolvedParams = await params
+  const id = resolvedParams.id
+
   const { data: news } = await supabase
     .from("news")
     .select("headline, summary")
-    .eq("id", params.id)
+    .eq("id", id)
     .single()
 
   const ogImage = "https://www.dukgu.kr/og-image.png"
@@ -21,7 +27,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     openGraph: {
       title: news?.headline,
       description: news?.summary,
-      url: `https://www.dukgu.kr/news/${params.id}`,
+      url: `https://www.dukgu.kr/news/${id}`,
       images: [{ url: ogImage, width: 1200, height: 630 }],
       type: "article",
     },
@@ -29,7 +35,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 }
 
 // 2. [서버 사이드] 페이지 진입점
-export default function Page({ params }: { params: { id: string } }) {
-  // 클라이언트 컴포넌트에게 id를 넘겨줍니다.
-  return <NewsDetailClient id={params.id} />
+export default async function Page({ params }: Props) {
+  // 💡 여기서도 상자(Promise)를 까서 id를 꺼낸 다음 클라이언트에게 전달합니다!
+  const resolvedParams = await params
+
+  return <NewsDetailClient id={resolvedParams.id} />
 }

@@ -9,7 +9,6 @@ import { SortOption } from "./news-section"
 
 const SCROLL_KEY = "newsListScrollY"
 
-// 💡 Props 인터페이스에 sortBy를 추가하여 타입 에러를 해결합니다.
 interface NewsFeedProps {
   news: any[]          
   isLoading: boolean   
@@ -17,7 +16,7 @@ interface NewsFeedProps {
   hasMore: boolean
   fetchNextPage: () => void
   searchKeyword?: string
-  sortBy: SortOption   // 👈 추가: 부모로부터 전달받는 정렬 상태
+  sortBy: SortOption   
 }
 
 export function NewsFeed({ 
@@ -27,7 +26,7 @@ export function NewsFeed({
   hasMore, 
   fetchNextPage, 
   searchKeyword = "",
-  sortBy               // 👈 추가
+  sortBy               
 }: NewsFeedProps) {
   
   const keyword = searchKeyword.trim().toLowerCase()
@@ -35,7 +34,6 @@ export function NewsFeed({
     ? news.filter((item) => {
         const inHeadline = item.headline.toLowerCase().includes(keyword)
         const inSummary = item.summary.toLowerCase().includes(keyword)
-        // 💡 tag: string 타입을 명시하여 'any' 타입 에러를 해결합니다.
         const inTags = item.tags.some((tag: string) => tag.toLowerCase().includes(keyword))
         return inHeadline || inSummary || inTags
       })
@@ -83,7 +81,6 @@ export function NewsFeed({
   }
 
   return (
-    // 💡 px-0으로 설정하여 뉴스 카드와 가로 너비를 완벽히 일치시킵니다.
     <section className="px-0 pb-24 max-w-lg mx-auto">
       <div className="flex flex-col gap-3">
         {filteredNews.map((item, index) => (
@@ -96,12 +93,21 @@ export function NewsFeed({
               <NewsCard {...item} />
             </Link>
 
-            {/* 💡 7번째 뉴스마다 세로가 컴팩트한 광고 배너 삽입 */}
-            {(index + 1) % 7 === 0 && (
-              <div className="py-1">
-                <AdBanner />
-              </div>
-            )}
+            {/* 💡 업그레이드된 수익형 광고 로직! 7개마다 띄우고, 데이터가 7개 미만이면 맨 마지막에 띄움 */}
+            {(() => {
+              const isLastItem = index === filteredNews.length - 1;
+              const isEverySeventh = (index + 1) % 7 === 0;
+
+              if (filteredNews.length >= 7) {
+                if (isEverySeventh) {
+                  return <div className="py-1"><AdBanner /></div>;
+                }
+              } else if (isLastItem && !isLoadingMore) {
+                // 검색 등으로 결과가 7개 미만일 때 마지막에 노출
+                return <div className="py-1"><AdBanner /></div>;
+              }
+              return null;
+            })()}
           </React.Fragment>
         ))}
 
