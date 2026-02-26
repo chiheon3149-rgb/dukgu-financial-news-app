@@ -8,9 +8,10 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { DetailHeader } from "@/components/dukgu/detail-header"
+import { AdBanner } from "@/components/dukgu/ad-banner" // 💡 광고 컴포넌트 임포트
 
 // =============================================================================
-// 💰 /assets — 내 자산 메인 페이지
+// 💰 /assets — 내 자산 메인 페이지 (데이터 정의)
 // =============================================================================
 
 interface AssetTypeConfig {
@@ -27,7 +28,7 @@ const ASSET_TYPES: AssetTypeConfig[] = [
   { id: "stocks",    name: "주식",    description: "국내 / 해외",    icon: TrendingUp, color: "emerald", href: "/assets/stocks"     },
   { id: "realestate",name: "부동산",  description: "아파트, 토지 등", icon: Landmark,   color: "indigo",  href: "/assets/realestate" },
   { id: "crypto",    name: "코인",    description: "BTC, ETH 등",    icon: Bitcoin,    color: "amber",   href: "/assets/crypto"     },
-  { id: "gold",      name: "금",      description: "금 현물",         emoji: "🥇",       color: "yellow",  href: "/assets/gold"       },
+  { id: "gold",      name: "금",      description: "금 현물",        emoji: "🥇",       color: "yellow",  href: "/assets/gold"       },
   { id: "cash",      name: "현금",    description: "원화, 외화",      icon: Banknote,   color: "emerald", href: "/assets/cash"       },
   { id: "savings",   name: "예·적금", description: "예금, 적금",      icon: Building2,  color: "blue",    href: "/assets/savings"    },
   { id: "bonds",     name: "채권",    description: "국채, 회사채",    icon: ScrollText, color: "indigo",  href: "/assets/bonds"      },
@@ -55,6 +56,10 @@ const COLOR_MAP = {
   blue:    { hover: "hover:border-blue-200",    iconBg: "bg-blue-50",    iconText: "text-blue-500",    chevron: "group-hover:text-blue-500"    },
   rose:    { hover: "hover:border-rose-200",    iconBg: "bg-rose-50",    iconText: "text-rose-500",    chevron: "group-hover:text-rose-500"    },
 }
+
+// =============================================================================
+// 🚀 메인 컴포넌트 시작
+// =============================================================================
 
 export default function AssetsPage() {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
@@ -114,6 +119,11 @@ export default function AssetsPage() {
               </Link>
             )
           })}
+        </div>
+
+        {/* 💡 자산 리스트 최하단 광고 영역 */}
+        <div className="pt-2">
+          <AdBanner />
         </div>
 
       </main>
