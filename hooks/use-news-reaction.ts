@@ -15,6 +15,7 @@ interface ReactionEntry {
   userReaction: UserReaction
 }
 
+// 💡 훅들이 공유하는 전역 금고
 const _store = new Map<string, ReactionEntry>()
 const _listeners = new Map<string, Set<() => void>>()
 const REACTION_CACHE_KEY = "dukgu:news_reactions"
@@ -45,6 +46,7 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
   const { profile } = useUser()
   const userId = profile?.id ?? null
 
+  // 1. 초기값 세팅 (최초 1회만 실행됨)
   if (!_store.has(newsId)) {
     _store.set(newsId, { 
       good: initialGood, 
@@ -55,12 +57,28 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
 
   const [, forceUpdate] = useReducer((n: number) => n + 1, 0)
 
+  // 2. 리스너 등록
   useEffect(() => {
     if (!_listeners.has(newsId)) _listeners.set(newsId, new Set())
     _listeners.get(newsId)!.add(forceUpdate)
     return () => { _listeners.get(newsId)?.delete(forceUpdate) }
   }, [newsId])
 
+  // 💡 [핵심 추가 코드!] 부모(새로고침)가 새로운 숫자를 주면 금고를 강제로 업데이트합니다.
+  useEffect(() => {
+    const current = _store.get(newsId)
+    // 현재 금고에 있는 숫자와 새로 들어온 숫자가 다르면 업데이트!
+    if (current && (current.good !== initialGood || current.bad !== initialBad)) {
+      _store.set(newsId, {
+        ...current,
+        good: initialGood,
+        bad: initialBad,
+      })
+      notify(newsId) // 💡 업데이트 사실을 동네방네 알림
+    }
+  }, [newsId, initialGood, initialBad])
+
+  // 3. 사용자의 내 리액션(DB) 가져오기
   useEffect(() => {
     if (!userId) return
     supabase.from("article_likes")
@@ -80,6 +98,7 @@ export function useNewsReaction(newsId: string, initialGood: number, initialBad:
       })
   }, [newsId, userId])
 
+  // 4. 클릭 이벤트 로직 (기존과 동일)
   const react = useCallback(
     async (type: "good" | "bad", snapshot?: any) => {
       if (!userId) {

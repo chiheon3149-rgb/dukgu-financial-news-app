@@ -120,13 +120,20 @@ export function useNewsFeed(sortBy: SortOption = "latest"): UseNewsFeedReturn {
       if (error) throw error
 
       const items = (data ?? []).map(toNewsItem)
-      _cachedNews = items
+      
+      // 💡 여기서 전역 캐시를 완벽히 새로운 배열로 덮어씁니다.
+      _cachedNews = [...items]
       _cachedLastValue = sortBy === "latest" ? items.at(-1)?.publishedAt : items.at(-1)?.viewCount
       _cachedHasMore = items.length === PAGE_SIZE
 
-      setNews(items)
+      // 💡 상태를 업데이트하고 동기화 이벤트를 날려 모든 UI가 강제로 깨어나게 합니다.
+      setNews([...items])
       setLastValue(_cachedLastValue)
       setHasMore(_cachedHasMore)
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(NEWS_CACHE_UPDATED_EVENT))
+      }
     } finally {
       setIsLoading(false)
     }
@@ -153,7 +160,7 @@ export function useNewsFeed(sortBy: SortOption = "latest"): UseNewsFeedReturn {
       _cachedLastValue = sortBy === "latest" ? items.at(-1)?.publishedAt : items.at(-1)?.viewCount
       _cachedHasMore = items.length === PAGE_SIZE
 
-      setNews(_cachedNews)
+      setNews([..._cachedNews]) // 💡 여기도 강제 복사로 수정
       setLastValue(_cachedLastValue)
       setHasMore(_cachedHasMore)
     } finally {
@@ -161,7 +168,10 @@ export function useNewsFeed(sortBy: SortOption = "latest"): UseNewsFeedReturn {
     }
   }, [isLoadingMore, hasMore, lastValue, sortBy])
 
+  // 💡 대망의 refresh 함수! 강제 초기화 후 데이터 재요청
   const refresh = async () => {
+    setIsLoading(true)
+    setNews([]) // 💡 화면에 잠깐 로딩 뼈대(스켈레톤)를 띄워 "진짜로 바뀌고 있다"는 시각적 피드백 제공
     await fetchInitialData()
   }
 

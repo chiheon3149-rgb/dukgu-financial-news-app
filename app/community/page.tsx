@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Search, PenSquare, Users, Loader2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommunityPostCard } from "@/components/dukgu/community-post-card"
-import { AdBanner } from "@/components/dukgu/ad-banner" // 💡 아까 만든 광고 컴포넌트 임포트
+import { AdBanner } from "@/components/dukgu/ad-banner" // 💡 광고 컴포넌트 임포트 확인
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
@@ -43,8 +43,7 @@ export default function CommunityPage() {
       />
 
       <main className="max-w-md mx-auto px-5 py-5 space-y-4">
-
-        {/* 검색창 */}
+        {/* 검색창 로직 */}
         {isSearchOpen && (
           <div className="animate-in slide-in-from-top-2 duration-200">
             <input
@@ -58,7 +57,7 @@ export default function CommunityPage() {
           </div>
         )}
 
-        {/* 카테고리 탭 */}
+        {/* 탭 메뉴 */}
         <div className="flex gap-2">
           {TABS.map((tab) => (
             <button
@@ -73,14 +72,12 @@ export default function CommunityPage() {
               {tab.label}
             </button>
           ))}
-
-          {/* 게시글 수 */}
           <span className="ml-auto text-[11px] font-bold text-slate-400 self-center">
             {filteredPosts.length}개
           </span>
         </div>
 
-        {/* 게시글 목록 */}
+        {/* 💡 게시글 목록 및 업그레이드된 광고 로직 */}
         <div className="space-y-3">
           {isLoading && (
             <div className="flex items-center justify-center py-16 text-slate-300">
@@ -88,22 +85,30 @@ export default function CommunityPage() {
             </div>
           )}
 
-          {!isLoading && filteredPosts.map((post, index) => (
-            <div key={post.id} className="space-y-3"> {/* 💡 간격 유지를 위한 래퍼 추가 */}
+          {!isLoading && filteredPosts.map((post: any, index: number) => (
+            <div key={post.id} className="space-y-3">
               <CommunityPostCard
                 post={post}
                 onReact={reactPost}
                 onDelete={deletePost}
                 currentUserId={profile?.id}
-                onProfileClick={(authorId) => router.push(`/profile/${authorId}`)}
+                onProfileClick={(authorId: string) => router.push(`/profile/${authorId}`)}
               />
 
-              {/* 💡 7번째 게시글마다 광고 노출 로직 (index 6, 13, 20...) */}
-              {(index + 1) % 7 === 0 && (
-                <div className="py-2 animate-in fade-in duration-500">
-                  <AdBanner />
-                </div>
-              )}
+              {/* 💡 광고 전략: 7개 이상이면 7개마다, 7개 미만이면 맨 마지막에 */}
+              {(() => {
+                const isLastItem = index === filteredPosts.length - 1;
+                const isEverySeventh = (index + 1) % 7 === 0;
+
+                if (filteredPosts.length >= 7) {
+                  if (isEverySeventh) {
+                    return <div className="py-2 animate-in fade-in duration-500"><AdBanner /></div>;
+                  }
+                } else if (isLastItem) {
+                  return <div className="py-2 animate-in fade-in duration-500"><AdBanner /></div>;
+                }
+                return null;
+              })()}
             </div>
           ))}
 
@@ -111,20 +116,15 @@ export default function CommunityPage() {
             <div className="py-20 text-center text-slate-300">
               <Users className="w-10 h-10 mx-auto mb-3 opacity-20" />
               <p className="text-sm font-bold">게시글이 없습니다</p>
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="mt-2 text-[11px] font-bold text-emerald-500">
-                  검색 초기화
-                </button>
-              )}
             </div>
           )}
         </div>
       </main>
 
-      {/* 글쓰기 FAB */}
+      {/* 글쓰기 버튼 */}
       <button
         onClick={() => router.push("/community/new")}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-emerald-500 text-white rounded-full shadow-lg shadow-emerald-300 flex items-center justify-center transition-all active:scale-90 hover:bg-emerald-600 z-40"
+        className="fixed bottom-20 right-4 w-14 h-14 bg-emerald-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-90 z-40"
       >
         <PenSquare className="w-6 h-6" />
       </button>
