@@ -4,27 +4,39 @@ import React, { useEffect, useRef } from "react"
 import Link from "next/link"
 import { NewsCard } from "./news-card"
 import { Loader2 } from "lucide-react"
-import { useNewsFeed } from "@/hooks/use-news-feed"
 import { AdBanner } from "./ad-banner"
-import { SortOption } from "./news-section" // 💡 SortOption 타입 임포트
+import { SortOption } from "./news-section"
 
 const SCROLL_KEY = "newsListScrollY"
 
+// 💡 Props 인터페이스에 sortBy를 추가하여 타입 에러를 해결합니다.
 interface NewsFeedProps {
+  news: any[]          
+  isLoading: boolean   
+  isLoadingMore: boolean
+  hasMore: boolean
+  fetchNextPage: () => void
   searchKeyword?: string
-  sortBy: SortOption // 💡 이제 sortBy 택배를 받을 수 있도록 입구를 만들었습니다!
+  sortBy: SortOption   // 👈 추가: 부모로부터 전달받는 정렬 상태
 }
 
-export function NewsFeed({ searchKeyword = "", sortBy }: NewsFeedProps) {
-  // 💡 훅에 sortBy를 전달하여 서버에서 정렬된 데이터를 가져오게 합니다.
-  const { news, isLoading, isLoadingMore, hasMore, fetchNextPage } = useNewsFeed(sortBy)
-
+export function NewsFeed({ 
+  news, 
+  isLoading, 
+  isLoadingMore, 
+  hasMore, 
+  fetchNextPage, 
+  searchKeyword = "",
+  sortBy               // 👈 추가
+}: NewsFeedProps) {
+  
   const keyword = searchKeyword.trim().toLowerCase()
   const filteredNews = keyword
     ? news.filter((item) => {
         const inHeadline = item.headline.toLowerCase().includes(keyword)
         const inSummary = item.summary.toLowerCase().includes(keyword)
-        const inTags = item.tags.some((tag) => tag.toLowerCase().includes(keyword))
+        // 💡 tag: string 타입을 명시하여 'any' 타입 에러를 해결합니다.
+        const inTags = item.tags.some((tag: string) => tag.toLowerCase().includes(keyword))
         return inHeadline || inSummary || inTags
       })
     : news
@@ -32,7 +44,7 @@ export function NewsFeed({ searchKeyword = "", sortBy }: NewsFeedProps) {
   const observerTarget = useRef<HTMLDivElement>(null)
   const scrollRestored = useRef(false)
 
-  // 스크롤 복구 로직 (기존 유지)
+  // 1. 스크롤 복구 로직
   useEffect(() => {
     if (isLoading || news.length === 0 || scrollRestored.current) return
     scrollRestored.current = true
@@ -45,7 +57,7 @@ export function NewsFeed({ searchKeyword = "", sortBy }: NewsFeedProps) {
     }
   }, [isLoading, news.length])
 
-  // 무한 스크롤 로직 (기존 유지)
+  // 2. 무한 스크롤 로직
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -60,11 +72,19 @@ export function NewsFeed({ searchKeyword = "", sortBy }: NewsFeedProps) {
     return () => observer.disconnect()
   }, [isLoadingMore, hasMore, fetchNextPage])
 
-  return (
-    <section className="px-1 pb-24 max-w-lg mx-auto">
-      {/* 💡 [수정] 중복되던 "실시간 뉴스" 헤더를 제거했습니다. 
-          부모인 NewsSection에서 이미 예쁘게 그려주고 있기 때문에 훨씬 깔끔해집니다! */}
+  // 3. 로딩 처리
+  if (isLoading && news.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 opacity-30">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-2" />
+        <p className="text-sm font-bold tracking-tighter text-slate-900">최신 정보를 가져오고 있다냥... 🐾</p>
+      </div>
+    )
+  }
 
+  return (
+    // 💡 px-0으로 설정하여 뉴스 카드와 가로 너비를 완벽히 일치시킵니다.
+    <section className="px-0 pb-24 max-w-lg mx-auto">
       <div className="flex flex-col gap-3">
         {filteredNews.map((item, index) => (
           <React.Fragment key={item.id}>
@@ -76,9 +96,9 @@ export function NewsFeed({ searchKeyword = "", sortBy }: NewsFeedProps) {
               <NewsCard {...item} />
             </Link>
 
-            {/* 8번째 뉴스마다 광고 배너 */}
-            {(index + 1) % 8 === 0 && (
-              <div className="py-2">
+            {/* 💡 7번째 뉴스마다 세로가 컴팩트한 광고 배너 삽입 */}
+            {(index + 1) % 7 === 0 && (
+              <div className="py-1">
                 <AdBanner />
               </div>
             )}
@@ -92,17 +112,17 @@ export function NewsFeed({ searchKeyword = "", sortBy }: NewsFeedProps) {
         )}
       </div>
 
-      {/* 무한 스크롤 로딩 표시 */}
+      {/* 무한 스크롤 트리거 */}
       <div ref={observerTarget} className="w-full py-8 flex justify-center items-center">
         {isLoadingMore ? (
           <div className="flex flex-col items-center gap-2 text-slate-400">
-            <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-            <span className="text-xs font-medium">뉴스 불러오는 중...</span>
+            <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+            <span className="text-[10px] font-bold">더 많은 뉴스 읽어오는 중...</span>
           </div>
         ) : hasMore ? (
           <div className="h-10 opacity-0" aria-hidden="true" />
         ) : (
-          <p className="text-xs font-bold text-slate-300">모든 뉴스를 불러왔습니다</p>
+          <p className="text-[10px] font-bold text-slate-200 uppercase tracking-widest">End of Briefing</p>
         )}
       </div>
     </section>

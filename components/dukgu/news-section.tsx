@@ -6,14 +6,23 @@ import { NewsFeed } from "./news-feed"
 import { Clock, BarChart3, RefreshCw } from "lucide-react"
 import { useNewsFeed } from "@/hooks/use-news-feed"
 
+// 💡 정렬 옵션 타입 정의
 export type SortOption = "latest" | "views"
 
 export function NewsSection() {
   const [searchKeyword, setSearchKeyword] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>("latest")
   
-  // 💡 refresh와 isLoading을 가져옵니다.
-  const { refresh, isLoading } = useNewsFeed(sortBy)
+  // 💡 훅에서 필요한 모든 데이터와 함수를 구조 분해 할당으로 가져옵니다.
+  // 훅 내부에서 news, isLoadingMore, hasMore, fetchNextPage가 모두 반환되어야 합니다.
+  const { 
+    news, 
+    refresh, 
+    isLoading, 
+    isLoadingMore, 
+    hasMore, 
+    fetchNextPage 
+  } = useNewsFeed(sortBy)
 
   return (
     /* gap-5를 gap-3.5로 줄여 검색바와 헤더 사이 간격을 압축했습니다. */
@@ -36,11 +45,11 @@ export function NewsSection() {
             </h2>
           </div>
 
-          {/* 우측: 정렬 캡슐 & 새로고침 버튼 (최적 위치) */}
+          {/* 우측: 정렬 캡슐 & 새로고침 버튼 */}
           <div className="flex items-center gap-1.5">
-            {/* 정렬 필터 */}
             <div className="flex items-center gap-0.5 bg-slate-100/80 p-0.5 rounded-lg border border-slate-200/50">
               <button
+                type="button"
                 onClick={() => setSortBy("latest")}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all active:scale-95 ${
                   sortBy === "latest" 
@@ -49,9 +58,10 @@ export function NewsSection() {
                 }`}
               >
                 <Clock className="w-3.5 h-3.5" />
-                <span className="text-[11px] tabular-nums">최신</span>
+                <span className="text-[11px] tabular-nums">최신순</span>
               </button>
               <button
+                type="button"
                 onClick={() => setSortBy("views")}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all active:scale-95 ${
                   sortBy === "views" 
@@ -60,12 +70,13 @@ export function NewsSection() {
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
-                <span className="text-[11px] tabular-nums">조회</span>
+                <span className="text-[11px] tabular-nums">조회순</span>
               </button>
             </div>
 
-            {/* 새로고침: 필터 오른쪽에 두어 마침표를 찍는 느낌 */}
+            {/* 새로고침 버튼 */}
             <button
+              type="button"
               onClick={refresh}
               disabled={isLoading}
               className="p-2 bg-slate-100/80 rounded-lg border border-slate-200/50 text-slate-400 hover:text-emerald-500 transition-all active:rotate-180 duration-500 disabled:opacity-30"
@@ -76,8 +87,16 @@ export function NewsSection() {
         </div>
       </div>
 
-      {/* 3. 뉴스 리스트 */}
-      <NewsFeed searchKeyword={searchKeyword} sortBy={sortBy} />
+      {/* 3. 뉴스 리스트: 💡 무한 스크롤에 필요한 모든 props를 NewsFeed 전문 규격에 맞춰 넘깁니다. */}
+      <NewsFeed 
+        news={news || []} 
+        isLoading={isLoading} 
+        isLoadingMore={isLoadingMore}
+        hasMore={hasMore}
+        fetchNextPage={fetchNextPage}
+        searchKeyword={searchKeyword} 
+        sortBy={sortBy} 
+      />
     </div>
   )
 }
