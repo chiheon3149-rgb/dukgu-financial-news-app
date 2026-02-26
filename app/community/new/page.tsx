@@ -1,9 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { X, Plus } from "lucide-react"
+import { X, Plus, Sparkles } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
+import { YoutubePlayer } from "@/components/dukgu/youtube-player" // 👈 영상 출력 부품
+import { getYoutubeIds } from "@/lib/youtube" // 👈 링크 추출 부품
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
@@ -22,6 +25,19 @@ export default function NewPostPage() {
   const [tagInput, setTagInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // 💡 [핵심] 실시간 추출된 유튜브 ID들을 담는 저장소
+  const [previewIds, setPreviewIds] = useState<string[]>([])
+
+  // 💡 [실시간 감시] 본문 내용이 바뀔 때마다 유튜브 링크가 있는지 샅샅이 뒤집니다.
+  useEffect(() => {
+    if (content.trim()) {
+      const ids = getYoutubeIds(content)
+      setPreviewIds(ids)
+    } else {
+      setPreviewIds([])
+    }
+  }, [content])
+
   const addTag = (tag: string) => {
     const clean = tag.replace(/^#/, "").trim()
     if (!clean || tags.includes(clean) || tags.length >= 5) return
@@ -39,7 +55,7 @@ export default function NewPostPage() {
   }
 
   const handleSubmit = async () => {
-    if (!title.trim() || !content.trim() || isSubmitting) return
+    if (!title.trim() || !content.trim() || isSubmitting || !profile) return
     setIsSubmitting(true)
     try {
       const newPost = await createPost({
@@ -47,12 +63,15 @@ export default function NewPostPage() {
         title: title.trim(),
         content: content.trim(),
         tags,
-        authorId: profile?.id ?? "user-001",
-        authorNickname: profile?.nickname ?? "나",
-        authorEmoji: profile?.avatarEmoji ?? "🐱",
+        authorId: profile.id,
+        authorNickname: profile.nickname,
+        authorEmoji: profile.avatarEmoji,
         authorLevel: currentLevel.level,
       })
+      toast.success("게시글이 성공적으로 등록되었다냥! 🐾")
       router.replace(`/community/${newPost.id}`)
+    } catch (error) {
+      toast.error("등록 중 오류가 발생했다냥. 다시 시도해달라냥.")
     } finally {
       setIsSubmitting(false)
     }
@@ -80,7 +99,6 @@ export default function NewPostPage() {
       />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-5">
-
         {/* 카테고리 선택 */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">카테고리</p>
@@ -101,13 +119,11 @@ export default function NewPostPage() {
           </div>
         </section>
 
-        {/* 태그 */}
+        {/* 태그 영역 (기존 유지) */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">
             태그 ({tags.length}/5)
           </p>
-
-          {/* 선택된 태그 */}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
               {tags.map((tag) => (
@@ -122,8 +138,6 @@ export default function NewPostPage() {
               ))}
             </div>
           )}
-
-          {/* 태그 직접 입력 */}
           <div className="relative mb-3">
             <span className="absolute left-3 top-2.5 text-[13px] text-slate-300">#</span>
             <input
@@ -140,8 +154,6 @@ export default function NewPostPage() {
               <Plus className="w-4 h-4" />
             </button>
           </div>
-
-          {/* 프리셋 태그 */}
           <div className="flex flex-wrap gap-1.5">
             {PRESET_TAGS.filter((t) => !tags.includes(t)).map((tag) => (
               <button
@@ -156,7 +168,7 @@ export default function NewPostPage() {
           </div>
         </section>
 
-        {/* 제목 + 내용 */}
+        {/* 제목 + 내용 + 💡 미리보기 */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 space-y-4">
           <div>
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">제목</p>
@@ -168,7 +180,6 @@ export default function NewPostPage() {
               maxLength={100}
               className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-4 text-[14px] font-bold focus:outline-none focus:border-emerald-200 transition-all"
             />
-            <p className="text-right text-[10px] font-bold text-slate-300 mt-1">{title.length}/100</p>
           </div>
 
           <div>
@@ -176,15 +187,31 @@ export default function NewPostPage() {
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="내용을 자유롭게 작성해 주세요"
+              placeholder="내용을 자유롭게 작성해 주세요 (유튜브 링크를 붙여넣으면 미리보기가 뜬다냥! 📺)"
               maxLength={2000}
               rows={8}
               className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-4 text-[13px] font-medium focus:outline-none focus:border-emerald-200 transition-all resize-none"
             />
-            <p className="text-right text-[10px] font-bold text-slate-300 mt-1">{content.length}/2000</p>
           </div>
-        </section>
 
+          {/* 💡 실시간 영상 미리보기 영역 */}
+          {previewIds.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                <p className="text-[11px] font-black text-slate-800">영상 미리보기 ({previewIds.length})</p>
+              </div>
+              <div className="space-y-4">
+                {previewIds.map((vId) => (
+                  <YoutubePlayer key={vId} videoId={vId} />
+                ))}
+              </div>
+              <p className="text-center text-[10px] font-bold text-slate-400">
+                영상이 잘 나오는지 확인하고 등록해달라냥! 🐾
+              </p>
+            </div>
+          )}
+        </section>
       </main>
     </div>
   )

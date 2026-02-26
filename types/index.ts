@@ -80,7 +80,7 @@ export interface NewsItem {
   goodCount: number
   badCount: number
   commentCount: number
-  viewCount: number // 👈 [핵심 추가] 500명 동시접속 대비 조회수 정렬을 위해 추가되었습니다.
+  viewCount: number
   isSaved?: boolean
   source?: string | null
 }
@@ -135,7 +135,6 @@ export interface MarketIndex {
 
 // -----------------------------------------------------------------------------
 // ⚙️ 사용자 설정 (User Preferences)
-// 향후 LocalStorage 또는 DB와 연동될 설정값들을 미리 타입으로 정의해 둡니다.
 // -----------------------------------------------------------------------------
 
 export interface UserPreferences {
@@ -178,11 +177,8 @@ export interface DividendRecord {
 
 /** 보유 주식 한 종목 전체 */
 export interface StockHolding {
-  /** Yahoo Finance 티커 (예: AAPL, 005930.KS) */
   ticker: string
-  /** 표시 이름 */
   name: string
-  /** 거래 통화 */
   currency: "KRW" | "USD"
   trades: TradeRecord[]
   dividends: DividendRecord[]
@@ -190,13 +186,9 @@ export interface StockHolding {
 
 /** 평단가 및 보유 수량 계산 결과 */
 export interface PortfolioStats {
-  /** 현재 총 보유 수량 */
   totalShares: number
-  /** 가중평균 매입단가 */
   avgCostPrice: number
-  /** 총 투자 원금 */
   totalInvested: number
-  /** 실현 손익 (매도분) */
   realizedPnl: number
 }
 
@@ -205,10 +197,8 @@ export interface MarketQuote {
   ticker: string
   currentPrice: number
   currency: "KRW" | "USD"
-  /** 전일 대비 변동률 (%) */
   changeRate: number
   changeStatus: ChangeStatus
-  /** 마지막 업데이트 시각 */
   fetchedAt: string
 }
 
@@ -228,11 +218,8 @@ export interface AvgCostDataPoint {
 
 export interface GoldHolding {
   id: string
-  /** YYYY-MM-DD */
   date: string
-  /** 매매 당시 1g 기준 가격 (원) */
   pricePerGram: number
-  /** 매매 수량 (g) */
   grams: number
   type: TradeType
   memo?: string
@@ -243,31 +230,22 @@ export interface GoldHolding {
 // 🪙 코인 (Crypto)
 // -----------------------------------------------------------------------------
 
-/** 단일 코인 매매 기록 */
 export interface CryptoTradeRecord {
   id: string
-  /** YYYY-MM-DD */
   date: string
   type: TradeType
-  /** 매매 당시 단가 (USD) */
   price: number
-  /** 수량 (소수점 가능) */
   quantity: number
   memo?: string
 }
 
-/** 보유 코인 한 종목 전체 */
 export interface CryptoHolding {
-  /** Yahoo Finance 심볼 (예: BTC-USD, ETH-USD) */
   symbol: string
-  /** 표시 이름 (예: 비트코인) */
   name: string
-  /** 코인 단위 (예: BTC) */
   unit: string
   trades: CryptoTradeRecord[]
 }
 
-/** 코인 포트폴리오 계산 결과 */
 export interface CryptoStats {
   totalQuantity: number
   avgCostPrice: number
@@ -284,16 +262,9 @@ export interface RealEstateHolding {
   id: string
   name: string
   address: string
-  /** 취득가 (원) */
   acquisitionPrice: number
-  /** YYYY-MM-DD */
   acquisitionDate: string
-  /**
-   * KB시세 또는 수동 입력 현재가 (원)
-   * null이면 취득가로 대체 표시
-   */
   currentEstimatedPrice: number | null
-  /** 마지막 수동 업데이트 날짜 */
   priceUpdatedAt: string | null
 }
 
@@ -302,32 +273,24 @@ export interface RealEstateHolding {
 // 👤 유저 프로필 & XP 시스템 (User Profile & Experience)
 // -----------------------------------------------------------------------------
 
-/** XP를 획득하는 이벤트의 출처 */
 export type XpSource = "quiz_correct" | "quiz_bonus" | "daily_login" | "admin"
 
-/** XP 획득 이력 단건 */
 export interface XpEvent {
   id: string
   source: XpSource
   amount: number
   label: string
-  /** ISO 8601 */
   earnedAt: string
 }
 
-/** 유저 레벨 메타 정보 */
 export interface LevelMeta {
   level: number
   title: string
-  /** 이 레벨에 진입하는 데 필요한 누적 XP */
   minXp: number
-  /** 다음 레벨 진입에 필요한 누적 XP */
   maxXp: number
-  /** 아이콘 이모지 */
   icon: string
 }
 
-/** 유저 프로필 전체 */
 export interface UserProfile {
   id: string
   nickname: string
@@ -342,16 +305,13 @@ export interface UserProfile {
 
 // -----------------------------------------------------------------------------
 // 🔖 활동 내역 (Article Activity)
-// 북마크 / 좋아요 / 싫어요한 기사들을 마이페이지에서 모아볼 수 있도록 합니다.
 // -----------------------------------------------------------------------------
 
 export type ArticleReactionType = "like" | "dislike"
 
-/** 북마크된 기사 */
 export interface SavedArticle {
   newsId: string
   savedAt: string
-  /** 기사 스냅샷 — 원본이 삭제되어도 보여줄 수 있도록 */
   snapshot: {
     headline: string
     category: NewsCategory
@@ -360,7 +320,6 @@ export interface SavedArticle {
   }
 }
 
-/** 좋아요 / 싫어요한 기사 */
 export interface ArticleReaction {
   newsId: string
   type: ArticleReactionType
@@ -387,7 +346,6 @@ export interface InquiryMessage {
   body: string
   submittedAt: string
   status: InquiryStatus
-  /** 운영자 답변 (있을 경우) */
   reply?: string
 }
 
@@ -402,22 +360,20 @@ export type CommunityCategory = "free" | "economy"
 export interface CommunityPost {
   id: string
   category: CommunityCategory
-  /** 해시태그 배열 (예: ["금리", "연준"]) */
   tags: string[]
   title: string
   content: string
-  /** 작성자 정보 (스냅샷 — 유저가 닉네임 변경해도 게시글은 유지) */
   authorId: string
   authorNickname: string
   authorEmoji: string
   authorLevel: number
   publishedAt: string
-  /** ISO 8601 상대 표시용 */
   timeAgo: string
   likeCount: number
   dislikeCount: number
   commentCount: number
-  /** 삭제된 게시글 여부 (소프트 딜리트) */
+  // 💡 [핵심 추가] 커뮤니티 게시글 조회수 타입 정의
+  viewCount: number 
   isDeleted: boolean
 }
 
@@ -434,9 +390,7 @@ export interface CommunityComment {
   timeAgo: string
   likeCount: number
   dislikeCount: number
-  /** 신고 횟수 */
   reportCount: number
-  /** 관리자에 의해 삭제된 경우 → "신고에 의해 삭제된 댓글입니다." 표시 */
   isRemovedByAdmin: boolean
 }
 
@@ -466,7 +420,6 @@ export interface FollowRelation {
   followerId: string
   followingId: string
   followedAt: string
-  /** 팔로잉 유저 정보 스냅샷 */
   targetNickname: string
   targetEmoji: string
   targetLevel: number

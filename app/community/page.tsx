@@ -18,11 +18,21 @@ const TABS: { id: CommunityCategory | "all"; label: string }[] = [
 
 export default function CommunityPage() {
   const router = useRouter()
-  const { filteredPosts, isLoading, activeCategory, setActiveCategory, searchQuery, setSearchQuery, reactPost, deletePost } = useCommunity()
+  const { 
+    filteredPosts, 
+    isLoading, 
+    activeCategory, 
+    setActiveCategory, 
+    searchQuery, 
+    setSearchQuery, 
+    reactPost, 
+    deletePost 
+  } = useCommunity()
   const { profile } = useUser()
 
   return (
     <div className="min-h-dvh bg-slate-50 pb-28">
+      {/* 상단 헤더: 뒤로가기 없이 커뮤니티 정체성 강조 */}
       <DetailHeader
         showBack={false}
         title={
@@ -35,7 +45,7 @@ export default function CommunityPage() {
 
       <main className="max-w-md mx-auto px-5 py-5 space-y-5">
         
-        {/* 1. 탭 메뉴 */}
+        {/* 1. 카테고리 탭 메뉴 */}
         <div className="flex gap-2">
           {TABS.map((tab) => (
             <button
@@ -55,7 +65,7 @@ export default function CommunityPage() {
           </span>
         </div>
 
-        {/* 2. 서치바 */}
+        {/* 2. 서치바: 상단 광고가 없어서 유저가 바로 검색 기능을 인지할 수 있음 */}
         <section className="animate-in fade-in slide-in-from-top-1 duration-300">
           <SearchBar 
             value={searchQuery} 
@@ -64,8 +74,7 @@ export default function CommunityPage() {
           />
         </section>
 
-        {/* 💡 [기획 수정] 최상단 고정 광고 제거됨 */}
-
+        {/* 3. 게시글 리스트 및 동적 광고 배치 */}
         <div className="space-y-3">
           {isLoading && (
             <div className="flex items-center justify-center py-16 text-slate-300">
@@ -74,11 +83,11 @@ export default function CommunityPage() {
           )}
 
           {!isLoading && filteredPosts.map((post: CommunityPost, index: number) => {
-            // 💡 [핵심 로직] 광고 노출 여부 결정
-            // 1. 7번째 게시물마다 (7, 14, 21...)
+            // 💡 기획 핵심 로직: 광고 노출 여부 결정
+            // 조건 1: 7, 14, 21번째 등 7의 배수 위치일 때
             const isEverySeven = (index + 1) % 7 === 0;
-            // 2. 전체 개수가 7개가 아닌데 리스트의 마지막일 때 (예: 글이 3개면 3번째 글 아래)
-            const isLastAndNotSeven = (index === filteredPosts.length - 1) && (filteredPosts.length % 7 !== 0);
+            // 조건 2: 리스트의 맨 마지막이면서, 동시에 7의 배수 자리가 아닐 때 (중복 방지)
+            const isLastButNotSeven = (index === filteredPosts.length - 1) && ((index + 1) % 7 !== 0);
             
             return (
               <div key={post.id} className="space-y-3">
@@ -90,8 +99,8 @@ export default function CommunityPage() {
                   onProfileClick={(authorId: string) => router.push(`/profile/${authorId}`)}
                 />
                 
-                {/* 💡 기획하신 광고 조건문 */}
-                {(isEverySeven || isLastAndNotSeven) && (
+                {/* 💡 설정된 조건에 맞을 때만 광고 배너 삽입 */}
+                {(isEverySeven || isLastButNotSeven) && (
                   <div className="py-2 animate-in fade-in zoom-in-95 duration-500">
                     <AdBanner />
                   </div>
@@ -100,16 +109,17 @@ export default function CommunityPage() {
             );
           })}
 
+          {/* 검색 결과나 게시글이 없을 때의 예외 처리 */}
           {!isLoading && filteredPosts.length === 0 && (
             <div className="py-20 text-center text-slate-300">
               <Users className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p className="text-sm font-bold">게시글이 없습니다</p>
+              <p className="text-sm font-bold">찾으시는 게시글이 없다냥 🐾</p>
             </div>
           )}
         </div>
       </main>
 
-      {/* 글쓰기 버튼 */}
+      {/* 우측 하단 플로팅 글쓰기 버튼 */}
       <button
         onClick={() => router.push("/community/new")}
         className="fixed bottom-20 right-4 w-14 h-14 bg-emerald-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-90 z-40"

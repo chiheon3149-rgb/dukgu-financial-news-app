@@ -10,7 +10,7 @@ import type {
 import { supabase } from "@/lib/supabase"
 
 // =============================================================================
-// 🏘️ useCommunity — 실시간 프로필 동기화 버전 (TypeScript 에러 해결)
+// 🏘️ useCommunity — 조회수 및 실시간 프로필 연동 (최종 수정본)
 // =============================================================================
 
 function formatTimeAgo(dateStr: string): string {
@@ -26,12 +26,12 @@ function formatTimeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })
 }
 
-/** 💡 [수정] row의 타입을 any 대신 명확한 형태로 받거나 map 처리 시 타입을 지정합니다. */
+/** 💡 [수정] DB의 view_count를 viewCount로 매핑하여 에러를 해결합니다. */
 function mapPost(row: any): CommunityPost {
   const author = row.author;
   return {
     id: row.id,
-    category: row.category as CommunityCategory, // 👈 인덱스 에러 방지를 위해 타입 강제
+    category: row.category as CommunityCategory,
     tags: Array.isArray(row.tags) ? row.tags : [],
     title: row.title,
     content: row.content,
@@ -44,6 +44,8 @@ function mapPost(row: any): CommunityPost {
     likeCount: row.like_count ?? 0,
     dislikeCount: row.dislike_count ?? 0,
     commentCount: row.comment_count ?? 0,
+    // ✨ [해결] viewCount가 누락되어 발생하던 에러를 여기서 잡았습니다!
+    viewCount: row.view_count ?? 0, 
     isDeleted: row.is_deleted ?? false,
   }
 }
@@ -79,7 +81,7 @@ function getOrCreateDeviceKey(): string {
   return key
 }
 
-/** 💡 인터페이스 정의 - 컴포넌트에서 사용할 때 에러가 나지 않도록 타입을 맞춥니다. */
+/** 💡 인터페이스 정의 - incrementViewCount를 추가합니다. */
 interface UseCommunityReturn {
   posts: CommunityPost[]
   comments: CommunityComment[]
@@ -92,7 +94,7 @@ interface UseCommunityReturn {
   getComments: (postId: string) => CommunityComment[]
   reportPost: (postId: string) => Promise<void>
   createPost: (
-    data: Omit<CommunityPost, "id" | "publishedAt" | "timeAgo" | "likeCount" | "dislikeCount" | "commentCount" | "isDeleted">
+    data: Omit<CommunityPost, "id" | "publishedAt" | "timeAgo" | "likeCount" | "dislikeCount" | "commentCount" | "viewCount" | "isDeleted">
   ) => Promise<CommunityPost>
   updatePost: (
     postId: string,
@@ -112,6 +114,8 @@ interface UseCommunityReturn {
     reason: CommentReportReason
     detail?: string
   }) => Promise<void>
+  // ✨ [추가] 조회수 증가 함수를 명세에 넣습니다.
+  incrementViewCount: (postId: string) => Promise<void>
 }
 
 export function useCommunity(postId?: string): UseCommunityReturn {
@@ -169,7 +173,15 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     load()
   }, [postId])
 
-  /** 💡 [에러 해결] 필터링 시 p의 타입을 CommunityPost로 명시합니다. */
+  // ✨ [추가] 조회수 증가 실제 로직
+  const incrementViewCount = useCallback(async (id: string) => {
+    try {
+      await supabase.rpc('increment_view_count', { post_id: id });
+    } catch (e) {
+      console.error("[useCommunity] 조회수 업데이트 실패:", e);
+    }
+  }, []);
+
   const filteredPosts = useMemo(() => {
     return posts
       .filter((p: CommunityPost) => !p.isDeleted)
@@ -193,7 +205,7 @@ export function useCommunity(postId?: string): UseCommunityReturn {
 
   const createPost = useCallback(
     async (
-      data: Omit<CommunityPost, "id" | "publishedAt" | "timeAgo" | "likeCount" | "dislikeCount" | "commentCount" | "isDeleted">
+      data: Omit<CommunityPost, "id" | "publishedAt" | "timeAgo" | "likeCount" | "dislikeCount" | "commentCount" | "viewCount" | "isDeleted">
     ): Promise<CommunityPost> => {
       const now = new Date().toISOString()
       const { data: inserted, error } = await supabase
@@ -210,6 +222,7 @@ export function useCommunity(postId?: string): UseCommunityReturn {
           like_count: 0,
           dislike_count: 0,
           comment_count: 0,
+          view_count: 0, // 💡 초기값 설정
           is_deleted: false,
           published_at: now,
         })
@@ -226,6 +239,7 @@ export function useCommunity(postId?: string): UseCommunityReturn {
         likeCount: 0,
         dislikeCount: 0,
         commentCount: 0,
+        viewCount: 0, // 👈 [수정] interface에 맞춰 추가
         isDeleted: false,
       }
       setPosts((prev) => [newPost, ...prev])
@@ -233,6 +247,9 @@ export function useCommunity(postId?: string): UseCommunityReturn {
     },
     []
   )
+
+  // ... (updatePost, deletePost, reactPost 등 나머지 로직은 동일하게 유지)
+  // (생략된 부분은 위에서 설명한 p: CommunityPost 타입 지정이 모두 완료된 상태여야 합니다)
 
   const updatePost = useCallback(
     async (postId: string, data: Pick<CommunityPost, "title" | "content" | "tags" | "category">) => {
@@ -380,5 +397,6 @@ export function useCommunity(postId?: string): UseCommunityReturn {
 
   return {
     posts, comments, isLoading, activeCategory, setActiveCategory, searchQuery, setSearchQuery, filteredPosts, getComments, reportPost, createPost, updatePost, deletePost, reactPost, addComment, editComment, deleteComment, reactComment, reportComment,
+    incrementViewCount, // 👈 [수정] 밖에서 사용할 수 있게 반환
   }
 }

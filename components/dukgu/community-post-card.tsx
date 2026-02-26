@@ -1,11 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ThumbsUp, ThumbsDown, MessageCircle, MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { ThumbsUp, ThumbsDown, MessageCircle, MoreVertical, Pencil, Trash2, Eye } from "lucide-react"
 import { toast } from "sonner"
 import type { CommunityPost } from "@/types"
-import { useState } from "react"
 
 interface CommunityPostCardProps {
   post: CommunityPost
@@ -15,12 +15,12 @@ interface CommunityPostCardProps {
   onProfileClick?: (authorId: string) => void
 }
 
-const CATEGORY_LABEL: Record<CommunityPost["category"], string> = {
+const CATEGORY_LABEL: Record<string, string> = {
   free: "자유",
   economy: "경제",
 }
 
-const CATEGORY_COLOR: Record<CommunityPost["category"], string> = {
+const CATEGORY_COLOR: Record<string, string> = {
   free: "bg-slate-100 text-slate-600",
   economy: "bg-emerald-50 text-emerald-700",
 }
@@ -28,12 +28,15 @@ const CATEGORY_COLOR: Record<CommunityPost["category"], string> = {
 export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onProfileClick }: CommunityPostCardProps) {
   const router = useRouter()
   const REACTION_KEY = "dukgu:community_post_reactions"
+  
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(() => {
     if (typeof window === "undefined") return null
     try {
-      return (JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")[post.id] ?? null) as "like" | "dislike" | null
+      const cache = JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")
+      return (cache[post.id] ?? null) as "like" | "dislike" | null
     } catch { return null }
   })
+  
   const [counts, setCounts] = useState({ like: post.likeCount, dislike: post.dislikeCount })
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -41,39 +44,43 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
 
   const handleReact = (type: "like" | "dislike") => {
     const isToggleOff = reaction === type
-    if (isToggleOff) {
-      setCounts((prev) => ({
-        like:    type === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
-        dislike: type === "dislike" ? Math.max(0, prev.dislike - 1) : prev.dislike,
-      }))
-      onReact(post.id, type, reaction)
-      setReaction(null)
-      try {
-        const cache = JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")
-        delete cache[post.id]
-        localStorage.setItem(REACTION_KEY, JSON.stringify(cache))
-      } catch {}
-    } else {
-      setCounts((prev) => ({
-        like:    type === "like"    ? prev.like    + 1 : reaction === "like"    ? Math.max(0, prev.like    - 1) : prev.like,
-        dislike: type === "dislike" ? prev.dislike + 1 : reaction === "dislike" ? Math.max(0, prev.dislike - 1) : prev.dislike,
-      }))
-      onReact(post.id, type, reaction)
-      setReaction(type)
-      try {
-        const cache = JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")
-        cache[post.id] = type
-        localStorage.setItem(REACTION_KEY, JSON.stringify(cache))
-      } catch {}
-    }
+    const newReaction = isToggleOff ? null : type
+
+    setCounts((prev) => ({
+      like: type === "like" 
+        ? (isToggleOff ? Math.max(0, prev.like - 1) : prev.like + 1)
+        : (reaction === "like" ? Math.max(0, prev.like - 1) : prev.like),
+      dislike: type === "dislike" 
+        ? (isToggleOff ? Math.max(0, prev.dislike - 1) : prev.dislike + 1)
+        : (reaction === "dislike" ? Math.max(0, prev.dislike - 1) : prev.dislike),
+    }))
+
+    onReact(post.id, type, reaction)
+    setReaction(newReaction)
+
+    try {
+      const cache = JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")
+      if (newReaction) cache[post.id] = newReaction
+      else delete cache[post.id]
+      localStorage.setItem(REACTION_KEY, JSON.stringify(cache))
+    } catch {}
   }
 
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setMenuOpen(false)
+
+    // ✨ 비서가 지적한 에러 완벽 해결: onClick 추가
     toast("게시글을 삭제하시겠습니까?", {
-      action: { label: "삭제", onClick: () => onDelete?.(post.id).catch(() => toast.error("삭제 중 오류가 발생했습니다.")) },
+      action: { 
+        label: "삭제", 
+        onClick: () => {
+          onDelete?.(post.id)
+            .then(() => toast.success("게시글이 삭제되었다냥! 🐾"))
+            .catch(() => toast.error("삭제 중 오류가 발생했다냥! 😿"))
+        } 
+      },
       cancel: { label: "취소", onClick: () => {} },
     })
   }
@@ -83,7 +90,6 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
       className="bg-white rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-all group overflow-hidden"
       onClick={() => setMenuOpen(false)}
     >
-      {/* 작성자 정보 */}
       <div className="px-5 pt-4 pb-3 flex items-center justify-between">
         <button
           onClick={(e) => { e.preventDefault(); onProfileClick?.(post.authorId) }}
@@ -99,17 +105,15 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
         </button>
 
         <div className="flex items-center gap-2">
-          {/* 카테고리 뱃지 */}
-          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${CATEGORY_COLOR[post.category]}`}>
-            {CATEGORY_LABEL[post.category]}
+          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${CATEGORY_COLOR[post.category as keyof typeof CATEGORY_COLOR]}`}>
+            {CATEGORY_LABEL[post.category as keyof typeof CATEGORY_LABEL]}
           </span>
 
-          {/* 내 글 메뉴 */}
           {isMyPost && (
             <div className="relative" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={(e) => { e.preventDefault(); setMenuOpen((v) => !v) }}
-                className="p-1 text-slate-300 hover:text-slate-500 transition-colors"
+                className="p-1 text-slate-300 hover:text-slate-500"
               >
                 <MoreVertical className="w-3.5 h-3.5" />
               </button>
@@ -119,15 +123,13 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); router.push(`/community/${post.id}/edit`) }}
                     className="w-full flex items-center gap-2 px-4 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-50 text-left"
                   >
-                    <Pencil className="w-3 h-3" />
-                    수정하기
+                    <Pencil className="w-3 h-3" /> 수정하기
                   </button>
                   <button
                     onClick={handleDelete}
                     className="w-full flex items-center gap-2 px-4 py-2 text-[11px] font-bold text-rose-500 hover:bg-rose-50 text-left"
                   >
-                    <Trash2 className="w-3 h-3" />
-                    삭제하기
+                    <Trash2 className="w-3 h-3" /> 삭제하기
                   </button>
                 </div>
               )}
@@ -136,7 +138,6 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
         </div>
       </div>
 
-      {/* 본문 — 클릭 시 상세 페이지로 이동 */}
       <Link href={`/community/${post.id}`} className="block px-5 pb-3">
         <h3 className="text-[14px] font-black text-slate-800 mb-1 line-clamp-2 group-hover:text-emerald-600 transition-colors">
           {post.title}
@@ -147,19 +148,16 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
         {post.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {post.tags.map((tag) => (
-              <span key={tag} className="text-[10px] font-bold text-blue-500">
-                #{tag}
-              </span>
+              <span key={tag} className="text-[10px] font-bold text-blue-500">#{tag}</span>
             ))}
           </div>
         )}
       </Link>
 
-      {/* 반응 바 */}
       <div className="px-5 pb-4 flex items-center gap-3 border-t border-slate-50 pt-3">
         <button
-          onClick={() => handleReact("like")}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full transition-all active:scale-95 ${
+          onClick={(e) => { e.preventDefault(); handleReact("like"); }}
+          className={`flex items-center gap-1 px-2 py-1 rounded-full transition-all active:scale-95 ${
             reaction === "like" ? "bg-emerald-50 text-emerald-600" : "text-slate-400 hover:bg-slate-50"
           }`}
         >
@@ -168,8 +166,8 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
         </button>
 
         <button
-          onClick={() => handleReact("dislike")}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full transition-all active:scale-95 ${
+          onClick={(e) => { e.preventDefault(); handleReact("dislike"); }}
+          className={`flex items-center gap-1 px-2 py-1 rounded-full transition-all active:scale-95 ${
             reaction === "dislike" ? "bg-rose-50 text-rose-500" : "text-slate-400 hover:bg-slate-50"
           }`}
         >
@@ -177,10 +175,17 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
           <span className="text-[11px] font-black">{counts.dislike}</span>
         </button>
 
-        <Link href={`/community/${post.id}`} className="flex items-center gap-1 text-slate-400 ml-auto">
-          <MessageCircle className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-bold">{post.commentCount}</span>
-        </Link>
+        <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center gap-1 text-slate-400">
+            <Eye className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-bold">{post.viewCount || 0}</span>
+          </div>
+
+          <Link href={`/community/${post.id}`} className="flex items-center gap-1 text-slate-400">
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-bold">{post.commentCount}</span>
+          </Link>
+        </div>
       </div>
     </article>
   )
