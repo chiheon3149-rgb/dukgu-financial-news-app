@@ -7,8 +7,8 @@ import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommentSection } from "@/components/dukgu/comment-section"
 import { ShareButton } from "@/components/dukgu/share-button"
-import { YoutubePlayer } from "@/components/dukgu/youtube-player" // 👈 부품 추가
-import { getYoutubeId } from "@/lib/youtube" // 👈 집게 추가
+import { YoutubePlayer } from "@/components/dukgu/youtube-player"
+import { getYoutubeIds } from "@/lib/youtube" // 👈 복수형 함수로 교체
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
@@ -24,8 +24,8 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
   const post = posts.find((p) => p.id === id)
   const comments = getComments(id)
 
-  // 💡 [유튜브 로직] 본문에서 유튜브 ID가 있는지 찾아봅니다.
-  const videoId = post?.content ? getYoutubeId(post.content) : null
+  // 💡 [유튜브 로직] 본문에서 '모든' 유튜브 ID를 배열로 추출합니다.
+  const videoIds = post?.content ? getYoutubeIds(post.content) : []
 
   const REACTION_KEY = "dukgu:community_post_reactions"
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(() => {
@@ -204,10 +204,14 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
           </div>
         )}
 
-        {/* 💡 [수정] 본문 텍스트 위에 유튜브 영상이 있다면 렌더링 */}
-        {videoId && (
-          <div className="mb-6 animate-in fade-in zoom-in-95 duration-500">
-            <YoutubePlayer videoId={videoId} />
+        {/* 💡 [수정] 여러 개의 영상이 있다면 순서대로 렌더링 */}
+        {videoIds.length > 0 && (
+          <div className="space-y-4 mb-6">
+            {videoIds.map((vId) => (
+              <div key={vId} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <YoutubePlayer videoId={vId} />
+              </div>
+            ))}
           </div>
         )}
 

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { X, Plus, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
+import { YoutubePlayer } from "@/components/dukgu/youtube-player" // 👈 플레이어 추가
+import { getYoutubeIds } from "@/lib/youtube" // 👈 집게 추가
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
@@ -24,6 +26,7 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
   const [content, setContent] = useState("")
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
+  const [previewIds, setPreviewIds] = useState<string[]>([]) // 👈 미리보기용 ID 상태
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
@@ -37,6 +40,15 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
       setInitialized(true)
     }
   }, [post, initialized])
+
+  // 💡 [실시간 로직] 내용(content)이 바뀔 때마다 유튜브 ID를 새로 추출합니다.
+  useEffect(() => {
+    if (content) {
+      setPreviewIds(getYoutubeIds(content))
+    } else {
+      setPreviewIds([])
+    }
+  }, [content])
 
   const addTag = (tag: string) => {
     const clean = tag.replace(/^#/, "").trim()
@@ -66,7 +78,6 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
     }
   }
 
-  // 내 글이 아니면 접근 차단
   if (!isLoading && post && profile && post.authorId !== profile.id) {
     router.replace(`/community/${id}`)
     return null
@@ -105,7 +116,6 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
       />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-5">
-
         {/* 카테고리 선택 */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">카테고리</p>
@@ -195,12 +205,29 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
               onChange={(e) => setContent(e.target.value)}
               maxLength={2000}
               rows={8}
-              className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-4 text-[13px] font-medium focus:outline-none focus:border-emerald-200 transition-all resize-none"
+              className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-4 text-[13px] font-medium focus:outline-none focus:border-emerald-200 transition-all resize-none mb-1"
             />
-            <p className="text-right text-[10px] font-bold text-slate-300 mt-1">{content.length}/2000</p>
+            <p className="text-right text-[10px] font-bold text-slate-300 mt-1 mb-4">{content.length}/2000</p>
+
+            {/* 💡 [추가] 실시간 영상 미리보기 영역 */}
+            {previewIds.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-1 h-3 bg-emerald-500 rounded-full" />
+                  <p className="text-[11px] font-black text-slate-800">영상 미리보기 ({previewIds.length})</p>
+                </div>
+                <div className="space-y-4">
+                  {previewIds.map((vId) => (
+                    <YoutubePlayer key={vId} videoId={vId} />
+                  ))}
+                </div>
+                <p className="text-center text-[10px] font-bold text-slate-400">
+                  링크를 지우면 미리보기도 사라진다냥! 🐾
+                </p>
+              </div>
+            )}
           </div>
         </section>
-
       </main>
     </div>
   )
