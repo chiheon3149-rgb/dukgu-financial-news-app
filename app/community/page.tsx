@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Search, PenSquare, Users, Loader2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommunityPostCard } from "@/components/dukgu/community-post-card"
+import { AdBanner } from "@/components/dukgu/ad-banner" // 💡 아까 만든 광고 컴포넌트 임포트
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityCategory } from "@/types"
@@ -86,15 +87,24 @@ export default function CommunityPage() {
               <Loader2 className="w-6 h-6 animate-spin" />
             </div>
           )}
-          {!isLoading && filteredPosts.map((post) => (
-            <CommunityPostCard
-              key={post.id}
-              post={post}
-              onReact={reactPost}
-              onDelete={deletePost}
-              currentUserId={profile?.id}
-              onProfileClick={(authorId) => router.push(`/profile/${authorId}`)}
-            />
+
+          {!isLoading && filteredPosts.map((post, index) => (
+            <div key={post.id} className="space-y-3"> {/* 💡 간격 유지를 위한 래퍼 추가 */}
+              <CommunityPostCard
+                post={post}
+                onReact={reactPost}
+                onDelete={deletePost}
+                currentUserId={profile?.id}
+                onProfileClick={(authorId) => router.push(`/profile/${authorId}`)}
+              />
+
+              {/* 💡 7번째 게시글마다 광고 노출 로직 (index 6, 13, 20...) */}
+              {(index + 1) % 7 === 0 && (
+                <div className="py-2 animate-in fade-in duration-500">
+                  <AdBanner />
+                </div>
+              )}
+            </div>
           ))}
 
           {!isLoading && filteredPosts.length === 0 && (
