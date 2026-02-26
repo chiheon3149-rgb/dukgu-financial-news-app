@@ -81,7 +81,7 @@ export function updateCachedCommentCountInFeed(newsId: string, count: number) {
 // 📰 메인 훅
 // =============================================================================
 // 💡 두 번째 인자로 dateFilter를 받도록 수정했습니다. 기본값은 "today"입니다.
-export function useNewsFeed(sortBy: SortOption = "latest", dateFilter: DateFilter = "today"): UseNewsFeedReturn {
+export function useNewsFeed(sortBy: SortOption = "latest", dateFilter: DateFilter = "all"): UseNewsFeedReturn {
   const [news, setNews] = useState<NewsItem[]>(_cachedNews)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
