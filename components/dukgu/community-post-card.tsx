@@ -25,6 +25,9 @@ const CATEGORY_COLOR: Record<string, string> = {
 export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onProfileClick }: CommunityPostCardProps) {
   const router = useRouter()
   
+  // 💡 [추가] 탈퇴 유저 여부 판단
+  const isWithdrawn = !post.authorId
+
   const REACTION_KEY = currentUserId 
     ? `dukgu:reactions_${currentUserId}` 
     : "dukgu:reactions_guest"
@@ -51,8 +54,8 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
       toast("로그인이 필요한 기능이다냥! 🐾", {
         description: "좋아요를 누르려면 덕구네 식구가 되어 달라냥.",
         action: {
-          label: "로그인하기", // 💡 [수정] 로그인으로 라벨 변경
-          onClick: () => router.push("/login"), // 💡 [수정] 경로 변경
+          label: "로그인하기",
+          onClick: () => router.push("/login"),
         },
       })
       return
@@ -108,16 +111,27 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
       onClick={() => setMenuOpen(false)}
     >
       <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+        {/* 💡 작성자 프로필 영역 (탈퇴 대응) */}
         <button
-          onClick={(e) => { e.preventDefault(); onProfileClick?.(post.authorId) }}
-          className="flex items-center gap-2 hover:opacity-70 transition-opacity active:scale-95"
+          onClick={(e) => { 
+            e.preventDefault(); 
+            if (!isWithdrawn) onProfileClick?.(post.authorId!); // 탈퇴 안했을 때만 클릭 가능
+          }}
+          disabled={isWithdrawn}
+          className={`flex items-center gap-2 transition-all ${isWithdrawn ? 'cursor-default' : 'hover:opacity-70 active:scale-95'}`}
         >
-          <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-base">
-            {post.authorEmoji}
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-base border transition-colors ${
+            isWithdrawn ? "bg-slate-100 border-slate-200 grayscale opacity-50" : "bg-emerald-50 border-emerald-100"
+          }`}>
+            {isWithdrawn ? "👻" : post.authorEmoji}
           </div>
           <div className="text-left">
-            <p className="text-[12px] font-black text-slate-700">{post.authorNickname}</p>
-            <p className="text-[9px] font-bold text-slate-400">Lv.{post.authorLevel} · {post.timeAgo}</p>
+            <p className={`text-[12px] font-black ${isWithdrawn ? "text-slate-400" : "text-slate-700"}`}>
+              {isWithdrawn ? "탈퇴한 친구" : post.authorNickname}
+            </p>
+            <p className="text-[9px] font-bold text-slate-400">
+              {isWithdrawn ? "" : `Lv.${post.authorLevel} · `}{post.timeAgo}
+            </p>
           </div>
         </button>
 
@@ -126,7 +140,8 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
             {CATEGORY_LABEL[post.category as keyof typeof CATEGORY_LABEL]}
           </span>
 
-          {isMyPost && (
+          {/* 💡 내 글 메뉴 (작성자가 있을 때만 체크) */}
+          {!isWithdrawn && isMyPost && (
             <div className="relative" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={(e) => { e.preventDefault(); setMenuOpen((v) => !v) }}

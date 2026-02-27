@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Home, ExternalLink, Clock, Globe, Bookmark, Share2, Loader2, Eye } from "lucide-react"
+// 💡 [수정 1] Edit2(수정), Trash2(삭제) 아이콘을 추가로 불러옵니다.
+import { Home, ExternalLink, Clock, Globe, Bookmark, Share2, Loader2, Eye, Edit2, Trash2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
 import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
@@ -15,6 +16,8 @@ import { supabase } from "@/lib/supabase"
 import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
 import { useUser } from "@/context/user-context"
+// 💡 [수정 2] 뉴스를 삭제하기 위해 우리가 만든 도구함을 불러옵니다.
+import { useNewsAdmin } from "@/hooks/use-news-admin"
 
 interface NewsDetail {
   id: string
@@ -63,6 +66,10 @@ export function NewsDetailClient({ id }: { id: string }) {
   const [liveCommentCount, setLiveCommentCount] = useState(0)
   const { isSaved, toggleSave } = useSavedArticles()
 
+  // 💡 [수정 3] 관리자 권한 확인 및 삭제 도구 꺼내기
+  const { deleteNews } = useNewsAdmin()
+  const isAdmin = profile?.is_admin === true
+
   // 💡 [핵심] 조회수 중복 방지: 입구에서 바로 사인을 하고 문을 잠급니다.
   const hasIncremented = useRef(false);
 
@@ -101,6 +108,20 @@ export function NewsDetailClient({ id }: { id: string }) {
 
     load()
   }, [id])
+
+  // 💡 [수정 4] 관리자용 삭제 실행 함수
+  const handleDelete = async () => {
+    if (!window.confirm("정말 이 뉴스를 삭제하시겠습니까? (복구 불가) 🚨")) return;
+    
+    try {
+      await deleteNews(id)
+      toast.success("뉴스가 깔끔하게 삭제되었다냥! 🗑️")
+      router.replace("/") // 삭제 후 피드(홈)로 이동
+    } catch (error) {
+      console.error("삭제 에러:", error)
+      toast.error("삭제 중 오류가 발생했다냥.")
+    }
+  }
 
   const isBookmarked = news ? isSaved(news.id) : false
 
@@ -157,9 +178,33 @@ export function NewsDetailClient({ id }: { id: string }) {
       <DetailHeader
         title="뉴스 상세"
         rightElement={
-          <Link href="/" className="p-1.5 hover:bg-emerald-50 rounded-full transition-colors group">
-            <Home className="w-5 h-5 text-slate-800 group-hover:text-emerald-600" />
-          </Link>
+          <div className="flex items-center gap-1">
+            {/* 💡 [수정 5] 관리자에게만 보이는 비밀 메뉴 (수정 / 삭제) */}
+            {isAdmin && (
+              <>
+                <button 
+                  onClick={() => router.push(`/news/${news.id}/edit`)}
+                  className="p-1.5 hover:bg-indigo-50 rounded-full transition-colors group"
+                  aria-label="뉴스 수정"
+                >
+                  <Edit2 className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  className="p-1.5 hover:bg-red-50 rounded-full transition-colors group"
+                  aria-label="뉴스 삭제"
+                >
+                  <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-500" />
+                </button>
+                {/* 구분선 */}
+                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+              </>
+            )}
+
+            <Link href="/" className="p-1.5 hover:bg-emerald-50 rounded-full transition-colors group">
+              <Home className="w-5 h-5 text-slate-800 group-hover:text-emerald-600" />
+            </Link>
+          </div>
         }
       />
 

@@ -7,11 +7,11 @@ import { toast } from "sonner"
 import type { CommentReportReason } from "@/types"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@/context/user-context"
-import { CommentInput } from "@/components/dukgu/comment-input" // 💡 새로 만든 부품 임포트
+import { CommentInput } from "@/components/dukgu/comment-input"
 
 interface NewsComment {
   id: string
-  author_id: string | null
+  author_id: string | null // 💡 [수정] 탈퇴 시 null이 될 수 있음
   author_nickname: string
   author_emoji: string
   author_level: number
@@ -91,7 +91,8 @@ export function NewsCommentSection({
     e.preventDefault()
     if (!inputText.trim()) return
 
-    // 💡 통일된 로그인 팝업 (강제 이동 X)
+    // 💡 [입구 컷] 로그인이 안 되어 있으면 여기서 함수를 끝내버립니다.
+    // 이 덕분에 'guest' 에러가 DB까지 도달하지 못하게 됩니다.
     if (!profile) {
       toast("로그인이 필요한 기능이다냥! 🐾", {
         description: "댓글을 작성하려면 덕구네 식구가 되어 달라냥.",
@@ -103,18 +104,24 @@ export function NewsCommentSection({
       return
     }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("news_comments")
       .insert({
         news_id: newsId,
-        author_id: profile.id,
+        author_id: profile.id, // 👈 로그인된 유저의 진짜 ID를 넣습니다.
         author_nickname: profile.nickname,
         author_emoji: profile.avatarEmoji,
-        author_level: 1,
+        author_level: 1, // 필요 시 로직 추가
         content: inputText.trim(),
       })
       .select().single()
     
+    if (error) {
+      console.error("댓글 저장 에러:", error.message)
+      toast.error("댓글 저장에 실패했다냥.")
+      return
+    }
+
     if (data) {
       setComments(prev => [...prev, { ...data, timeAgo: "방금 전" }])
       await supabase.rpc("increment_news_comment_count", { target_news_id: newsId })
@@ -173,7 +180,6 @@ export function NewsCommentSection({
         댓글 {comments.length}개
       </h4>
 
-      {/* 💡 [수정] 공용 부품 사용! 버튼이 정중앙에 오고 잘 눌립니다. */}
       <CommentInput
         value={inputText}
         onChange={setInputText}
@@ -187,55 +193,73 @@ export function NewsCommentSection({
 
       <div className="flex flex-col divide-y divide-slate-50">
         {comments.filter(c => !c.is_removed).map((comment) => {
+          // 💡 [탈퇴 유저 처리] author_id가 없으면 탈퇴한 것으로 봅니다.
+          const isWithdrawn = !comment.author_id
           const myReaction = reactions[comment.id]
-          const isMyComment = comment.author_id === profile?.id
+          const isMyComment = !isWithdrawn && comment.author_id === profile?.id
           const alreadyReported = reportedIds.has(comment.id)
 
           return (
             <div key={comment.id} className="py-4">
               <div className="flex gap-3">
-                <div className="w-9 h-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-base shrink-0">
-                  {comment.author_emoji}
+                {/* 💡 [아바타] 탈퇴 시 회색 처리 */}
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0 border transition-colors ${
+                  isWithdrawn ? "bg-slate-100 border-slate-200 grayscale opacity-50" : "bg-emerald-50 border-emerald-100"
+                }`}>
+                  {isWithdrawn ? "👻" : comment.author_emoji}
                 </div>
+                
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-black text-slate-800">{comment.author_nickname}</span>
-                      <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full">Lv.{comment.author_level}</span>
+                      {/* 💡 [닉네임] 탈퇴 시 "탈퇴한 친구" 표시 */}
+                      <span className={`text-[13px] font-black ${isWithdrawn ? "text-slate-400" : "text-slate-800"}`}>
+                        {isWithdrawn ? "탈퇴한 친구" : comment.author_nickname}
+                      </span>
+                      {!isWithdrawn && (
+                        <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full">
+                          Lv.{comment.author_level}
+                        </span>
+                      )}
                       <span className="text-[10px] font-medium text-slate-400 tabular-nums">{comment.timeAgo}</span>
                     </div>
-                    <div className="relative">
-                      <button onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)} className="p-1 text-slate-300 hover:text-slate-500 transition-colors font-bold">···</button>
-                      {openMenuId === comment.id && (
-                        <div className="absolute right-0 top-7 bg-white border border-slate-100 shadow-xl rounded-2xl py-1.5 z-20 min-w-[100px] flex flex-col">
-                          {isMyComment ? (
-                            <>
-                              <button onClick={() => { setEditingId(comment.id); setEditText(comment.content); setOpenMenuId(null) }} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-slate-600 text-left">수정하기</button>
-                              <button onClick={() => deleteComment(comment.id)} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left">삭제하기</button>
-                            </>
-                          ) : (
-                            <button 
-                              onClick={() => { 
-                                setOpenMenuId(null); 
-                                if (!profile) {
-                                  toast("로그인이 필요한 기능이다냥! 🐾", {
-                                    description: "신고하려면 덕구네 식구가 되어 달라냥.",
-                                    action: { label: "로그인하기", onClick: () => router.push("/login") },
-                                  })
-                                  return
-                                }
-                                if (!alreadyReported) setReportModal({ commentId: comment.id, reason: null, detail: "" }) 
-                              }} 
-                              disabled={alreadyReported} 
-                              className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left flex items-center gap-1.5"
-                            >
-                              <Flag className="w-3 h-3" />{alreadyReported ? "신고완료" : "신고하기"}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    
+                    {/* 💡 [메뉴] 탈퇴한 유저는 메뉴를 보여줄 필요가 없음 */}
+                    {!isWithdrawn && (
+                      <div className="relative">
+                        <button onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)} className="p-1 text-slate-300 hover:text-slate-500 transition-colors font-bold">···</button>
+                        {openMenuId === comment.id && (
+                          <div className="absolute right-0 top-7 bg-white border border-slate-100 shadow-xl rounded-2xl py-1.5 z-20 min-w-[100px] flex flex-col">
+                            {isMyComment ? (
+                              <>
+                                <button onClick={() => { setEditingId(comment.id); setEditText(comment.content); setOpenMenuId(null) }} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-slate-600 text-left">수정하기</button>
+                                <button onClick={() => deleteComment(comment.id)} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left">삭제하기</button>
+                              </>
+                            ) : (
+                              <button 
+                                onClick={() => { 
+                                  setOpenMenuId(null); 
+                                  if (!profile) {
+                                    toast("로그인이 필요한 기능이다냥! 🐾", {
+                                      description: "신고하려면 덕구네 식구가 되어 달라냥.",
+                                      action: { label: "로그인하기", onClick: () => router.push("/login") },
+                                    })
+                                    return
+                                  }
+                                  if (!alreadyReported) setReportModal({ commentId: comment.id, reason: null, detail: "" }) 
+                                }} 
+                                disabled={alreadyReported} 
+                                className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left flex items-center gap-1.5"
+                              >
+                                <Flag className="w-3 h-3" />{alreadyReported ? "신고완료" : "신고하기"}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+
                   {editingId === comment.id ? (
                     <div className="mt-1">
                       <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full bg-slate-50 border border-emerald-200 rounded-xl p-3 text-[13px] focus:outline-none resize-none min-h-[72px]" />
@@ -247,6 +271,7 @@ export function NewsCommentSection({
                   ) : (
                     <p className="text-[13px] text-slate-600 leading-relaxed mb-2.5 font-medium break-keep">{comment.content}</p>
                   )}
+                  
                   <div className="flex items-center gap-2">
                     <button onClick={() => handleReact(comment.id, "like")} className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all active:scale-95 text-[10px] font-bold ${myReaction === "like" ? "bg-emerald-50 text-emerald-600" : "text-slate-400 hover:bg-slate-50"}`}>
                       <ThumbsUp className={`w-3 h-3 ${myReaction === "like" ? "fill-emerald-500" : ""}`} /> <span className="tabular-nums">{comment.like_count}</span>

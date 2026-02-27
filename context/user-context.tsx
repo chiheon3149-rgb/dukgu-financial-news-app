@@ -70,6 +70,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           avatarEmoji: profileData.avatar_emoji ?? "🐱",
           totalXp: profileData.total_xp ?? 0,
           portfolioPublic: profileData.portfolio_public ?? false,
+          is_admin: profileData.is_admin ?? false, // 👈 💡 [추가] DB에서 완장 정보 가져오기!
           xpHistory: (xpData ?? []).map((e: any) => ({
             id: e.id,
             source: e.source,

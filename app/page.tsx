@@ -6,9 +6,18 @@ import { HeroBanner } from "@/components/dukgu/hero-banner"
 import { NoticeBanner } from "@/components/dukgu/notice-banner"
 import { NewsSection } from "@/components/dukgu/news-section"
 
+// 💡 [추가] 관리자 버튼을 위해 필요한 도구들
+import { useUser } from "@/context/user-context"
+import Link from "next/link"
+import { PenTool } from "lucide-react"
+
 export default function HomePage() {
+  // 💡 [핵심] 현재 접속한 유저 정보를 가져와서 관리자인지 확인합니다.
+  const { profile } = useUser()
+  const isAdmin = profile?.is_admin === true
+
   return (
-    <div className="min-h-dvh bg-slate-50 pb-20 overflow-x-hidden">
+    <div className="min-h-dvh bg-slate-50 pb-20 overflow-x-hidden relative">
       {/* 고정 헤더 */}
       <StickyHeader />
       
@@ -28,6 +37,19 @@ export default function HomePage() {
           <NewsSection />
         </div>
       </main>
+
+      {/* 💡 [핵심] 관리자 전용 '비밀 엘리베이터' (플로팅 버튼) */}
+      {isAdmin && (
+        <div className="fixed bottom-24 right-5 z-50 animate-in fade-in slide-in-from-bottom-5">
+          <Link
+            href="/news/new"
+            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-full shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:scale-105 transition-all font-bold text-[13px]"
+          >
+            <PenTool className="w-4 h-4" />
+            뉴스 발행
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

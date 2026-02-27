@@ -1,25 +1,31 @@
 "use client"
 
-import { useState } from "react" // 💡 로컬 상태 관리를 위해 추가
+import { useState } from "react" 
 import { useRouter } from "next/navigation"
-import { Zap, Calendar } from "lucide-react"
+import { Zap, Calendar, PenTool } from "lucide-react" // 💡 [추가] PenTool 아이콘
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { BriefingLogCard } from "@/components/dukgu/briefing-log-card"
-import { SearchBar } from "@/components/dukgu/search-bar" // 👈 공통 서치바 임포트
+import { SearchBar } from "@/components/dukgu/search-bar" 
 import { useBriefingLogs } from "@/hooks/use-briefing-logs"
 import { AdBanner } from "@/components/dukgu/ad-banner" 
+// 💡 [추가] 관리자 권한 확인을 위한 유저 도구함
+import { useUser } from "@/context/user-context"
+import Link from "next/link"
 
 export default function BriefingPage() {
   const router = useRouter()
   const { logs, isLoading, setSearchQuery, setDateRange } = useBriefingLogs()
   
-  // 💡 입력 중인 텍스트를 담을 로컬 상태
+  // 💡 [추가] 관리자인지 확인
+  const { profile } = useUser()
+  const isAdmin = profile?.is_admin === true
+  
   const [query, setQuery] = useState("")
 
   const handleSearch = (val: string) => {
     setQuery(val)
-    setSearchQuery(val) // 훅에 전달하여 필터링 로직 실행
+    setSearchQuery(val) 
   }
 
   const goToDetail = (id: string, mode: "US" | "KR", isReady: boolean) => {
@@ -31,7 +37,7 @@ export default function BriefingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32 transition-colors w-full overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 pb-32 transition-colors w-full overflow-x-hidden relative">
       <DetailHeader
         showBack={false}
         title={
@@ -47,14 +53,11 @@ export default function BriefingPage() {
           <AdBanner />
         </section>
 
-        {/* 🛠️ [교체] 기존 BriefingSearchBar 대신 공통 SearchBar 적용 */}
         <section className="relative z-20">
           <SearchBar 
             value={query} 
             onChange={handleSearch} 
           />
-          {/* 💡 기획자님 참고: 기간 검색(DateRange) 기능이 필요하다면 
-              서치바 바로 옆이나 아래에 작은 달력 아이콘 버튼을 추가하는 기획을 추천드려요! */}
         </section>
 
         <div className="space-y-8 pt-2">
@@ -105,6 +108,19 @@ export default function BriefingPage() {
           )}
         </div>
       </main>
+
+      {/* 💡 [추가] 관리자 전용 '브리핑 작성' 플로팅 버튼 */}
+      {isAdmin && (
+        <div className="fixed bottom-24 right-5 z-50 animate-in fade-in slide-in-from-bottom-5">
+          <Link
+            href="/briefing/new"
+            className="flex items-center justify-center gap-2 bg-amber-500 text-white px-4 py-3 rounded-full shadow-lg shadow-amber-200 hover:bg-amber-600 hover:scale-105 transition-all font-bold text-[13px]"
+          >
+            <PenTool className="w-4 h-4" />
+            브리핑 발행
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

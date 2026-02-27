@@ -300,6 +300,8 @@ export interface UserProfile {
   xpHistory: XpEvent[]
   avatarEmoji: string
   portfolioPublic: boolean
+  is_admin?: boolean // 👈 💡 [추가] 관리자 여부 (VIP 이름표)
+
 }
 
 
@@ -363,7 +365,7 @@ export interface CommunityPost {
   tags: string[]
   title: string
   content: string
-  authorId: string
+  authorId: string | null // 👈 💡 [수정] 탈퇴하면 null이 될 수 있게 허용
   authorNickname: string
   authorEmoji: string
   authorLevel: number
@@ -381,7 +383,7 @@ export interface CommunityPost {
 export interface CommunityComment {
   id: string
   postId: string
-  authorId: string
+  authorId: string | null // 👈 💡 [수정] 탈퇴하면 null이 될 수 있게 허용!
   authorNickname: string
   authorEmoji: string
   authorLevel: number
