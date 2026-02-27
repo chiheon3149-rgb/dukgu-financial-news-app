@@ -44,7 +44,8 @@ function MenuRow({
 
 export default function MyPage() {
   const router = useRouter()
-  const { profile, currentLevel, nextLevel, levelProgress, updatePortfolioPublic } = useUser()
+  // 💡 [수리 포인트] user-context에서 오는 값들이 undefined일 때를 대비해 기본값을 챙겨줍니다!
+  const { profile, currentLevel, nextLevel, levelProgress = 0, updatePortfolioPublic } = useUser()
   const { savedArticles, reactions } = useSavedArticles()
   const { following } = useFollow()
   const [showLevelMap, setShowLevelMap] = useState(false)
@@ -84,20 +85,22 @@ export default function MyPage() {
       setShowDeleteModal(false)
       toast.success("탈퇴 처리가 완료되었다냥. 😿")
       router.push("/")
-    } catch (error) {
-      console.error("탈퇴 에러:", error)
-      toast.error("다시 시도해 달라냥!")
+    } catch (error: any) {
+      console.error("탈퇴 에러 상세:", error.message || error)
+      console.log("에러 힌트 및 세부정보:", error.hint, error.details)
+      
+      toast.error(`탈퇴 실패: ${error.message || "알 수 없는 오류다냥!"}`)
       setIsDeleting(false)
     }
   }
 
-  if (!profile) return null
+  if (!profile || !currentLevel) return null
 
   return (
     <div className="min-h-dvh bg-slate-50 pb-32"> {/* 💡 하단 여백 넉넉히 추가 */}
       <main className="max-w-md mx-auto px-5 py-8 space-y-4">
 
-        {/* 1. 프로필 & 레벨 (기존 유지) */}
+        {/* 1. 프로필 & 레벨 */}
         <section className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-36 h-36 rounded-full -mr-12 -mt-12 blur-2xl opacity-40" style={{ background: currentLevel.level >= 5 ? "radial-gradient(circle, #f59e0b, #fbbf24)" : "radial-gradient(circle, #10b981, #34d399)" }} />
           <div className="relative z-10 space-y-4">
@@ -116,13 +119,60 @@ export default function MyPage() {
               </div>
               <Link href="/mypage/edit" className="p-2 rounded-2xl hover:bg-slate-100"><Pencil className="w-4 h-4 text-slate-400" /></Link>
             </div>
+            
+            {/* 💡 XP 뱃지 컴포넌트 */}
             <div className="border-t border-slate-50 pt-3">
-              <XpLevelBadge currentLevel={currentLevel} nextLevel={nextLevel} totalXp={profile.totalXp} progress={levelProgress} size="lg" />
+              <XpLevelBadge 
+                currentLevel={currentLevel} 
+                nextLevel={nextLevel} 
+                totalXp={profile.totalXp} 
+                progress={levelProgress} 
+                size="lg" 
+              />
             </div>
+
+            {/* 💡 [복구 완료] 레벨 가이드 펼쳐보기 버튼 및 목록 */}
+            <div className="pt-2">
+              <button 
+                onClick={() => setShowLevelMap(!showLevelMap)}
+                className="w-full py-2 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition-colors bg-slate-50 hover:bg-slate-100 rounded-xl"
+              >
+                레벨별 필요 경험치 안내 
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${showLevelMap ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* 토글 시 나타나는 레벨표 */}
+              {showLevelMap && (
+                <div className="mt-3 bg-slate-50 rounded-2xl p-3 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                  {LEVEL_TABLE.map((lvl) => {
+                    const isMyLevel = currentLevel.level === lvl.level;
+                    return (
+                      <div 
+                        key={lvl.level} 
+                        className={`flex items-center justify-between p-2.5 rounded-xl transition-colors ${
+                          isMyLevel ? "bg-white shadow-sm border border-emerald-100" : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-lg">{lvl.icon}</span>
+                          <span className={`text-[12px] font-black ${isMyLevel ? "text-emerald-600" : "text-slate-600"}`}>
+                            Lv.{lvl.level} {lvl.title}
+                          </span>
+                        </div>
+                        <span className={`text-[11px] font-bold ${isMyLevel ? "text-emerald-500" : "text-slate-400"}`}>
+                          {lvl.minXp.toLocaleString()} XP
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            
           </div>
         </section>
 
-        {/* 2. 공개 설정 (기존 유지) */}
+        {/* 2. 공개 설정 */}
         <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {profile.portfolioPublic ? <Eye className="w-4 h-4 text-emerald-500" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
@@ -131,7 +181,7 @@ export default function MyPage() {
           <button onClick={() => updatePortfolioPublic(!profile.portfolioPublic)} className={`relative w-12 h-6 rounded-full transition-all ${profile.portfolioPublic ? "bg-emerald-500" : "bg-slate-200"}`}><span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${profile.portfolioPublic ? "translate-x-6" : "translate-x-0"}`} /></button>
         </section>
 
-        {/* 3. 메뉴 리스트 (기존 유지) */}
+        {/* 3. 메뉴 리스트 */}
         <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
           <MenuRow icon={<HelpCircle className="w-4 h-4" />} label="이번 주 상식 퀴즈" href="/mypage/quiz" color="text-emerald-500" />
           <MenuRow icon={<Users className="w-4 h-4" />} label="팔로잉 / 팔로워" href="/mypage/follow" badge={following.length} color="text-purple-500" />
@@ -140,7 +190,7 @@ export default function MyPage() {
           <MenuRow icon={<MessageSquare className="w-4 h-4" />} label="문의하기" href="/mypage/inquiry" color="text-purple-400" />
         </section>
 
-        {/* 💡 4. 하단 버튼 영역 - 모바일 가독성 업그레이드 */}
+        {/* 4. 하단 버튼 영역 */}
         <div className="pt-6 pb-2 space-y-3">
           <button
             onClick={() => setShowDeleteModal(true)}
@@ -166,11 +216,10 @@ export default function MyPage() {
         </div>
       </main>
 
-      {/* 💡 탈퇴 모달 - 모바일 화면 최적화 (내부 스크롤 추가) */}
+      {/* 탈퇴 모달 */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4">
           <div className="bg-white w-full max-w-md rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
-            {/* 상단바 (모바일용 드래그 핸들 느낌) */}
             <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto my-3 sm:hidden" />
             
             <div className="overflow-y-auto p-6 pt-2 sm:pt-6">

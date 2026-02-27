@@ -67,6 +67,7 @@ function mapPost(row: any): CommunityPost {
 }
 
 function mapComment(row: any): CommunityComment {
+  // 댓글은 이미 테이블 자체에 닉네임과 이모지가 저장되어 있으므로 그걸 바로 씁니다!
   const author = row.author;
   return {
     id: row.id,
@@ -120,19 +121,31 @@ export function useCommunity(postId?: string) {
   const fetchPosts = useCallback(async () => {
     setIsLoading(true)
     try {
-      const selectQuery = `*, author:profiles (nickname, avatar_emoji, level)`
+      // 💡 [핵심 수리] 게시글용 쿼리와 댓글용 쿼리를 분리했습니다!
+      const postSelectQuery = `*, author:profiles (nickname, avatar_emoji, level)`
+      
       if (postId) {
-        const [{ data: postRow, error: postErr }, { data: commentRows }] = await Promise.all([
-          supabase.from("community_posts").select(selectQuery).eq("id", postId).maybeSingle(),
-          supabase.from("community_comments").select(selectQuery).eq("post_id", postId).order("published_at", { ascending: true }),
+        const [
+          { data: postRow, error: postErr }, 
+          { data: commentRows, error: commentErr } 
+        ] = await Promise.all([
+          supabase.from("community_posts").select(postSelectQuery).eq("id", postId).maybeSingle(),
+          // 🚨 댓글은 억지로 프로필과 조인하지 않고 전체(*)만 깔끔하게 가져옵니다.
+          supabase.from("community_comments").select("*").eq("post_id", postId).order("published_at", { ascending: true }),
         ])
+        
         if (postErr || !postRow) return
+        
+        if (commentErr) {
+          console.error("🚨 댓글 불러오기 실패:", commentErr.message, commentErr.hint);
+        }
+
         const post = mapPost(postRow);
         updateCachedPost(post.id, post);
         setComments((commentRows ?? []).map(mapComment))
       } else {
         const { data: postRows, error } = await supabase
-          .from("community_posts").select(selectQuery).eq("is_deleted", false).order("published_at", { ascending: false }).limit(100)
+          .from("community_posts").select(postSelectQuery).eq("is_deleted", false).order("published_at", { ascending: false }).limit(100)
         if (error || !postRows) return
         const mapped = postRows.map(mapPost);
         _cachedPosts = mapped;
@@ -147,9 +160,6 @@ export function useCommunity(postId?: string) {
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
 
-  // ---------------------------------------------------------------------------
-  // 💡 게시글 관련 도구 (createPost 추가!)
-  // ---------------------------------------------------------------------------
   const createPost = useCallback(async (data: any): Promise<CommunityPost> => {
     const now = new Date().toISOString()
     const { data: inserted, error } = await supabase
@@ -179,7 +189,6 @@ export function useCommunity(postId?: string) {
       isDeleted: false 
     }
     
-    // 금고 맨 앞에 추가
     _cachedPosts = [newPost, ..._cachedPosts];
     notifyCommunityUpdate();
     
@@ -206,15 +215,40 @@ export function useCommunity(postId?: string) {
     } catch (e) { console.error(e) }
   }, []);
 
+  // 💡 [좋아요/싫어요 DB 원본 동기화 유지]
   const reactPost = useCallback((postId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => {
     const isToggleOff = currentReaction === type
     const userKey = userId ?? getOrCreateDeviceKey()
     const target = _cachedPosts.find(p => p.id === postId);
+    
     if (target) {
-      const field = type === "like" ? "likeCount" : "dislikeCount";
-      const currentCount = target[field] as number;
-      updateCachedPost(postId, { [field]: isToggleOff ? currentCount - 1 : currentCount + 1 });
+      let newLike = target.likeCount;
+      let newDislike = target.dislikeCount;
+
+      if (isToggleOff) {
+        if (type === "like") newLike = Math.max(0, newLike - 1);
+        if (type === "dislike") newDislike = Math.max(0, newDislike - 1);
+      } else {
+        if (type === "like") {
+          newLike += 1;
+          if (currentReaction === "dislike") newDislike = Math.max(0, newDislike - 1);
+        }
+        if (type === "dislike") {
+          newDislike += 1;
+          if (currentReaction === "like") newLike = Math.max(0, newLike - 1);
+        }
+      }
+
+      updateCachedPost(postId, { likeCount: newLike, dislikeCount: newDislike });
+      
+      supabase.from("community_posts").update({ 
+        like_count: newLike, 
+        dislike_count: newDislike 
+      }).eq("id", postId).then(({error}) => {
+        if(error) console.error("DB 좋아요 업데이트 실패:", error);
+      });
     }
+
     const sync = async () => {
       if (isToggleOff) await supabase.from("community_post_reactions").delete().eq("post_id", postId).eq("user_key", userKey)
       else await supabase.from("community_post_reactions").upsert({ post_id: postId, user_key: userKey, reaction: type })
@@ -223,13 +257,31 @@ export function useCommunity(postId?: string) {
   }, [userId])
 
   // ---------------------------------------------------------------------------
-  // 💡 댓글 관련 도구
+  // 💡 댓글 관련 도구 (DB 동기화 유지)
   // ---------------------------------------------------------------------------
   const addComment = useCallback((data: any) => {
-    supabase.from("community_comments").insert({ ...data, published_at: new Date().toISOString() })
+    const safeAuthorId = data.authorId === "guest" ? null : data.authorId;
+
+    supabase.from("community_comments").insert({ 
+      post_id: data.postId,
+      author_id: safeAuthorId, 
+      author_nickname: data.authorNickname,
+      author_emoji: data.authorEmoji,
+      author_level: data.authorLevel,
+      content: data.content,
+      published_at: new Date().toISOString() 
+    }).then(({ error }) => {
+      if (error) {
+        console.error("🚨 댓글 DB 저장 실패:", error.message);
+        alert(`저장 실패: ${error.message}`);
+      }
+    });
+
     const target = _cachedPosts.find(p => p.id === data.postId);
     if (target) {
-      updateCachedPost(data.postId, { commentCount: (target.commentCount || 0) + 1 });
+      const newCount = (target.commentCount || 0) + 1;
+      updateCachedPost(data.postId, { commentCount: newCount });
+      supabase.from("community_posts").update({ comment_count: newCount }).eq("id", data.postId).then();
     }
   }, [])
 
@@ -245,7 +297,9 @@ export function useCommunity(postId?: string) {
     if (targetComment) {
       const targetPost = _cachedPosts.find(p => p.id === targetComment.postId);
       if (targetPost) {
-        updateCachedPost(targetComment.postId, { commentCount: Math.max(0, targetPost.commentCount - 1) });
+        const newCount = Math.max(0, targetPost.commentCount - 1);
+        updateCachedPost(targetComment.postId, { commentCount: newCount });
+        supabase.from("community_posts").update({ comment_count: newCount }).eq("id", targetComment.postId).then();
       }
     }
   }, [comments])
@@ -283,7 +337,6 @@ export function useCommunity(postId?: string) {
 
   return {
     posts, comments, isLoading, activeCategory, setActiveCategory, searchQuery, setSearchQuery, filteredPosts, getComments, 
-    createPost, // 👈 이제 여기 있습니다!
-    updatePost, deletePost, reactPost, addComment, editComment, deleteComment, reactComment, reportComment, reportPost, incrementViewCount, fetchPosts 
+    createPost, updatePost, deletePost, reactPost, addComment, editComment, deleteComment, reactComment, reportComment, reportPost, incrementViewCount, fetchPosts 
   }
 }

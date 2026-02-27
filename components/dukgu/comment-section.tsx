@@ -7,11 +7,7 @@ import type { CommunityComment, CommentReportReason } from "@/types"
 // =============================================================================
 // 💬 CommentSection (리빌드)
 //
-// 변경 사항:
-//   1. CommunityComment 타입 기반으로 완전 재작성
-//   2. isRemovedByAdmin: true면 회색 안내 텍스트로 대체 표시
-//   3. 신고하기 버튼 + 신고 사유 선택 모달 추가
-//   4. 댓글 작성/수정/삭제 유지
+// 💡 [수리 완료] 탈퇴한 유저의 댓글이 증발하지 않고 "👻 탈퇴한 친구"로 보이도록 수정!
 // =============================================================================
 
 const REPORT_REASONS: { value: CommentReportReason; label: string }[] = [
@@ -26,17 +22,11 @@ const REPORT_REASONS: { value: CommentReportReason; label: string }[] = [
 interface CommentSectionProps {
   postId: string
   initialComments: CommunityComment[]
-  /** 현재 로그인 유저 정보 */
   currentUser: { id: string; nickname: string; emoji: string; level: number }
-  /** 댓글 신고 핸들러 */
   onReport: (payload: { commentId: string; postId: string; reason: CommentReportReason; detail?: string }) => Promise<void>
-  /** 댓글 추가 핸들러 */
   onAddComment: (data: Omit<CommunityComment, "id" | "publishedAt" | "timeAgo" | "likeCount" | "dislikeCount" | "reportCount" | "isRemovedByAdmin">) => void
-  /** 댓글 수정 핸들러 (DB 저장) */
   onSaveEdit: (commentId: string, content: string) => Promise<void>
-  /** 댓글 삭제 핸들러 (DB 삭제) */
   onDeleteComment: (commentId: string) => Promise<void>
-  /** 댓글 반응 핸들러 (DB 저장) */
   onReact: (commentId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => void
 }
 
@@ -50,8 +40,6 @@ interface ReportModalState {
 export function CommentSection({ postId, initialComments, currentUser, onReport, onAddComment, onSaveEdit, onDeleteComment, onReact }: CommentSectionProps) {
   const [comments, setComments] = useState<CommunityComment[]>(initialComments)
 
-  // useCommunity 로드 완료 후 initialComments가 처음 세팅될 때 동기화
-  // (로컬에서 추가된 댓글을 덮어쓰지 않도록 최초 1회만 실행)
   const initializedRef = useRef(false)
   useEffect(() => {
     if (initializedRef.current) return
@@ -75,7 +63,6 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
 
-  // 댓글 작성
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputText.trim()) return
@@ -88,7 +75,7 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
       content: inputText.trim(),
     }
     onAddComment(data)
-    // 로컬 UI에도 즉시 반영
+    
     const newComment: CommunityComment = {
       ...data,
       id: `cmt-local-${Date.now()}`,
@@ -103,14 +90,12 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
     setInputText("")
   }
 
-  // 댓글 수정
   const saveEdit = async (id: string) => {
     setComments((prev) => prev.map((c) => c.id === id ? { ...c, content: editText } : c))
     setEditingId(null)
     await onSaveEdit(id, editText)
   }
 
-  // 댓글 삭제
   const deleteComment = async (id: string) => {
     if (!window.confirm("댓글을 삭제하시겠습니까?")) return
     setComments((prev) => prev.filter((c) => c.id !== id))
@@ -118,7 +103,6 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
     await onDeleteComment(id)
   }
 
-  // reactions 상태 변경 + localStorage 동기화
   const updateReactions = useCallback((updater: (prev: Record<string, "like" | "dislike">) => Record<string, "like" | "dislike">) => {
     setReactions((prev) => {
       const next = updater(prev)
@@ -129,7 +113,6 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
     })
   }, [postId])
 
-  // 반응
   const handleReact = (id: string, type: "like" | "dislike") => {
     const prev = (reactions[id] ?? null) as "like" | "dislike" | null
     const isToggleOff = prev === type
@@ -156,7 +139,6 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
     onReact(id, type, prev)
   }
 
-  // 신고 제출
   const handleReportSubmit = useCallback(async () => {
     if (!reportModal?.reason) return
     setIsSubmittingReport(true)
@@ -180,7 +162,7 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
         댓글 {comments.length}개
       </h4>
 
-      {/* 댓글 입력 */}
+      {/* 댓글 입력 폼 */}
       <form onSubmit={handleSubmit} className="flex items-center gap-3 mb-7">
         <div className="w-9 h-9 rounded-full bg-emerald-50 border border-emerald-100 shrink-0 flex items-center justify-center text-lg">
           {currentUser.emoji}
@@ -202,7 +184,6 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
       {/* 댓글 목록 */}
       <div className="flex flex-col divide-y divide-slate-50">
         {comments.map((comment) => {
-          // 관리자에 의해 삭제된 댓글
           if (comment.isRemovedByAdmin) {
             return (
               <div key={comment.id} className="py-4">
@@ -214,62 +195,75 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
             )
           }
 
+          // 💡 [핵심 수정] 탈퇴한 유저 판별 로직 추가
+          const isWithdrawn = !comment.authorId
           const myReaction = reactions[comment.id]
-          const isMyComment = comment.authorId === currentUser.id
+          const isMyComment = !isWithdrawn && comment.authorId === currentUser.id
           const alreadyReported = reportedIds.has(comment.id)
 
           return (
             <div key={comment.id} className="py-4">
               <div className="flex gap-3">
-                {/* 아바타 */}
-                <div className="w-9 h-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-base shrink-0">
-                  {comment.authorEmoji}
+                {/* 💡 아바타 (탈퇴 시 흑백 유령 처리) */}
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0 border transition-colors ${
+                  isWithdrawn ? "bg-slate-100 border-slate-200 grayscale opacity-50" : "bg-emerald-50 border-emerald-100"
+                }`}>
+                  {isWithdrawn ? "👻" : comment.authorEmoji}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   {/* 헤더 */}
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-black text-slate-800">{comment.authorNickname}</span>
-                      <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full">
-                        Lv.{comment.authorLevel}
+                      {/* 💡 닉네임 (탈퇴 시 회색 처리) */}
+                      <span className={`text-[13px] font-black ${isWithdrawn ? "text-slate-400" : "text-slate-800"}`}>
+                        {isWithdrawn ? "탈퇴한 친구" : comment.authorNickname}
                       </span>
+                      
+                      {/* 탈퇴한 유저는 레벨을 안 보여줍니다 */}
+                      {!isWithdrawn && (
+                        <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full">
+                          Lv.{comment.authorLevel}
+                        </span>
+                      )}
                       <span className="text-[10px] font-medium text-slate-400">{comment.timeAgo}</span>
                     </div>
 
-                    {/* 메뉴 버튼 */}
-                    <div className="relative">
-                      <button
-                        onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)}
-                        className="p-1 text-slate-300 hover:text-slate-500 transition-colors"
-                      >
-                        <span className="text-[14px] leading-none">···</span>
-                      </button>
-                      {openMenuId === comment.id && (
-                        <div className="absolute right-0 top-7 bg-white border border-slate-100 shadow-xl rounded-2xl py-1.5 z-20 min-w-[100px] flex flex-col">
-                          {isMyComment ? (
-                            <>
-                              <button onClick={() => { setEditingId(comment.id); setEditText(comment.content); setOpenMenuId(null) }} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-slate-600 text-left">수정하기</button>
-                              <button onClick={() => deleteComment(comment.id)} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left">삭제하기</button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setOpenMenuId(null)
-                                if (!alreadyReported) {
-                                  setReportModal({ commentId: comment.id, step: "reason", reason: null, detail: "" })
-                                }
-                              }}
-                              disabled={alreadyReported}
-                              className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left flex items-center gap-1.5 disabled:opacity-40"
-                            >
-                              <Flag className="w-3 h-3" />
-                              {alreadyReported ? "신고완료" : "신고하기"}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    {/* 메뉴 버튼 (탈퇴한 유저의 글에는 메뉴를 띄우지 않습니다) */}
+                    {!isWithdrawn && (
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)}
+                          className="p-1 text-slate-300 hover:text-slate-500 transition-colors"
+                        >
+                          <span className="text-[14px] leading-none">···</span>
+                        </button>
+                        {openMenuId === comment.id && (
+                          <div className="absolute right-0 top-7 bg-white border border-slate-100 shadow-xl rounded-2xl py-1.5 z-20 min-w-[100px] flex flex-col">
+                            {isMyComment ? (
+                              <>
+                                <button onClick={() => { setEditingId(comment.id); setEditText(comment.content); setOpenMenuId(null) }} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-slate-600 text-left">수정하기</button>
+                                <button onClick={() => deleteComment(comment.id)} className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left">삭제하기</button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setOpenMenuId(null)
+                                  if (!alreadyReported) {
+                                    setReportModal({ commentId: comment.id, step: "reason", reason: null, detail: "" })
+                                  }
+                                }}
+                                disabled={alreadyReported}
+                                className="text-[11px] px-4 py-2 hover:bg-slate-50 font-bold text-rose-500 text-left flex items-center gap-1.5 disabled:opacity-40"
+                              >
+                                <Flag className="w-3 h-3" />
+                                {alreadyReported ? "신고완료" : "신고하기"}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* 본문 or 수정창 */}
