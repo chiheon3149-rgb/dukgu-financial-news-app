@@ -13,9 +13,9 @@ interface BriefingRow {
   indices: IndexSummary[] | null
   is_ready: boolean | null
   content: { summary?: string } | null
+  date: string // 💡 날짜 비교를 위해 추가
 }
 
-// 💡 [수정] 미장(US)은 덕구민트(emerald), 국장(KR)은 붉은로즈(rose)로 변경
 const THEME = {
   US: {
     theme: "from-emerald-400 to-emerald-600 shadow-emerald-500/30",
@@ -31,43 +31,38 @@ const THEME = {
   },
 }
 
-function getTodayStr(): string {
-  const now = new Date()
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, "0")
-  const d = String(now.getDate()).padStart(2, "0")
-  return `${y}-${m}-${d}`
-}
-
-function getDateLabel(): string {
-  const now = new Date()
+// 💡 데이터의 실제 날짜를 기반으로 라벨을 생성하도록 수정
+function getDateLabel(dateStr?: string): string {
+  const date = dateStr ? new Date(dateStr) : new Date()
   const days = ["일", "월", "화", "수", "목", "금", "토"]
-  return `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일(${days[now.getDay()]}요일)`
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일(${days[date.getDay()]}요일)`
 }
 
 export function HeroBanner() {
   const [market, setMarket] = useState<"US" | "KR" | null>(null)
   const [morning, setMorning] = useState<BriefingRow | null | undefined>(undefined)
   const [afternoon, setAfternoon] = useState<BriefingRow | null | undefined>(undefined)
-  const [dateLabel] = useState(getDateLabel)
 
   useEffect(() => {
     const load = async () => {
+      // 💡 [핵심] 특정 날짜를 지정하지 않고, 최신 데이터 순으로 6개를 가져와서 필터링합니다.
       const { data } = await supabase
         .from("briefings")
-        .select("id, type, headline, indices, is_ready, content")
-        .eq("date", getTodayStr())
+        .select("id, type, headline, indices, is_ready, content, date")
+        .order("date", { ascending: false })
+        .limit(6)
 
+      // 타입별로 가장 최근 데이터 1개씩 추출
       const m = data?.find((r: any) => r.type === "morning") ?? null
       const a = data?.find((r: any) => r.type === "afternoon") ?? null
+      
       setMorning(m)
       setAfternoon(a)
 
-      // ✅ 15시 30분 정밀 판단 로직
       const now = new Date()
       const currentTime = now.getHours() * 100 + now.getMinutes()
       
-      // 07:00 ~ 15:30 사이인 경우 미국 우선 (preferUS)
+      // 기존 기획하신 시간대별 우선순위 로직 유지
       const preferUS = currentTime >= 700 && currentTime < 1530
 
       if (preferUS) {
@@ -108,7 +103,8 @@ export function HeroBanner() {
           {/* 1. 날짜 + 라디오 버튼 */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-semibold text-white/90 drop-shadow-sm truncate mr-2">
-              {dateLabel} 오늘의 {theme.briefingType}
+              {/* 💡 오늘 날짜가 아닌, 불러온 데이터의 실제 날짜를 표시합니다. */}
+              {getDateLabel(currentBriefing?.date)} 오늘의 {theme.briefingType}
             </span>
             <div className="flex items-center bg-black/20 backdrop-blur-sm rounded-full p-0.5 shadow-inner shrink-0">
               <button
@@ -147,20 +143,16 @@ export function HeroBanner() {
           )}
 
           {/* 3. 헤드라인 + AI 요약 */}
-          {currentBriefing ? (
-            <div className="flex flex-col gap-2">
-              <h2 className="text-[16px] font-black text-left leading-tight drop-shadow-md">
-                {currentBriefing.headline}
-              </h2>
-              {currentBriefing.content?.summary && (
-                <p className="text-[11px] text-white/85 leading-relaxed line-clamp-2 drop-shadow-sm font-medium">
-                  {currentBriefing.content.summary}
-                </p>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm font-bold text-white/70 py-2">브리핑 준비 중...</p>
-          )}
+          <div className="flex flex-col gap-2">
+            <h2 className="text-[16px] font-black text-left leading-tight drop-shadow-md">
+              {currentBriefing?.headline}
+            </h2>
+            {currentBriefing?.content?.summary && (
+              <p className="text-[11px] text-white/85 leading-relaxed line-clamp-2 drop-shadow-sm font-medium">
+                {currentBriefing.content.summary}
+              </p>
+            )}
+          </div>
 
           {/* 4. 리포트읽기 버튼 */}
           <div className="flex justify-end mt-1">
