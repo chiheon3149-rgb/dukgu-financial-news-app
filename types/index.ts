@@ -177,11 +177,13 @@ export interface DividendRecord {
 
 /** 보유 주식 한 종목 전체 */
 export interface StockHolding {
+  id?: string // 💡 Supabase 고유 ID
   ticker: string
   name: string
   currency: "KRW" | "USD"
   trades: TradeRecord[]
   dividends: DividendRecord[]
+  accountId?: string // 💡 계좌 간 데이터 분리를 위한 핵심 필드
 }
 
 /** 평단가 및 보유 수량 계산 결과 */
@@ -195,9 +197,11 @@ export interface PortfolioStats {
 /** API에서 가져온 실시간 시세 */
 export interface MarketQuote {
   ticker: string
+  name?: string      // 💡 [추가] 종목 검색 시 표시용
   currentPrice: number
+  change?: number    // 💡 [추가] 변동 금액
+  changePercent: number // 💡 [핵심 추가] 타입 에러 해결을 위한 등락률 필드
   currency: "KRW" | "USD"
-  changeRate: number
   changeStatus: ChangeStatus
   fetchedAt: string
 }
@@ -300,8 +304,7 @@ export interface UserProfile {
   xpHistory: XpEvent[]
   avatarEmoji: string
   portfolioPublic: boolean
-  is_admin?: boolean // 👈 💡 [추가] 관리자 여부 (VIP 이름표)
-
+  is_admin?: boolean 
 }
 
 
@@ -365,7 +368,7 @@ export interface CommunityPost {
   tags: string[]
   title: string
   content: string
-  authorId: string | null // 👈 💡 [수정] 탈퇴하면 null이 될 수 있게 허용
+  authorId: string | null 
   authorNickname: string
   authorEmoji: string
   authorLevel: number
@@ -374,7 +377,6 @@ export interface CommunityPost {
   likeCount: number
   dislikeCount: number
   commentCount: number
-  // 💡 [핵심 추가] 커뮤니티 게시글 조회수 타입 정의
   viewCount: number 
   isDeleted: boolean
 }
@@ -383,7 +385,7 @@ export interface CommunityPost {
 export interface CommunityComment {
   id: string
   postId: string
-  authorId: string | null // 👈 💡 [수정] 탈퇴하면 null이 될 수 있게 허용!
+  authorId: string | null 
   authorNickname: string
   authorEmoji: string
   authorLevel: number

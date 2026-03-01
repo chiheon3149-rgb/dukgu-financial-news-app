@@ -1,28 +1,126 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import { TrendingUp, TrendingDown, Plus, RefreshCw, AlertCircle, Loader2, Trash2 } from "lucide-react"
+import { TrendingUp, TrendingDown, Plus, Trash2, Briefcase, ChevronRight, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { DetailHeader } from "@/components/dukgu/detail-header"
-import { AddTickerSheet } from "@/components/dukgu/add-ticker-sheet"
+import { supabase } from "@/lib/supabase"
+import { useUser } from "@/context/user-context"
+import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { useStockPortfolio } from "@/hooks/use-stock-portfolio"
-import type { StockHolding } from "@/types"
 
-export default function StocksPage() {
+// DB 테이블 구조에 맞춘 타입
+export interface StockAccount {
+  id: string
+  name: string
+  created_at: string
+}
+
+export default function StocksAccountPage() {
+  const { profile } = useUser()
+  const [accounts, setAccounts] = useState<StockAccount[]>([])
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [accountName, setAccountName] = useState("")
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true)
+
+  // 💡 전체 주식 데이터를 합산하기 위해 훅 호출 (accountId를 안 넘기면 전체를 가져옵니다!)
   const usdToKrw = useExchangeRate()
-  const { rows, isLoadingPrices, priceError, addHolding, removeHolding } = useStockPortfolio(usdToKrw)
-  const [isTickerSheetOpen, setIsTickerSheetOpen] = useState(false)
+  const { rows, isLoadingPrices } = useStockPortfolio(usdToKrw)
 
-  // AddTickerSheet은 ticker/name/currency만 반환 → trades, dividends를 빈 배열로 채워 전달
-  const handleAddTicker = (base: Omit<StockHolding, "trades" | "dividends">) => {
-    addHolding({ ...base, trades: [], dividends: [] })
+  // 💡 전체 계좌의 총 자산 및 투자원금 계산
+  const { totalValueKrw, totalInvestedKrw } = useMemo(() => {
+    let val = 0
+    let inv = 0
+    rows.forEach((row) => {
+      const rate = row.holding.currency === "USD" ? usdToKrw : 1
+      val += row.currentValue * rate
+      inv += row.stats.totalInvested * rate
+    })
+    return { totalValueKrw: val, totalInvestedKrw: inv }
+  }, [rows, usdToKrw])
+
+  const totalPnl = totalValueKrw - totalInvestedKrw
+  const totalReturnRate = totalInvestedKrw > 0 ? (totalPnl / totalInvestedKrw) * 100 : 0
+  const isUp = totalReturnRate > 0
+  const isDown = totalReturnRate < 0
+
+  // 1️⃣ DB에서 내 계좌 목록 불러오기
+  useEffect(() => {
+    if (!profile?.id) return
+    const fetchAccounts = async () => {
+      setIsLoadingAccounts(true)
+      try {
+        const { data, error } = await supabase
+          .from("asset_stock_accounts")
+          .select("*")
+          .eq("user_id", profile.id)
+          .order("created_at", { ascending: true })
+
+        if (error) throw error
+        if (data) setAccounts(data)
+      } catch (error) {
+        toast.error("계좌 정보를 불러오지 못했습니다.")
+      } finally {
+        setIsLoadingAccounts(false)
+      }
+    }
+    fetchAccounts()
+  }, [profile?.id])
+
+  // 2️⃣ DB에 새 계좌 만들기
+  const handleAddAccount = async () => {
+    if (!accountName.trim() || !profile?.id) {
+      toast.error("계좌 이름을 입력해주세요.")
+      return
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from("asset_stock_accounts")
+        .insert({
+          user_id: profile.id,
+          name: accountName.trim(),
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setAccounts([...accounts, data])
+      setAccountName("")
+      setIsFormOpen(false)
+      toast.success(`'${data.name}' 계좌가 생성되었습니다!`)
+    } catch (error) {
+      toast.error("계좌 생성 중 오류가 발생했습니다.")
+    }
   }
 
-  const totalValueKrw = rows.reduce((acc, row) => {
-    return acc + (row.holding.currency === "KRW" ? row.currentValue : row.currentValue * usdToKrw)
-  }, 0)
+  // 3️⃣ DB에서 계좌 삭제하기
+  const handleRemoveAccount = (id: string, name: string) => {
+    toast(`'${name}' 계좌를 삭제하시겠습니까?`, {
+      description: "계좌 안의 모든 종목 기록도 함께 삭제됩니다.",
+      action: {
+        label: "삭제",
+        onClick: async () => {
+          try {
+            const { error } = await supabase
+              .from("asset_stock_accounts")
+              .delete()
+              .eq("id", id)
+
+            if (error) throw error
+            
+            setAccounts(accounts.filter((a) => a.id !== id))
+            toast.success("계좌가 삭제되었습니다.")
+          } catch (error) {
+            toast.error("삭제에 실패했습니다.")
+          }
+        },
+      },
+      cancel: { label: "취소", onClick: () => {} },
+    })
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32">
@@ -37,125 +135,135 @@ export default function StocksPage() {
       />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
-        {/* 총 주식 자산 */}
+        
+        {/* 🚀 상단 요약 (전체 계좌 총합 데이터 연동 완료!) */}
         <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50/60 rounded-full -mr-8 -mt-8 blur-2xl" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">주식 총 평가금액</p>
-          <p className="text-3xl font-black text-slate-900 tracking-tighter">
-            {Math.round(totalValueKrw).toLocaleString("ko-KR")}원
-          </p>
-          <div className="mt-3">
-            {isLoadingPrices ? (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                <Loader2 className="w-3 h-3 animate-spin" /> 시세 불러오는 중...
-              </span>
-            ) : priceError ? (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-rose-400">
-                <AlertCircle className="w-3 h-3" /> {priceError}
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500">
-                <RefreshCw className="w-3 h-3" /> 30초마다 자동 갱신
-              </span>
-            )}
+          <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-50/50 rounded-full -mr-10 -mt-10 blur-2xl pointer-events-none" />
+          <div className="relative z-10">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">주식 총 평가금액 (원화 환산)</p>
+            <div className="flex items-center justify-between">
+              <p className="text-3xl font-black text-slate-900 tracking-tighter truncate pr-2">
+                {Math.round(totalValueKrw).toLocaleString("ko-KR")}원
+              </p>
+              <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-black shrink-0 ${isUp ? "bg-rose-50 text-rose-500" : isDown ? "bg-blue-50 text-blue-500" : "bg-slate-50 text-slate-400"}`}>
+                {isUp ? <TrendingUp className="w-3.5 h-3.5" /> : isDown ? <TrendingDown className="w-3.5 h-3.5" /> : null}
+                {isLoadingPrices ? <Loader2 className="w-3 h-3 animate-spin" /> : `${isUp ? "+" : ""}${totalReturnRate.toFixed(2)}%`}
+              </div>
+            </div>
+
+            {/* 💡 세부 지표 3종 세트 추가 */}
+            <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-slate-50">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400">운용 계좌</span>
+                <span className="text-[13px] font-black text-slate-800">
+                  {isLoadingAccounts ? "-" : accounts.length}개
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400">총 투자원금</span>
+                <span className="text-[13px] font-black text-slate-800 truncate">
+                  {Math.round(totalInvestedKrw).toLocaleString()}원
+                </span>
+              </div>
+              <div className="flex flex-col text-right">
+                <span className="text-[10px] font-bold text-slate-400">총 평가손익</span>
+                <span className={`text-[13px] font-black truncate ${isUp ? "text-rose-500" : isDown ? "text-blue-500" : "text-slate-700"}`}>
+                  {isUp ? "+" : ""}{Math.round(totalPnl).toLocaleString()}원
+                </span>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* 종목 리스트 */}
+        {/* 계좌 목록 섹션 */}
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
               <span className="w-1.5 h-4 bg-emerald-500 rounded-full" />
-              보유 종목 ({rows.length})
+              내 주식 계좌
             </h2>
             <button
-              onClick={() => setIsTickerSheetOpen(true)}
+              onClick={() => setIsFormOpen((v) => !v)}
               className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full transition-all active:scale-95"
             >
-              <Plus className="w-3 h-3" /> 티커 추가
+              <Plus className="w-3 h-3" /> 계좌 추가
             </button>
           </div>
 
-          <div className="grid gap-3">
-            {rows.map(({ holding, quote, currentValue, unrealizedPnl, returnRate }) => {
-              const currentPrice = quote?.currentPrice ?? 0
-              const isUp = returnRate > 0
-              const isDown = returnRate < 0
+          {/* 계좌 추가 폼 */}
+          {isFormOpen && (
+            <div className="bg-white rounded-[24px] border border-emerald-100 shadow-sm p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">계좌 별명</label>
+                <input
+                  type="text"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  placeholder="예: 키움증권(미국장), ISA계좌"
+                  className="w-full px-4 py-3 bg-slate-50 rounded-xl text-[13px] font-bold text-slate-800 border border-slate-100 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 transition-all"
+                  autoFocus
+                />
+              </div>
+              <button
+                onClick={handleAddAccount}
+                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[18px] text-[13px] font-black transition-all active:scale-[0.98]"
+              >
+                계좌 만들기
+              </button>
+            </div>
+          )}
 
-              return (
-                <div key={holding.ticker} className="relative group">
+          {/* 계좌 리스트 */}
+          {isLoadingAccounts ? (
+            <div className="py-16 flex justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {accounts.map((acc) => (
+                <div key={acc.id} className="relative group">
                   <Link
-                    href={`/assets/stocks/${encodeURIComponent(holding.ticker)}`}
+                    href={`/assets/stocks/${acc.id}`}
                     className="flex items-center justify-between p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all active:scale-[0.98] pr-14"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${
-                        isUp ? "bg-rose-50" : isDown ? "bg-blue-50" : "bg-slate-50"
-                      }`}>
-                        {isUp ? (
-                          <TrendingUp className="w-5 h-5 text-rose-500" />
-                        ) : isDown ? (
-                          <TrendingDown className="w-5 h-5 text-blue-500" />
-                        ) : (
-                          <span className="text-lg font-black text-slate-400">−</span>
-                        )}
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors">
+                        <Briefcase className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-[15px] font-black text-slate-800">{holding.ticker}</p>
-                          <span className="text-[9px] font-bold text-slate-300 uppercase">{holding.currency}</span>
-                        </div>
-                        <p className="text-[11px] font-bold text-slate-400 truncate max-w-[120px]">{holding.name}</p>
+                        <h3 className="text-[15px] font-black text-slate-800">{acc.name}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                          {new Date(acc.created_at).toLocaleDateString()}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right space-y-1">
-                      <p className="text-[14px] font-black text-slate-800">
-                        {isLoadingPrices ? (
-                          <span className="text-slate-200 animate-pulse">----</span>
-                        ) : holding.currency === "KRW"
-                          ? `${currentPrice.toLocaleString("ko-KR")}원`
-                          : `$${currentPrice.toFixed(2)}`}
-                      </p>
-                      <div className="flex items-center justify-end gap-1">
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
-                          isUp ? "text-rose-500 bg-rose-50" : isDown ? "text-blue-500 bg-blue-50" : "text-slate-400 bg-slate-50"
-                        }`}>
-                          {returnRate >= 0 ? "+" : ""}{returnRate.toFixed(2)}%
-                        </span>
-                      </div>
-                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-colors" />
                   </Link>
-                  {/* 삭제 버튼 (hover 시 표시) */}
+
                   <button
-                    onClick={() => {
-                      toast(`${holding.ticker} 종목을 삭제하시겠습니까?`, {
-                        action: { label: "삭제", onClick: () => removeHolding(holding.ticker) },
-                        cancel: { label: "취소", onClick: () => {} }, // 👈 수정된 포인트
-                      })
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all z-10"
+                    onClick={() => handleRemoveAccount(acc.id, acc.name)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2.5 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all z-10"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-              )
-            })}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {rows.length === 0 && (
-            <div className="py-16 text-center text-slate-300 bg-white rounded-[24px] border border-dashed border-slate-200">
-              <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p className="text-sm font-bold">보유 종목이 없습니다</p>
+          {/* 계좌가 없을 때 */}
+          {!isLoadingAccounts && accounts.length === 0 && !isFormOpen && (
+            <div className="py-16 flex flex-col items-center justify-center text-slate-300 bg-white rounded-[24px] border border-dashed border-slate-200">
+              <Briefcase className="w-10 h-10 mb-3 opacity-20" />
+              <p className="text-sm font-bold text-slate-400">등록된 계좌가 없습니다</p>
+              <p className="text-[11px] font-bold mt-1 text-slate-300">
+                우측 상단의 '+ 계좌 추가'를 눌러 시작하세요.
+              </p>
             </div>
           )}
         </section>
-      </main>
 
-      <AddTickerSheet
-        isOpen={isTickerSheetOpen}
-        onClose={() => setIsTickerSheetOpen(false)}
-        onAdd={handleAddTicker}
-      />
+      </main>
     </div>
   )
 }
