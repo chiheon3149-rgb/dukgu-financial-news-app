@@ -23,6 +23,8 @@ interface UserContextValue {
   updateAvatar: (emoji: string) => void
   updatePortfolioPublic: (value: boolean) => void
   refreshProfile: () => Promise<void>
+  // 💡 [빌드 에러 해결] 퀴즈 페이지에서 찾는 이름을 추가합니다.
+  fetchProfile: () => Promise<void> 
 }
 
 const UserContext = createContext<UserContextValue | null>(null)
@@ -34,15 +36,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const profileRef = useRef<UserProfile | null>(null)
 
   const loadUser = useCallback(async () => {
-    // 💡 [핵심 수정 1] 데이터를 완전히 확인하기 전까지 리다이렉트를 막기 위해 로딩을 true로 고정합니다.
     setIsLoading(true) 
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
-        setAuthUser(null)
-        setProfile(null)
+        setAuthUser(null); setProfile(null)
         return
       }
 
@@ -52,7 +52,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .eq("id", user.id)
         .maybeSingle() 
 
-      // 💡 [핵심 수정 2] 프로필 정보 유무가 확실해진 시점에 authUser를 세팅합니다.
       setAuthUser(user)
 
       if (profileData && profileData.nickname) {
@@ -70,7 +69,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           avatarEmoji: profileData.avatar_emoji ?? "🐱",
           totalXp: profileData.total_xp ?? 0,
           portfolioPublic: profileData.portfolio_public ?? false,
-          is_admin: profileData.is_admin ?? false, // 👈 💡 [추가] DB에서 완장 정보 가져오기!
+          is_admin: profileData.is_admin ?? false,
           xpHistory: (xpData ?? []).map((e: any) => ({
             id: e.id,
             source: e.source,
@@ -85,42 +84,36 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error("[UserContext] 로딩 실패:", e)
     } finally {
-      // 💡 [핵심 수정 3] authUser와 profile 세팅이 완전히 끝난 후 로딩을 해제합니다.
-      // 이제 안전하게 아래의 useEffect(리다이렉트 가드)가 작동합니다.
       setIsLoading(false)
     }
   }, [])
 
+  // 💡 갱신 함수 (두 이름 모두 지원하도록 설정)
   const refreshProfile = async () => {
     await loadUser()
   }
 
   useEffect(() => {
     loadUser()
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        loadUser()
-      }
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') { loadUser() }
     })
-
     return () => subscription.unsubscribe()
   }, [loadUser])
 
   useEffect(() => {
     if (!isLoading) {
-      const path = window.location.pathname;
-      
+      const path = window.location.pathname
       if (authUser && !profile) {
         if (path !== '/onboarding' && !path.startsWith('/auth')) {
-          window.location.href = '/onboarding';
+          window.location.href = '/onboarding'
         }
       } 
       else if (authUser && profile && path === '/onboarding') {
-        window.location.href = '/';
+        window.location.href = '/'
       }
     }
-  }, [isLoading, authUser, profile]);
+  }, [isLoading, authUser, profile])
 
   useEffect(() => { profileRef.current = profile }, [profile])
 
@@ -177,6 +170,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       updateAvatar,
       updatePortfolioPublic,
       refreshProfile,
+      // 💡 [해결] fetchProfile이라는 이름으로도 기능을 제공합니다.
+      fetchProfile: refreshProfile, 
     }}>
       {children}
     </UserContext.Provider>
