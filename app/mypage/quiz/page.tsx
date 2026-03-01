@@ -10,7 +10,7 @@ import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@/context/user-context"
 
-// 🎨 카테고리 테마 (Tailwind 깨짐 방지용 고정 HEX 스타일)
+// 🎨 카테고리 테마
 const CATEGORY_THEMES = [
   { id: 0, label: "경제상식", icon: "📈", gradient: "linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%)", bg: "#eff6ff" },
   { id: 1, label: "주식/투자", icon: "💰", gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)", bg: "#ecfdf5" },
@@ -31,36 +31,32 @@ export default function QuizPage() {
   const [isAlreadySolved, setIsAlreadySolved] = useState(false)
   const [isClaiming, setIsClaiming] = useState(false)
   
-  // 💡 [실시간 점수용 핵심 상태] 낙관적 UI 적용
   const [displayXp, setDisplayXp] = useState(0)
 
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const [selectedOpt, setSelectedOpt] = useState<number | null>(null)
   const [showHint, setShowHint] = useState(false)
   
-  // 💡 진행 중인 결과를 담는 상태 (DB와 연동)
   const [results, setResults] = useState<Record<number, { solved: boolean; correct: boolean }>>({})
 
-  // 0️⃣ 유저 프로필이 로드되면 화면용 점수(displayXp) 초기화
+  // 0️⃣ [에러 수정] profile.total_xp -> profile.totalXp 로 명칭 변경
   useEffect(() => {
-    if (profile?.total_xp !== undefined) {
-      setDisplayXp(profile.total_xp)
+    if (profile?.totalXp !== undefined) {
+      setDisplayXp(profile.totalXp)
     }
-  }, [profile?.total_xp])
+  }, [profile?.totalXp])
 
-  // 1️⃣ 초기 데이터 로드: 퀴즈 + 이어풀기 기록(quiz_progress) 불러오기
+  // 1️⃣ 초기 데이터 로드
   useEffect(() => {
     const initPage = async () => {
       if (!profile?.id) return
       try {
-        // A. 이번 주 퀴즈 로드
         const { data: quizData } = await supabase.from("quizzes").select("*").order("created_at", { ascending: false }).limit(4)
         if (!quizData || quizData.length === 0) return
         
         const currentWeek = quizData[0].week_label
         setQuizzes(quizData); setWeekLabel(currentWeek)
 
-        // B. 이미 최종 완료(보너스까지 수령)했는지 확인
         const { data: existingFinal } = await supabase.from("quiz_results").select("id").eq("user_id", profile.id).eq("week_label", currentWeek).single()
         if (existingFinal) {
           setIsAlreadySolved(true)
@@ -68,7 +64,6 @@ export default function QuizPage() {
           return
         }
 
-        // C. [이어풀기] 중간에 풀었던 진행 내역 가져오기
         const { data: progressData } = await supabase.from("quiz_progress").select("quiz_idx, is_correct").eq("user_id", profile.id).eq("week_label", currentWeek)
         
         if (progressData) {
@@ -83,14 +78,13 @@ export default function QuizPage() {
     initPage()
   }, [profile?.id])
 
-  // 2️⃣ 정답 제출 (실시간 저장 + 점수 즉시 반영)
+  // 2️⃣ 정답 제출
   const handleAnswerSubmit = async () => {
     if (activeIdx === null || selectedOpt === null || !profile?.id) return
     
     const isCorrect = quizzes[activeIdx].answer_index === selectedOpt
     
     try {
-      // A. [실시간 저장] 하나 풀 때마다 progress 테이블에 기록 (뒤로가기 대비)
       await supabase.from("quiz_progress").upsert({
         user_id: profile.id,
         week_label: weekLabel,
@@ -98,23 +92,18 @@ export default function QuizPage() {
         is_correct: isCorrect
       })
 
-      // B. 결과 반영
       const newResults = { ...results, [activeIdx]: { solved: true, correct: isCorrect } }
       setResults(newResults)
 
-      // C. 점수 지급 및 프로필 동기화
       if (isCorrect) {
-        // 💡 화면 점수 즉시 반영 (낙관적 업데이트)
         setDisplayXp(prev => prev + XP_PER_QUESTION)
-        
         await supabase.rpc('increment_user_xp', { u_id: profile.id, x: XP_PER_QUESTION })
-        if (fetchProfile) fetchProfile() // 백그라운드 갱신
+        if (fetchProfile) fetchProfile() 
         toast.success(`정답! +${XP_PER_QUESTION}XP 획득 ✨`)
       } else {
         toast.error("오답입니다 😢")
       }
 
-      // 4문제를 다 풀었는데 올클리어가 아닌 경우(중간에 틀림) 즉시 성적표 마감
       const solvedCount = Object.keys(newResults).length
       const correctCount = Object.values(newResults).filter(r => r.correct).length
       if (solvedCount === 4 && correctCount < 4) {
@@ -127,14 +116,12 @@ export default function QuizPage() {
     setActiveIdx(null); setSelectedOpt(null); setShowHint(false)
   }
 
-  // 3️⃣ 보너스 버튼 클릭 (최종 10XP 추가 지급)
+  // 3️⃣ 보너스 버튼 클릭
   const handleClaimBonus = async () => {
     if (!profile?.id || isClaiming) return
     setIsClaiming(true)
     try {
-      // 💡 화면 점수 보너스 즉시 반영
       setDisplayXp(prev => prev + BONUS_XP)
-      
       await supabase.rpc('increment_user_xp', { u_id: profile.id, x: BONUS_XP })
       if (fetchProfile) fetchProfile() 
       
@@ -143,7 +130,6 @@ export default function QuizPage() {
     } catch (e) { toast.error("보상 수령 실패") } finally { setIsClaiming(false) }
   }
 
-  // 공통 마감 로직
   const finalizeQuiz = async (score: number, totalXpEarned?: number) => {
     await supabase.from("quiz_results").insert({
       user_id: profile?.id, week_label: weekLabel, score: score, xp_earned: totalXpEarned || score * XP_PER_QUESTION
@@ -159,14 +145,12 @@ export default function QuizPage() {
 
   return (
     <div className="min-h-dvh bg-slate-50 pb-24 font-sans text-slate-900">
-      {/* ── 상단바: 실시간 displayXp 표시 ── */}
       <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-100 z-10 px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={() => router.back()} className="p-2 -ml-2"><ArrowLeft className="w-5 h-5 text-slate-600" /></button>
           <span className="text-[16px] font-black">이번 주 미션</span>
         </div>
         
-        {/* 💡 실시간으로 변하는 displayXp 사용 */}
         <div className="flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm">
           <Zap className="w-3.5 h-3.5 text-emerald-500 fill-emerald-500" />
           <span className="text-[12px] font-black text-emerald-600">
@@ -221,7 +205,6 @@ export default function QuizPage() {
               })}
             </div>
 
-            {/* 🏆 [수리 완료] 절대 안 깨지는 황금 보너스 버튼 */}
             {canClaimBonus && (
               <div className="animate-in fade-in zoom-in-95 pt-2">
                 <button 
@@ -250,7 +233,6 @@ export default function QuizPage() {
             )}
           </div>
         ) : (
-          /* 문제 풀이 화면 (힌트 가독성 수리) */
           <div className="animate-in fade-in slide-in-from-bottom-4">
             <div className="rounded-[32px] p-6 mb-6 shadow-sm border border-slate-100" style={{ backgroundColor: CATEGORY_THEMES[activeIdx].bg }}>
               <div className="flex items-center gap-2 mb-3">
@@ -269,7 +251,6 @@ export default function QuizPage() {
             </div>
 
             <div className="space-y-4">
-              {/* 힌트 버튼 */}
               <button 
                 onClick={() => setShowHint(!showHint)}
                 className="flex items-center gap-2 text-[12px] font-black px-2 transition-all"
