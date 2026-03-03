@@ -262,14 +262,36 @@ export interface CryptoStats {
 // 🏠 부동산 (Real Estate)
 // -----------------------------------------------------------------------------
 
+/** 상환 방식: level(원리금균등), principal(원금균등), graduated(채증식) */
+export type RepaymentType = "level" | "principal" | "graduated"
+
 export interface RealEstateHolding {
   id: string
+  user_id: string
+  asset_type: string              // 부동산 종류 (apartment, villa 등)
   name: string
-  address: string
-  acquisitionPrice: number
-  acquisitionDate: string
-  currentEstimatedPrice: number | null
-  priceUpdatedAt: string | null
+  address: string | null
+  exclusive_area: number | null     // 💡 [추가] 국토부 API 연동을 위한 전용면적 (m2)
+  acquisition_price: number
+  acquisition_date: string
+  current_estimated_price: number | null
+  
+  // 🏢 국토부 실거래가 API 연동 필드 (추가됨)
+  legal_dong_code: string | null    // 법정동 코드
+  last_deal_price: number | null    // 최근 실거래가
+  price_history: { date: string; price: number }[] // 시세 추이 히스토리
+
+  // 💰 대출 상세 필드 (새로 추가됨)
+  loan_amount: number              // 대출 원금
+  loan_repayment_type: RepaymentType | null // 상환 방식
+  loan_interest_rate: number | null // 금리 (%)
+  loan_start_date: string | null    // 대출 시작일
+  loan_end_date: string | null      // 대출 만기일
+  loan_grace_period_months: number // 거치 기간 (개월)
+  
+  price_updated_at: string | null
+  created_at?: string
+  updated_at?: string
 }
 
 

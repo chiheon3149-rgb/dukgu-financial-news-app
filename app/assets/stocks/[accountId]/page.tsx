@@ -40,7 +40,6 @@ export default function AccountDetailPage({ params }: { params: Promise<{ accoun
 
   const usdToKrw = useExchangeRate()
   
-  // 💡 [기획 포인트] refresh 기능을 훅에서 꺼내옵니다. (훅에 refresh가 구현되어 있다고 가정)
   const { rows, isLoadingPrices, priceError, addHolding, removeHolding, refresh } = useStockPortfolio(usdToKrw, accountId)
   const [isTickerSheetOpen, setIsTickerSheetOpen] = useState(false)
 
@@ -53,7 +52,6 @@ export default function AccountDetailPage({ params }: { params: Promise<{ accoun
       refresh()
       toast.success("최신 시세를 불러왔습니다.")
     } else {
-      // 훅에 refresh가 없다면 페이지 전체를 가볍게 새로고침합니다.
       window.location.reload()
     }
   }
@@ -75,46 +73,52 @@ export default function AccountDetailPage({ params }: { params: Promise<{ accoun
       />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
-        {/* 요약 카드 */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50/60 rounded-full -mr-8 -mt-8 blur-2xl pointer-events-none" />
-          
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">계좌 총 평가금액</p>
-              <p className="text-3xl font-black text-slate-900 tracking-tighter truncate">
-                {formatCurrency(totalValueKrw, "KRW")}
-              </p>
-            </div>
+        {/* 🏆 요약 카드 */}
+        <div>
+          <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50/60 rounded-full -mr-8 -mt-8 blur-2xl pointer-events-none" />
             
-            {/* 💡 [수정] 수동 새로고침 버튼 추가 */}
-            <button 
-              onClick={handleManualRefresh}
-              disabled={isLoadingPrices}
-              className="p-2.5 rounded-2xl bg-slate-50 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 transition-all active:scale-90 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-5 h-5 ${isLoadingPrices ? "animate-spin" : ""}`} />
-            </button>
-          </div>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">계좌 총 평가금액</p>
+                <p className="text-3xl font-black text-slate-900 tracking-tighter truncate">
+                  {formatCurrency(totalValueKrw, "KRW")}
+                </p>
+              </div>
+              
+              <button 
+                onClick={handleManualRefresh}
+                disabled={isLoadingPrices}
+                className="p-2.5 rounded-2xl bg-slate-50 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 transition-all active:scale-90 disabled:opacity-50 shrink-0"
+              >
+                <RefreshCw className={`w-5 h-5 ${isLoadingPrices ? "animate-spin" : ""}`} />
+              </button>
+            </div>
 
-          <div className="mt-4">
-            {isLoadingPrices ? (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                <Loader2 className="w-3 h-3 animate-spin" /> 시세 실시간 동기화 중...
-              </span>
-            ) : priceError ? (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-rose-400 truncate">
-                <AlertCircle className="w-3 h-3 shrink-0" /> {priceError}
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500">
-                <RefreshCw className="w-3 h-3 shrink-0" /> 30초마다 자동 갱신 중
-              </span>
-            )}
-          </div>
-        </section>
+            <div className="mt-4">
+              {isLoadingPrices ? (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+                  <Loader2 className="w-3 h-3 animate-spin" /> 시세 실시간 동기화 중...
+                </span>
+              ) : priceError ? (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-rose-400 truncate">
+                  <AlertCircle className="w-3 h-3 shrink-0" /> {priceError}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500">
+                  <RefreshCw className="w-3 h-3 shrink-0" /> 30초마다 자동 갱신 중
+                </span>
+              )}
+            </div>
+          </section>
+          
+          <p className="text-[10px] font-bold text-slate-400 px-2 mt-2 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" />
+            * 환전에 따른 증감은 표시되지 않습니다.
+          </p>
+        </div>
 
-        {/* 종목 리스트 섹션 */}
+        {/* 📋 종목 리스트 섹션 */}
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
@@ -130,53 +134,63 @@ export default function AccountDetailPage({ params }: { params: Promise<{ accoun
           </div>
 
           <div className="grid gap-3">
-            {rows.map(({ holding, quote, returnRate }) => {
+            {rows.map(({ holding, quote, returnRate, stats, currentValue }) => {
               const currentPrice = quote?.currentPrice ?? 0
+              const pnlAmount = currentValue - stats.totalInvested
               const isUp = returnRate > 0
               const isDown = returnRate < 0
 
               return (
-                <div key={holding.ticker} className="flex items-center gap-2 group">
+                <div key={holding.ticker} className="flex items-center p-4 bg-white rounded-[24px] border border-slate-100 shadow-sm min-w-0 group">
                   <Link
                     href={`/assets/stocks/${accountId}/${encodeURIComponent(holding.ticker)}`}
-                    className="flex-1 flex items-center justify-between p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm active:scale-[0.98] min-w-0"
+                    className="flex-1 flex items-center gap-3 min-w-0 pr-3"
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${isUp ? "bg-rose-50" : isDown ? "bg-blue-50" : "bg-slate-50"}`}>
-                        {isUp ? <TrendingUp className="w-5 h-5 text-rose-500" /> : isDown ? <TrendingDown className="w-5 h-5 text-blue-500" /> : <span className="text-lg font-black text-slate-400">−</span>}
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${isUp ? "bg-rose-50" : isDown ? "bg-blue-50" : "bg-slate-50"}`}>
+                      {isUp ? <TrendingUp className="w-5 h-5 text-rose-500" /> : isDown ? <TrendingDown className="w-5 h-5 text-blue-500" /> : <span className="text-lg font-black text-slate-400">−</span>}
+                    </div>
+                    
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[15px] font-black text-slate-800 truncate">{holding.ticker}</p>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0 px-1 bg-slate-50 rounded-md">{holding.currency}</span>
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-[15px] font-black text-slate-800 truncate">{holding.ticker}</p>
-                          <span className="text-[9px] font-bold text-slate-300 uppercase shrink-0">{holding.currency}</span>
-                        </div>
-                        <p className="text-[11px] font-bold text-slate-400 truncate">{holding.name}</p>
-                      </div>
+                      <p className="text-[11px] font-bold text-slate-400 truncate">{holding.name}</p>
                     </div>
 
-                    <div className="text-right shrink-0">
-                      <p className="text-[14px] font-black text-slate-800 whitespace-nowrap">
+                    {/* 💡 [수정] 3줄로 차곡차곡 쌓는 영역 */}
+                    <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      {/* 1. 현재 주가 */}
+                      <p className="text-[13px] font-black text-slate-800 whitespace-nowrap">
                         {isLoadingPrices ? <span className="text-slate-200 animate-pulse">----</span> : formatCurrency(currentPrice, holding.currency)}
                       </p>
-                      <div className="flex justify-end mt-0.5">
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md whitespace-nowrap ${isUp ? "text-rose-500 bg-rose-50" : isDown ? "text-blue-500 bg-blue-50" : "text-slate-400 bg-slate-50"}`}>
-                          {returnRate >= 0 ? "+" : ""}{returnRate.toFixed(2)}%
-                        </span>
+                      
+                      {/* 2. 증감 금액 */}
+                      <p className={`text-[11px] font-black tracking-tight whitespace-nowrap ${isUp ? "text-rose-500" : isDown ? "text-blue-500" : "text-slate-400"}`}>
+                        {pnlAmount > 0 ? "+" : ""}{formatCurrency(pnlAmount, holding.currency)}
+                      </p>
+
+                      {/* 3. 증감 퍼센트 */}
+                      <div className={`mt-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-md whitespace-nowrap ${isUp ? "text-rose-500 bg-rose-50" : isDown ? "text-blue-500 bg-blue-50" : "text-slate-400 bg-slate-50"}`}>
+                        {returnRate > 0 ? "+" : ""}{returnRate.toFixed(2)}%
                       </div>
                     </div>
                   </Link>
 
-                  <button
-                    onClick={() => {
-                      toast(`${holding.ticker} 종목을 삭제하시겠습니까?`, {
-                        action: { label: "삭제", onClick: () => removeHolding(holding.ticker) },
-                        cancel: { label: "취소", onClick: () => {} },
-                      })
-                    }}
-                    className="p-3.5 bg-white border border-slate-100 rounded-2xl text-slate-300 active:bg-rose-50 active:text-rose-400 transition-all shadow-sm shrink-0"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  {/* 삭제 버튼 */}
+                  <div className="shrink-0 pl-2 border-l border-slate-50">
+                    <button
+                      onClick={() => {
+                        toast(`${holding.ticker} 종목을 삭제하시겠습니까?`, {
+                          action: { label: "삭제", onClick: () => removeHolding(holding.ticker) },
+                          cancel: { label: "취소", onClick: () => {} },
+                        })
+                      }}
+                      className="p-2 text-slate-300 hover:text-rose-400 active:scale-90 transition-all rounded-xl"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               )
             })}

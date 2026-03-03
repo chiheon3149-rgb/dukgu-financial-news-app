@@ -224,6 +224,7 @@ export default function StocksAccountPage() {
                 <div key={acc.id} className="relative group">
                   <Link
                     href={`/assets/stocks/${acc.id}`}
+                    // 💡 버튼을 위해 우측 여백(pr-14) 유지
                     className="flex items-center justify-between p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all active:scale-[0.98] pr-14"
                   >
                     <div className="flex items-center gap-3.5">
@@ -240,9 +241,11 @@ export default function StocksAccountPage() {
                     <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-colors" />
                   </Link>
 
+                  {/* 💡 [수정] 모바일에서 항상 보이도록 투명도 설정 제거, 연한 빨간색으로 포인트 */}
                   <button
                     onClick={() => handleRemoveAccount(acc.id, acc.name)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2.5 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all z-10"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all z-10"
+                    aria-label={`${acc.name} 계좌 삭제`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

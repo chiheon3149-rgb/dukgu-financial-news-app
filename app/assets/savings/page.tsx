@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Building2, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
@@ -35,7 +35,10 @@ function save(items: SavingsItem[]) {
 const today = new Date().toISOString().split("T")[0]
 
 export default function SavingsPage() {
-  const [items, setItems] = useState<SavingsItem[]>(() => load())
+  // 💡 [수정] Hydration 에러 방지용 상태 추가
+  const [mounted, setMounted] = useState(false)
+  const [items, setItems] = useState<SavingsItem[]>([])
+  
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [form, setForm] = useState({
     type: "deposit" as "savings" | "deposit",
@@ -47,6 +50,12 @@ export default function SavingsPage() {
     endDate: "",
     monthlyAmount: "",
   })
+
+  // 💡 [수정] 화면이 완전히 준비된(마운트된) 후에 로컬스토리지 데이터를 불러옵니다.
+  useEffect(() => {
+    setItems(load())
+    setMounted(true)
+  }, [])
 
   const totalPrincipal = useMemo(() => items.reduce((acc, i) => acc + i.principal, 0), [items])
 
@@ -92,6 +101,23 @@ export default function SavingsPage() {
   const daysLeft = (endDate: string) => {
     const diff = new Date(endDate).getTime() - Date.now()
     return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)))
+  }
+
+  // 💡 [수정] 마운트 되기 전에는 기본 뼈대만 보여주어 서버와 똑같이 맞춥니다.
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-slate-50 pb-32">
+        <DetailHeader showBack title={
+          <div className="flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-blue-500" />
+            <span className="text-lg font-black text-slate-900 tracking-tight">예금 · 적금</span>
+          </div>
+        } />
+        <main className="max-w-md mx-auto px-5 py-6 flex justify-center mt-20">
+          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </main>
+      </div>
+    )
   }
 
   return (
