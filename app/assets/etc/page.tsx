@@ -1,9 +1,12 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Package, Plus, Trash2 } from "lucide-react"
+import { Package, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
+import { useLocalItems } from "@/hooks/use-local-items"
+import { AssetEmptyState } from "@/components/dukgu/asset-empty-state"
+import { AssetSectionHeader } from "@/components/dukgu/asset-section-header"
 
 // =============================================================================
 // 📦 /assets/etc — 기타 자산 (미술품, 시계, 자동차 등)
@@ -12,27 +15,18 @@ import { DetailHeader } from "@/components/dukgu/detail-header"
 interface EtcItem {
   id: string
   name: string
-  category: string       // 예: 미술품, 명품, 자동차
-  purchasePrice: number  // 매입가 (원)
-  currentPrice: number   // 현재 추정가 (원)
+  category: string
+  purchasePrice: number
+  currentPrice: number
   purchaseDate: string
   note?: string
-}
-
-const STORAGE_KEY = "dukgu:etc-holdings"
-function load(): EtcItem[] {
-  if (typeof window === "undefined") return []
-  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : [] } catch { return [] }
-}
-function save(items: EtcItem[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)) } catch {}
 }
 
 const today = new Date().toISOString().split("T")[0]
 const PRESET_CATEGORIES = ["미술품", "명품/시계", "자동차", "골동품", "와인/위스키", "기타"]
 
 export default function EtcPage() {
-  const [items, setItems] = useState<EtcItem[]>(() => load())
+  const { items, addItem, removeItem } = useLocalItems<EtcItem>("dukgu:etc-holdings")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [form, setForm] = useState({ name: "", category: "기타", purchasePrice: "", currentPrice: "", purchaseDate: today, note: "" })
 
@@ -45,17 +39,12 @@ export default function EtcPage() {
     if (!form.name.trim() || isNaN(pp) || isNaN(cp)) {
       toast.error("이름, 매입가, 현재가를 올바르게 입력해주세요."); return
     }
-    const updated = [...items, {
+    addItem({
       id: `etc-${Date.now()}`, name: form.name.trim(), category: form.category,
       purchasePrice: pp, currentPrice: cp, purchaseDate: form.purchaseDate, note: form.note || undefined,
-    }]
-    setItems(updated); save(updated)
+    })
     setForm({ name: "", category: "기타", purchasePrice: "", currentPrice: "", purchaseDate: today, note: "" })
     setIsFormOpen(false)
-  }
-
-  const handleRemove = (id: string) => {
-    const updated = items.filter((i) => i.id !== id); setItems(updated); save(updated)
   }
 
   const fmt = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}원`
@@ -89,16 +78,13 @@ export default function EtcPage() {
         </section>
 
         <section className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
-              <span className="w-1.5 h-4 bg-rose-500 rounded-full" />
-              보유 자산 ({items.length})
-            </h3>
-            <button onClick={() => setIsFormOpen((v) => !v)}
-              className="text-[11px] font-bold text-rose-600 flex items-center gap-1 bg-rose-50 px-2.5 py-1 rounded-full transition-all active:scale-95">
-              <Plus className="w-3 h-3" /> 추가
-            </button>
-          </div>
+          <AssetSectionHeader
+            title="보유 자산"
+            count={items.length}
+            barClass="bg-rose-500"
+            buttonClass="text-rose-600 bg-rose-50"
+            onToggle={() => setIsFormOpen(v => !v)}
+          />
 
           {isFormOpen && (
             <div className="bg-white rounded-[24px] border border-rose-100 shadow-sm p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
@@ -152,7 +138,7 @@ export default function EtcPage() {
                       <p className="text-[14px] font-black text-slate-800 mt-1">{item.name}</p>
                       <p className="text-[10px] font-bold text-slate-300">{item.purchaseDate.replace(/-/g, ".")} 매입</p>
                     </div>
-                    <button onClick={() => handleRemove(item.id)}
+                    <button onClick={() => removeItem(item.id)}
                       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -174,10 +160,7 @@ export default function EtcPage() {
           </div>
 
           {items.length === 0 && (
-            <div className="py-16 text-center text-slate-300 bg-white rounded-[24px] border border-dashed border-slate-200">
-              <Package className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p className="text-sm font-bold">등록된 기타 자산이 없습니다</p>
-            </div>
+            <AssetEmptyState icon={Package} message="등록된 기타 자산이 없습니다" />
           )}
         </section>
       </main>

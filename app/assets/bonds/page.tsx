@@ -1,39 +1,29 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { ScrollText, Plus, Trash2 } from "lucide-react"
+import { ScrollText, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
-
-// =============================================================================
-// 📜 /assets/bonds — 채권 보유현황
-// =============================================================================
+import { useLocalItems } from "@/hooks/use-local-items"
+import { AssetEmptyState } from "@/components/dukgu/asset-empty-state"
+import { AssetSectionHeader } from "@/components/dukgu/asset-section-header"
 
 interface BondItem {
   id: string
   name: string
-  issuer: string       // 발행기관
-  faceValue: number    // 액면가 (원)
-  quantity: number     // 보유 수량
-  couponRate: number   // 쿠폰금리 (%)
-  purchasePrice: number // 매입단가 (원)
-  maturityDate: string // 만기일
-  purchaseDate: string // 매입일
-}
-
-const STORAGE_KEY = "dukgu:bond-holdings"
-function load(): BondItem[] {
-  if (typeof window === "undefined") return []
-  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : [] } catch { return [] }
-}
-function save(items: BondItem[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)) } catch {}
+  issuer: string
+  faceValue: number
+  quantity: number
+  couponRate: number
+  purchasePrice: number
+  maturityDate: string
+  purchaseDate: string
 }
 
 const today = new Date().toISOString().split("T")[0]
 
 export default function BondsPage() {
-  const [items, setItems] = useState<BondItem[]>(() => load())
+  const { items, addItem, removeItem } = useLocalItems<BondItem>("dukgu:bond-holdings")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [form, setForm] = useState({
     name: "", issuer: "", faceValue: "", quantity: "",
@@ -42,11 +32,8 @@ export default function BondsPage() {
 
   const totalInvested = useMemo(() => items.reduce((acc, i) => acc + i.purchasePrice * i.quantity, 0), [items])
   const totalFaceValue = useMemo(() => items.reduce((acc, i) => acc + i.faceValue * i.quantity, 0), [items])
-
-  // 연간 쿠폰 수익
   const annualCoupon = useMemo(() =>
-    items.reduce((acc, i) => acc + i.faceValue * i.quantity * (i.couponRate / 100), 0),
-    [items]
+    items.reduce((acc, i) => acc + i.faceValue * i.quantity * (i.couponRate / 100), 0), [items]
   )
 
   const handleAdd = () => {
@@ -55,21 +42,15 @@ export default function BondsPage() {
     const rate = parseFloat(form.couponRate)
     const pp = parseFloat(form.purchasePrice)
     if (!form.name.trim() || isNaN(fv) || isNaN(qty) || isNaN(rate) || isNaN(pp) || !form.maturityDate) {
-      toast.error("모든 필수 항목을 올바르게 입력해주세요.")
-      return
+      toast.error("모든 필수 항목을 올바르게 입력해주세요."); return
     }
-    const updated = [...items, {
+    addItem({
       id: `bd-${Date.now()}`, name: form.name.trim(), issuer: form.issuer.trim(),
       faceValue: fv, quantity: qty, couponRate: rate, purchasePrice: pp,
       maturityDate: form.maturityDate, purchaseDate: form.purchaseDate,
-    }]
-    setItems(updated); save(updated)
+    })
     setForm({ name: "", issuer: "", faceValue: "", quantity: "", couponRate: "", purchasePrice: "", maturityDate: "", purchaseDate: today })
     setIsFormOpen(false)
-  }
-
-  const handleRemove = (id: string) => {
-    const updated = items.filter((i) => i.id !== id); setItems(updated); save(updated)
   }
 
   const fmt = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}원`
@@ -104,16 +85,13 @@ export default function BondsPage() {
         </section>
 
         <section className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
-              <span className="w-1.5 h-4 bg-indigo-500 rounded-full" />
-              보유 채권 ({items.length})
-            </h3>
-            <button onClick={() => setIsFormOpen((v) => !v)}
-              className="text-[11px] font-bold text-indigo-600 flex items-center gap-1 bg-indigo-50 px-2.5 py-1 rounded-full transition-all active:scale-95">
-              <Plus className="w-3 h-3" /> 추가
-            </button>
-          </div>
+          <AssetSectionHeader
+            title="보유 채권"
+            count={items.length}
+            barClass="bg-indigo-500"
+            buttonClass="text-indigo-600 bg-indigo-50"
+            onToggle={() => setIsFormOpen(v => !v)}
+          />
 
           {isFormOpen && (
             <div className="bg-white rounded-[24px] border border-indigo-100 shadow-sm p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
@@ -147,7 +125,6 @@ export default function BondsPage() {
           <div className="grid gap-3">
             {items.map((item) => {
               const coupon = item.faceValue * item.quantity * (item.couponRate / 100)
-              const pnl = (item.faceValue - item.purchasePrice) * item.quantity
               const left = daysLeft(item.maturityDate)
               return (
                 <div key={item.id} className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 group">
@@ -156,7 +133,7 @@ export default function BondsPage() {
                       <p className="text-[14px] font-black text-slate-800">{item.name}</p>
                       <p className="text-[11px] font-bold text-slate-400">{item.issuer}</p>
                     </div>
-                    <button onClick={() => handleRemove(item.id)}
+                    <button onClick={() => removeItem(item.id)}
                       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -176,10 +153,7 @@ export default function BondsPage() {
           </div>
 
           {items.length === 0 && (
-            <div className="py-16 text-center text-slate-300 bg-white rounded-[24px] border border-dashed border-slate-200">
-              <ScrollText className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p className="text-sm font-bold">보유 채권이 없습니다</p>
-            </div>
+            <AssetEmptyState icon={ScrollText} message="보유 채권이 없습니다" />
           )}
         </section>
       </main>

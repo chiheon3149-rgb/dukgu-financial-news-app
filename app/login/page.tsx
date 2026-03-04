@@ -9,7 +9,8 @@ export default function LoginPage() {
   const router = useRouter()
   const [loginError, setLoginError] = useState<string | null>(null)
   const [isEmailVisible, setIsEmailVisible] = useState(false) // 💡 토글 상태 추가
-  
+  const [isKakaoInApp, setIsKakaoInApp] = useState(false)
+
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
@@ -17,9 +18,23 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search)
     const err = params.get("error")
     if (err) setLoginError(decodeURIComponent(err))
+
+    // 카카오톡 인앱 브라우저 감지 (useEffect 내에서 실행 → SSR 안전)
+    setIsKakaoInApp(/KAKAOTALK/i.test(navigator.userAgent))
   }, [])
 
   const handleGoogleLogin = async () => {
+    if (isKakaoInApp) {
+      const cleanUrl = `${window.location.origin}${window.location.pathname}`
+      window.location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(cleanUrl)}`
+
+      // 스킴이 실패하면 페이지가 그대로 → 2초 후 안내 메시지 표시
+      setTimeout(() => {
+        setLoginError("외부 브라우저(크롬/사파리)에서 구글 로그인을 이용해주세요")
+      }, 2000)
+      return
+    }
+
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },

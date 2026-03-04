@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from "react"
-import type { UserProfile, XpEvent, XpSource } from "@/types"
+import type { UserProfile, XpSource } from "@/types"
 import { LEVEL_TABLE, getLevelMeta } from "@/lib/mock/user"
 import { supabase } from "@/lib/supabase"
 
@@ -108,9 +108,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         if (path !== '/onboarding' && !path.startsWith('/auth')) {
           window.location.href = '/onboarding'
         }
-      } 
-      else if (authUser && profile && path === '/onboarding') {
+      } else if (authUser && profile && path === '/onboarding') {
         window.location.href = '/'
+      } else if (!authUser) {
+        // 비로그인 상태에서 보호된 경로에 있을 경우 로그인으로
+        const PROTECTED = ['/mypage', '/assets/stocks', '/assets/realestate', '/assets/crypto', '/assets/gold', '/assets/cash', '/assets/savings', '/assets/bonds', '/assets/history']
+        if (PROTECTED.some(p => path.startsWith(p))) {
+          window.location.href = `/login?next=${encodeURIComponent(path)}`
+        }
       }
     }
   }, [isLoading, authUser, profile])
