@@ -19,14 +19,18 @@ export async function GET(request: NextRequest) {
   try {
     const allQuotes = await yahooSearch(q)
 
-    // 주식(Equity)과 ETF만 필터링
+    // 주식(Equity)과 ETF 필터링 (대소문자 무관, 국내외 다양한 typeDisp 대응)
+    const ALLOWED_TYPES = ["equity", "etf", "fund"]
     const quotes = allQuotes
-      .filter((q: any) => q.typeDisp === "Equity" || q.typeDisp === "ETF")
+      .filter((q: any) => {
+        const t = (q.typeDisp ?? q.quoteType ?? "").toLowerCase()
+        return ALLOWED_TYPES.some(a => t.includes(a))
+      })
       .map((q: any) => ({
         symbol: q.symbol,
         shortname: q.shortname ?? q.longname ?? q.symbol,
         exchDisp: q.exchDisp ?? "",
-        typeDisp: q.typeDisp ?? "",
+        typeDisp: q.typeDisp ?? q.quoteType ?? "",
       }))
 
     return NextResponse.json({ quotes })

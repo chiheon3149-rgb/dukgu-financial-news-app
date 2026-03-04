@@ -82,17 +82,25 @@ export async function yahooFetch(symbols: string[], retried = false): Promise<an
 }
 
 /**
- * Yahoo Finance 검색 API (crumb 불필요)
+ * Yahoo Finance 검색 API (crumb 인증 포함)
  */
 export async function yahooSearch(query: string): Promise<any[]> {
-  const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`
+  const { crumb, cookies } = await getCrumb()
+  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false&crumb=${encodeURIComponent(crumb)}`
 
   const res = await fetch(url, {
-    headers: { "User-Agent": UA, "Accept": "application/json" },
-    next: { revalidate: 5 },
+    headers: {
+      "User-Agent": UA,
+      "Accept": "application/json",
+      "Cookie": cookies,
+      "Referer": "https://finance.yahoo.com/",
+    },
+    cache: "no-store",
   })
 
   if (!res.ok) throw new Error(`Yahoo Finance 검색 오류: ${res.status}`)
   const data = await res.json()
-  return data?.quotes ?? []
+
+  // Yahoo 응답 구조가 버전에 따라 다를 수 있어서 두 형식 모두 처리
+  return data?.quotes ?? data?.finance?.result?.[0]?.quotes ?? []
 }
