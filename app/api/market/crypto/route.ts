@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { yahooFetch } from "@/lib/yahoo-finance"
 
 // =============================================================================
 // 📡 /api/market/crypto?symbols=BTC-USD,ETH-USD
@@ -15,8 +16,6 @@ import { NextRequest, NextResponse } from "next/server"
 //   DOGE-USD — 도지코인
 // =============================================================================
 
-const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote"
-
 const MOCK_CRYPTO: Record<string, { price: number; changeRate: number; name: string }> = {
   "BTC-USD":  { price: 96450.50, changeRate:  2.14, name: "비트코인"  },
   "ETH-USD":  { price:  2720.30, changeRate:  1.85, name: "이더리움"  },
@@ -26,23 +25,6 @@ const MOCK_CRYPTO: Record<string, { price: number; changeRate: number; name: str
   "DOGE-USD": { price:     0.23, changeRate: -0.88, name: "도지코인"  },
   "BNB-USD":  { price:   605.40, changeRate:  0.34, name: "바이낸스"  },
   "AVAX-USD": { price:    38.20, changeRate: -2.10, name: "아발란체"  },
-}
-
-async function fetchFromYahoo(symbols: string[]) {
-  const symbolsParam = encodeURIComponent(symbols.join(","))
-  const url = `${YAHOO_QUOTE_URL}?symbols=${symbolsParam}&fields=regularMarketPrice,regularMarketChangePercent,shortName`
-
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-      "Accept": "application/json",
-    },
-    next: { revalidate: 30 },
-  })
-
-  if (!res.ok) throw new Error(`Yahoo Finance 응답 오류: ${res.status}`)
-  const json = await res.json()
-  return json?.quoteResponse?.result ?? []
 }
 
 export async function GET(req: NextRequest) {
@@ -56,7 +38,7 @@ export async function GET(req: NextRequest) {
   const symbols = symbolsParam.split(",").map((s) => s.trim()).filter(Boolean)
 
   try {
-    const raw = await fetchFromYahoo(symbols)
+    const raw = await yahooFetch(symbols)
     const quotes = raw.map((q: any) => {
       const rate: number = q.regularMarketChangePercent ?? 0
       return {

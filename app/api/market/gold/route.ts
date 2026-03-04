@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { yahooFetch } from "@/lib/yahoo-finance"
 
 // =============================================================================
 // 📡 /api/market/gold
@@ -15,26 +16,9 @@ import { NextResponse } from "next/server"
 
 const TROY_OZ_TO_GRAM = 31.1035
 
-async function fetchGoldAndFx() {
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=GC%3DF%2CKRW%3DX&fields=regularMarketPrice,currency`
-
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-      "Accept": "application/json",
-    },
-    next: { revalidate: 60 }, // 금 가격은 1분 캐시
-  })
-
-  if (!res.ok) throw new Error(`Yahoo Finance 응답 오류: ${res.status}`)
-
-  const json = await res.json()
-  return json?.quoteResponse?.result ?? []
-}
-
 export async function GET() {
   try {
-    const quotes = await fetchGoldAndFx()
+    const quotes = await yahooFetch(["GC=F", "KRW=X"])
 
     const goldQuote = quotes.find((q: any) => q.symbol === "GC=F")
     const fxQuote   = quotes.find((q: any) => q.symbol === "KRW=X")
@@ -43,9 +27,9 @@ export async function GET() {
       return NextResponse.json({ error: "금 시세 조회 실패" }, { status: 502 })
     }
 
-    const goldPriceUsdPerOz: number  = goldQuote.regularMarketPrice ?? 0
-    const usdToKrwRate: number       = fxQuote?.regularMarketPrice ?? 1360
-    const goldChangePct: number      = goldQuote.regularMarketChangePercent ?? 0
+    const goldPriceUsdPerOz: number = goldQuote.regularMarketPrice ?? 0
+    const usdToKrwRate: number      = fxQuote?.regularMarketPrice ?? 1360
+    const goldChangePct: number     = goldQuote.regularMarketChangePercent ?? 0
 
     const pricePerGramUsd = goldPriceUsdPerOz / TROY_OZ_TO_GRAM
     const pricePerGramKrw = Math.round(pricePerGramUsd * usdToKrwRate)
@@ -55,15 +39,11 @@ export async function GET() {
       pricePerGramKrw,
       usdToKrwRate,
       changeRate: goldChangePct,
-      changeStatus:
-        goldChangePct > 0 ? "up" : goldChangePct < 0 ? "down" : "same",
+      changeStatus: goldChangePct > 0 ? "up" : goldChangePct < 0 ? "down" : "same",
       fetchedAt: new Date().toISOString(),
     })
   } catch (err) {
     console.error("[market/gold] 오류:", err)
-    return NextResponse.json(
-      { error: "금 시세 조회에 실패했습니다." },
-      { status: 502 }
-    )
+    return NextResponse.json({ error: "금 시세 조회에 실패했습니다." }, { status: 502 })
   }
 }
