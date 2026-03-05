@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { Mail, Lock } from "lucide-react" // 💡 아이콘 추가
+import { Mail, Lock } from "lucide-react"
+// 💡 [수정 1] Next.js의 이미지 최적화 도구를 불러옵니다.
+import Image from "next/image"
 
 export default function LoginPage() {
   const router = useRouter()
   const [loginError, setLoginError] = useState<string | null>(null)
-  const [isEmailVisible, setIsEmailVisible] = useState(false) // 💡 토글 상태 추가
+  const [isEmailVisible, setIsEmailVisible] = useState(false)
   const [isKakaoInApp, setIsKakaoInApp] = useState(false)
 
   const emailRef = useRef<HTMLInputElement>(null)
@@ -19,7 +21,6 @@ export default function LoginPage() {
     const err = params.get("error")
     if (err) setLoginError(decodeURIComponent(err))
 
-    // 카카오톡 인앱 브라우저 감지 (useEffect 내에서 실행 → SSR 안전)
     setIsKakaoInApp(/KAKAOTALK/i.test(navigator.userAgent))
   }, [])
 
@@ -28,7 +29,6 @@ export default function LoginPage() {
       const cleanUrl = `${window.location.origin}${window.location.pathname}`
       window.location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(cleanUrl)}`
 
-      // 스킴이 실패하면 페이지가 그대로 → 2초 후 안내 메시지 표시
       setTimeout(() => {
         setLoginError("외부 브라우저(크롬/사파리)에서 구글 로그인을 이용해주세요")
       }, 2000)
@@ -69,8 +69,17 @@ export default function LoginPage() {
       {/* 로고 영역 */}
       <div className="mb-10 text-center">
         <div className="flex justify-center mb-3">
-          <div className="w-24 h-24 rounded-[28px] bg-emerald-50 border-2 border-emerald-100 flex items-center justify-center shadow-sm">
-            <span className="text-5xl select-none">🐱</span>
+          {/* 💡 [수정 2] 배경색(bg-emerald-50)과 테두리(border)를 없애고 이미지만 깔끔하게 보여주도록 껍데기를 수정했습니다. */}
+          <div className="relative w-24 h-24 flex items-center justify-center">
+            {/* 💡 [수정 3] 이모지 대신 Image 태그를 넣습니다. src 경로에 주의하세요! 모서리 곡률(rounded-2xl) 추가됨 */}
+            <Image 
+              src="/apple-icon.png" 
+              alt="덕구 로고" 
+              width={96} 
+              height={96} 
+              className="object-contain drop-shadow-sm rounded-2xl"
+              priority
+            />
           </div>
         </div>
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-1.5">
@@ -98,7 +107,7 @@ export default function LoginPage() {
           <span className="text-[15px] font-black text-[#3C1E1E]">카카오로 시작하기</span>
         </button>
 
-        {/* 💡 구글 크롤러가 찾기 쉬운 이메일 로그인 버튼 */}
+        {/* 이메일 로그인 버튼 */}
         {!isEmailVisible ? (
           <button 
             onClick={() => setIsEmailVisible(true)}
@@ -114,7 +123,7 @@ export default function LoginPage() {
                 <input 
                   ref={emailRef}
                   type="email" 
-                  name="email" // 💡 크롤러가 필드를 인식하도록 name 추가
+                  name="email"
                   placeholder="Email ID" 
                   className="w-full text-[13px] py-3 pl-10 pr-4 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-300 transition-all font-medium"
                 />
@@ -124,7 +133,7 @@ export default function LoginPage() {
                 <input 
                   ref={passwordRef}
                   type="password" 
-                  name="password" // 💡 크롤러가 필드를 인식하도록 name 추가
+                  name="password"
                   placeholder="Password" 
                   className="w-full text-[13px] py-3 pl-10 pr-4 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-300 transition-all font-medium"
                 />
