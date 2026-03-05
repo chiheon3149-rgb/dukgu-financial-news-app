@@ -23,7 +23,7 @@ export const metadata: Metadata = {
       'naver-site-verification': 'b16874540c6463742d69cd200393d57d7de1cf25',
     },
   },
-  // 💡 [추가된 부분] 카카오톡 공유 미리보기 및 네이버 검색 로봇을 위한 OG 데이터
+  // 💡 [수정된 부분] images 항목을 추가하여 카톡 미리보기 이미지를 연결했습니다.
   openGraph: {
     title: 'DUKGU - 금융 뉴스 커뮤니티',
     description: '매일 아침, 당신을 위한 금융 뉴스 브리핑',
@@ -31,6 +31,14 @@ export const metadata: Metadata = {
     siteName: 'DUKGU',
     locale: 'ko_KR',
     type: 'website',
+    images: [
+      {
+        url: 'https://dukgu.kr/og-image.png', // 💡 절대 경로를 적어주는 게 가장 확실합니다!
+        width: 1200,
+        height: 630,
+        alt: '덕구의 뉴스곳간 메인 이미지',
+      },
+    ],
   },
 }
 
