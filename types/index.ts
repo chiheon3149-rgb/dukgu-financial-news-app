@@ -163,6 +163,9 @@ export interface TradeRecord {
   memo?: string
 }
 
+/** 배당 세금 유형 */
+export type DividendTaxType = "gross" | "withholding" | "exempt"
+
 /** 배당 수령 기록 */
 export interface DividendRecord {
   id: string
@@ -173,6 +176,8 @@ export interface DividendRecord {
   /** 수령 당시 보유 수량 */
   sharesHeld: number
   currency: "KRW" | "USD"
+  /** 세전(gross) / 세후 15.4%(withholding) / 비과세(exempt) */
+  taxType?: DividendTaxType
 }
 
 /** 보유 주식 한 종목 전체 */

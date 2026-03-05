@@ -70,10 +70,11 @@ export function useStockDetail(accountId: string, ticker: string) {
   const addTrade = (trade: Omit<TradeRecord, "id">) => context.addTrade(accountId, ticker, trade)
   const removeTrade = (tradeId: string) => context.removeTrade(accountId, ticker, tradeId)
   
-  // 💡 [신규 추가] 메모 수정을 위한 중간 다리 함수
-  const updateTrade = (tradeId: string, memo: string) => context.updateTrade(accountId, ticker, tradeId, memo)
+  const updateTrade = (tradeId: string, data: { date: string; type: "buy" | "sell"; price: number; quantity: number; memo?: string }) =>
+    context.updateTrade(accountId, ticker, tradeId, data)
 
   const addDividend = (dividend: Omit<DividendRecord, "id">) => context.addDividend(accountId, ticker, dividend)
+  const updateDividend = (dividendId: string, data: Omit<DividendRecord, "id">) => context.updateDividend(accountId, ticker, dividendId, data)
   const removeDividend = (dividendId: string) => context.removeDividend(accountId, ticker, dividendId)
 
   return {
@@ -84,8 +85,9 @@ export function useStockDetail(accountId: string, ticker: string) {
     isLoadingPrice,
     addTrade,
     removeTrade,
-    updateTrade, // 👈 💡 이제 화면(Page)에서 이 기능을 갖다 쓸 수 있습니다!
+    updateTrade,
     addDividend,
-    removeDividend
+    updateDividend,
+    removeDividend,
   }
 }

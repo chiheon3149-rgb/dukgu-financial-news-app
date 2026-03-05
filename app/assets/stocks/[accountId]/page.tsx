@@ -60,6 +60,14 @@ export default function AccountDetailPage({ params }: { params: Promise<{ accoun
     return acc + (row.holding.currency === "KRW" ? row.currentValue : row.currentValue * usdToKrw)
   }, 0)
 
+  const totalInvestedKrw = rows.reduce((acc, row) => {
+    return acc + (row.holding.currency === "KRW" ? row.stats.totalInvested : row.stats.totalInvested * usdToKrw)
+  }, 0)
+  const totalPnlKrw = totalValueKrw - totalInvestedKrw
+  const totalReturnRate = totalInvestedKrw > 0 ? (totalPnlKrw / totalInvestedKrw) * 100 : 0
+  const isAccountUp = totalPnlKrw > 0
+  const isAccountDown = totalPnlKrw < 0
+
   return (
     <div className="min-h-screen bg-slate-50 pb-32">
       <DetailHeader
@@ -84,6 +92,16 @@ export default function AccountDetailPage({ params }: { params: Promise<{ accoun
                 <p className="text-3xl font-black text-slate-900 tracking-tighter truncate">
                   {formatCurrency(totalValueKrw, "KRW")}
                 </p>
+                {totalInvestedKrw > 0 && (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className={`text-[13px] font-black ${isAccountUp ? "text-rose-500" : isAccountDown ? "text-blue-500" : "text-slate-400"}`}>
+                      {totalPnlKrw >= 0 ? "+" : ""}{formatCurrency(totalPnlKrw, "KRW")}
+                    </span>
+                    <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-md ${isAccountUp ? "bg-rose-50 text-rose-500" : isAccountDown ? "bg-blue-50 text-blue-500" : "bg-slate-50 text-slate-400"}`}>
+                      {totalReturnRate >= 0 ? "+" : ""}{totalReturnRate.toFixed(2)}%
+                    </span>
+                  </div>
+                )}
               </div>
               
               <button 

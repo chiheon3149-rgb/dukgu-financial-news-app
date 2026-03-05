@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { toast } from "sonner"
-import type { StockHolding, TradeRecord, DividendRecord } from "@/types"
+import type { StockHolding, TradeRecord, DividendRecord, DividendTaxType } from "@/types"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@/context/user-context"
 
@@ -16,9 +16,9 @@ interface StockPortfolioContextValue {
   removeHolding: (accountId: string, ticker: string) => void
   addTrade: (accountId: string, ticker: string, trade: Omit<TradeRecord, "id">) => void
   removeTrade: (accountId: string, ticker: string, tradeId: string) => void
-  // 💡 [수정] 메모 수정을 위한 인터페이스를 설계도에 명시적으로 추가했습니다.
-  updateTrade: (accountId: string, ticker: string, tradeId: string, memo: string) => Promise<void>
+  updateTrade: (accountId: string, ticker: string, tradeId: string, data: { date: string; type: "buy" | "sell"; price: number; quantity: number; memo?: string }) => Promise<void>
   addDividend: (accountId: string, ticker: string, dividend: Omit<DividendRecord, "id">) => void
+  updateDividend: (accountId: string, ticker: string, dividendId: string, data: Omit<DividendRecord, "id">) => Promise<void>
   removeDividend: (accountId: string, ticker: string, dividendId: string) => void
   getHolding: (accountId: string, ticker: string) => StockHolding | null
 }
@@ -70,6 +70,7 @@ export function StockPortfolioProvider({ children }: { children: ReactNode }) {
               amountPerShare: Number(d.amount_per_share),
               sharesHeld: Number(d.shares_held),
               currency: d.currency as "KRW" | "USD",
+              taxType: (d.tax_type || "gross") as "gross" | "withholding" | "exempt",
             })),
         }))
 
@@ -123,27 +124,26 @@ export function StockPortfolioProvider({ children }: { children: ReactNode }) {
     } catch (error) { toast.error("저장 실패") }
   }, [holdings, profile?.id])
 
-  // 💡 5️⃣ [UPDATE] 매매 내역 (메모) 수정 기능 구현
-  const updateTrade = useCallback(async (accountId: string, ticker: string, tradeId: string, memo: string) => {
+  // 💡 5️⃣ [UPDATE] 매매 내역 전체 수정
+  const updateTrade = useCallback(async (accountId: string, ticker: string, tradeId: string, data: { date: string; type: "buy" | "sell"; price: number; quantity: number; memo?: string }) => {
     try {
       const { error } = await supabase
         .from("asset_stock_trades")
-        .update({ memo }) // 💡 DB 원장 수정
+        .update({ trade_date: data.date, trade_type: data.type, price: data.price, quantity: data.quantity, memo: data.memo || null })
         .eq("id", tradeId)
 
       if (error) throw error
 
-      // 💡 로컬 상태 업데이트 (화면 즉시 반영)
       setHoldings((prev) =>
         prev.map((h) =>
           h.accountId === accountId && h.ticker === ticker
-            ? { ...h, trades: h.trades.map((t) => (t.id === tradeId ? { ...t, memo } : t)) }
+            ? { ...h, trades: h.trades.map((t) => (t.id === tradeId ? { ...t, date: data.date, type: data.type, price: data.price, quantity: data.quantity, memo: data.memo } : t)) }
             : h
         )
       )
-      toast.success("메모가 수정되었습니다.")
+      toast.success("매매 내역이 수정되었습니다.")
     } catch (error) {
-      toast.error("메모 수정 중 오류가 발생했습니다.")
+      toast.error("수정 중 오류가 발생했습니다.")
     }
   }, [])
 
@@ -164,7 +164,7 @@ export function StockPortfolioProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from("asset_stock_dividends")
-        .insert({ user_id: profile.id, holding_id: target.id, dividend_date: dividend.date, amount_per_share: dividend.amountPerShare, shares_held: dividend.sharesHeld, currency: dividend.currency })
+        .insert({ user_id: profile.id, holding_id: target.id, dividend_date: dividend.date, amount_per_share: dividend.amountPerShare, shares_held: dividend.sharesHeld, currency: dividend.currency, tax_type: dividend.taxType || "gross" })
         .select().single()
 
       if (error) throw error
@@ -173,7 +173,30 @@ export function StockPortfolioProvider({ children }: { children: ReactNode }) {
     } catch (error) { toast.error("저장 실패") }
   }, [holdings, profile?.id])
 
-  // 8️⃣ [DELETE] 배당 내역 삭제
+  // 8️⃣-1 [UPDATE] 배당 내역 수정
+  const updateDividend = useCallback(async (accountId: string, ticker: string, dividendId: string, data: Omit<DividendRecord, "id">) => {
+    try {
+      const { error } = await supabase
+        .from("asset_stock_dividends")
+        .update({ dividend_date: data.date, amount_per_share: data.amountPerShare, shares_held: data.sharesHeld, currency: data.currency, tax_type: data.taxType || "gross" })
+        .eq("id", dividendId)
+
+      if (error) throw error
+
+      setHoldings((prev) =>
+        prev.map((h) =>
+          h.accountId === accountId && h.ticker === ticker
+            ? { ...h, dividends: h.dividends.map((d) => (d.id === dividendId ? { ...d, ...data } : d)) }
+            : h
+        )
+      )
+      toast.success("배당 내역이 수정되었습니다.")
+    } catch (error) {
+      toast.error("수정 중 오류가 발생했습니다.")
+    }
+  }, [])
+
+  // 8️⃣-2 [DELETE] 배당 내역 삭제
   const removeDividend = useCallback(async (accountId: string, ticker: string, dividendId: string) => {
     try {
       await supabase.from("asset_stock_dividends").delete().eq("id", dividendId)
@@ -187,7 +210,7 @@ export function StockPortfolioProvider({ children }: { children: ReactNode }) {
 
   return (
     <StockPortfolioContext.Provider
-      value={{ holdings, addHolding, removeHolding, addTrade, removeTrade, updateTrade, addDividend, removeDividend, getHolding }}
+      value={{ holdings, addHolding, removeHolding, addTrade, removeTrade, updateTrade, addDividend, updateDividend, removeDividend, getHolding }}
     >
       {children}
     </StockPortfolioContext.Provider>
