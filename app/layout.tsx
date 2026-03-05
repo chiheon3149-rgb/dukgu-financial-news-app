@@ -14,16 +14,25 @@ const notoSansKR = Noto_Sans_KR({
   variable: '--font-noto',
 });
 
-// [수정 포인트] Metadata API를 사용하여 네이버 소유 확인과 Open Graph 명함을 추가했습니다.
+// [Metadata] SEO 및 소셜 공유, 파비콘 설정을 관리합니다.
 export const metadata: Metadata = {
   title: 'DUKGU - 금융 뉴스 커뮤니티',
   description: '매일 아침, 당신을 위한 금융 뉴스 브리핑',
+  
+  // 💡 [수정] 직접 만드신 favicon.ico를 가장 먼저 인식하도록 순서를 조정했습니다.
+  icons: {
+    icon: '/favicon.ico',          // 브라우저 탭 및 검색 결과용 표준 아이콘
+    shortcut: '/favicon.ico',      // 즐겨찾기 아이콘
+    apple: '/apple-icon.png',      // 아이폰 홈화면용 (이미지가 더 고해상도라 그대로 둠)
+  },
+
   verification: {
     other: {
       'naver-site-verification': 'b16874540c6463742d69cd200393d57d7de1cf25',
     },
   },
-  // 💡 [수정된 부분] images 항목을 추가하여 카톡 미리보기 이미지를 연결했습니다.
+
+  // 오픈 그래프: 카카오톡/페이스북 공유 시 보이는 카드 정보
   openGraph: {
     title: 'DUKGU - 금융 뉴스 커뮤니티',
     description: '매일 아침, 당신을 위한 금융 뉴스 브리핑',
@@ -33,7 +42,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: 'https://dukgu.kr/og-image.png', // 💡 절대 경로를 적어주는 게 가장 확실합니다!
+        url: 'https://dukgu.kr/og-image.png',
         width: 1200,
         height: 630,
         alt: '덕구의 뉴스곳간 메인 이미지',
