@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Bitcoin, TrendingUp, TrendingDown, Plus, RefreshCw, AlertCircle, Loader2 } from "lucide-react"
+import { Bitcoin, TrendingUp, TrendingDown, Plus, RefreshCw, AlertCircle, Loader2, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { AddCryptoSheet } from "@/components/dukgu/add-crypto-sheet"
 import { useCryptoPortfolio } from "@/hooks/use-crypto-portfolio"
@@ -15,7 +16,7 @@ const COIN_EMOJI: Record<string, string> = {
 
 export default function CryptoPage() {
   const usdToKrw = useExchangeRate()
-  const { rows, totalValueUsd, isLoadingPrices, priceError, addHolding } = useCryptoPortfolio()
+  const { rows, totalValueUsd, isLoadingPrices, priceError, addHolding, removeHolding } = useCryptoPortfolio()
   const [isCryptoSheetOpen, setIsCryptoSheetOpen] = useState(false)
   const totalValueKrw = Math.round(totalValueUsd * usdToKrw)
 
@@ -82,7 +83,7 @@ export default function CryptoPage() {
                 <Link
                   key={holding.symbol}
                   href={`/assets/crypto/${encodeURIComponent(holding.symbol)}`}
-                  className="flex items-center justify-between p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm hover:border-amber-200 hover:shadow-md transition-all group active:scale-[0.98]"
+                  className="relative flex items-center justify-between p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm hover:border-amber-200 hover:shadow-md transition-all group active:scale-[0.98]"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-black ${
@@ -98,17 +99,33 @@ export default function CryptoPage() {
                       <p className="text-[11px] font-bold text-slate-400">{holding.name}</p>
                     </div>
                   </div>
-                  <div className="text-right space-y-1">
-                    <p className="text-[14px] font-black text-slate-800">
-                      {isLoadingPrices
-                        ? <span className="text-slate-200 animate-pulse">----</span>
-                        : `$${currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                    </p>
-                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md inline-block ${
-                      isUp ? "text-rose-500 bg-rose-50" : isDown ? "text-blue-500 bg-blue-50" : "text-slate-400 bg-slate-50"
-                    }`}>
-                      {returnRate >= 0 ? "+" : ""}{returnRate.toFixed(2)}%
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right space-y-1">
+                      <p className="text-[14px] font-black text-slate-800">
+                        {isLoadingPrices
+                          ? <span className="text-slate-200 animate-pulse">----</span>
+                          : `$${currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                      </p>
+                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md inline-block ${
+                        isUp ? "text-rose-500 bg-rose-50" : isDown ? "text-blue-500 bg-blue-50" : "text-slate-400 bg-slate-50"
+                      }`}>
+                        {returnRate >= 0 ? "+" : ""}{returnRate.toFixed(2)}%
+                      </span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        toast(`'${holding.name}' 코인을 삭제하시겠습니까?`, {
+                          description: "모든 거래 내역이 함께 삭제됩니다.",
+                          action: { label: "삭제", onClick: () => removeHolding(holding.symbol) },
+                          cancel: { label: "취소", onClick: () => {} },
+                        })
+                      }}
+                      className="p-2 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </Link>
               )

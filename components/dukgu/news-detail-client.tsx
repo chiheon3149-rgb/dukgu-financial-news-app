@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-// 💡 [수정 1] Edit2(수정), Trash2(삭제) 아이콘을 추가로 불러옵니다.
 import { Home, ExternalLink, Clock, Globe, Bookmark, Share2, Loader2, Eye, Edit2, Trash2 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
@@ -16,8 +15,10 @@ import { supabase } from "@/lib/supabase"
 import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
 import { useUser } from "@/context/user-context"
-// 💡 [수정 2] 뉴스를 삭제하기 위해 우리가 만든 도구함을 불러옵니다.
 import { useNewsAdmin } from "@/hooks/use-news-admin"
+
+// 💡 [추가] 우리가 만든 애드센스 배너 컴포넌트를 불러옵니다!
+import { AdBanner } from "@/components/dukgu/ad-banner"
 
 interface NewsDetail {
   id: string
@@ -36,7 +37,6 @@ interface NewsDetail {
   view_count: number
 }
 
-/** 💡 시간 포맷팅: YYYY-MM-DD HH:mm */
 function formatDate(iso: string): string {
   const d = new Date(iso)
   const y = d.getFullYear()
@@ -47,7 +47,6 @@ function formatDate(iso: string): string {
   return `${y}-${m}-${day} ${h}:${min}`
 }
 
-/** 💡 상대 시간 표시: n분 전, n시간 전 등 */
 function getTimeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const minutes = Math.floor(diff / 60000)
@@ -66,17 +65,14 @@ export function NewsDetailClient({ id }: { id: string }) {
   const [liveCommentCount, setLiveCommentCount] = useState(0)
   const { isSaved, toggleSave } = useSavedArticles()
 
-  // 💡 [수정 3] 관리자 권한 확인 및 삭제 도구 꺼내기
   const { deleteNews } = useNewsAdmin()
   const isAdmin = profile?.is_admin === true
 
-  // 💡 [핵심] 조회수 중복 방지: 입구에서 바로 사인을 하고 문을 잠급니다.
   const hasIncremented = useRef(false);
 
   useEffect(() => {
-    // 💡 [수정] 비동기 함수(load) 밖에서 즉시 체크하고 잠급니다.
     if (!id || hasIncremented.current) return;
-    hasIncremented.current = true; // "나 조회수 올리러 들어간다!" 하고 즉시 사인
+    hasIncremented.current = true; 
 
     const load = async () => {
       const { data, error } = await supabase
@@ -87,18 +83,13 @@ export function NewsDetailClient({ id }: { id: string }) {
       
       if (error || !data) {
         setNews(null)
-        // 만약 에러로 실패했다면 나중에 다시 시도할 수 있게 열어줄 수 있습니다.
-        // hasIncremented.current = false; 
         return
       }
 
       setNews(data)
       setLiveCommentCount(data.comment_count ?? 0)
-      
-      // UI 즉시 반영 (DB 값 + 1)
       setLiveViewCount((data.view_count ?? 0) + 1)
       
-      // DB RPC 함수 호출 (송장 이름: target_news_id)
       try {
         await supabase.rpc('increment_news_view_count', { target_news_id: id })
       } catch (rpcError) {
@@ -109,14 +100,13 @@ export function NewsDetailClient({ id }: { id: string }) {
     load()
   }, [id])
 
-  // 💡 [수정 4] 관리자용 삭제 실행 함수
   const handleDelete = async () => {
     if (!window.confirm("정말 이 뉴스를 삭제하시겠습니까? (복구 불가) 🚨")) return;
     
     try {
       await deleteNews(id)
       toast.success("뉴스가 깔끔하게 삭제되었다냥! 🗑️")
-      router.replace("/") // 삭제 후 피드(홈)로 이동
+      router.replace("/") 
     } catch (error) {
       console.error("삭제 에러:", error)
       toast.error("삭제 중 오류가 발생했다냥.")
@@ -179,7 +169,6 @@ export function NewsDetailClient({ id }: { id: string }) {
         title="뉴스 상세"
         rightElement={
           <div className="flex items-center gap-1">
-            {/* 💡 [수정 5] 관리자에게만 보이는 비밀 메뉴 (수정 / 삭제) */}
             {isAdmin && (
               <>
                 <button 
@@ -196,7 +185,6 @@ export function NewsDetailClient({ id }: { id: string }) {
                 >
                   <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-500" />
                 </button>
-                {/* 구분선 */}
                 <div className="w-px h-4 bg-slate-200 mx-1"></div>
               </>
             )}
@@ -209,7 +197,6 @@ export function NewsDetailClient({ id }: { id: string }) {
       />
 
       <main className="max-w-md mx-auto px-5 py-6">
-        {/* 카테고리 및 태그 */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tight">
             {news.category}
@@ -228,7 +215,6 @@ export function NewsDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* 헤드라인 및 액션 버튼 */}
         <div className="flex justify-between items-start gap-4 mb-3">
           <h2 className="text-xl font-extrabold text-slate-900 leading-tight break-keep tracking-tight">
             {news.headline}
@@ -267,7 +253,6 @@ export function NewsDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* 메타 정보 (날짜, 조회수) */}
         <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium mb-8">
           {news.source && (
             <span className="flex items-center gap-1">
@@ -283,22 +268,20 @@ export function NewsDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* AI 요약 섹션 */}
         {news.ai_summary && (
           <div className="mb-8">
             <DukguAiSummary summary={news.ai_summary} />
           </div>
         )}
 
-        {/* 뉴스 본문 */}
         <article className="text-[15px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium mb-10 break-keep">
           {news.content ?? news.summary}
         </article>
 
         <AiDisclaimer />
 
-        {/* 리액션 섹션 */}
-        <div className="my-10 border-t border-b border-slate-50 py-6">
+        {/* 💡 [수정] 위아래 감싸던 선(border-t, border-b) 제거 */}
+        <div className="my-8">
           <DukguReaction
             initialGood={news.good_count}
             initialBad={news.bad_count}
@@ -307,6 +290,11 @@ export function NewsDetailClient({ id }: { id: string }) {
             newsId={news.id}
             snapshot={{ headline: news.headline, category: news.category, timeAgo: getTimeAgo(news.published_at) }}
           />
+        </div>
+
+        {/* 💡 [추가] 리액션 영역과 댓글창 사이에 애드센스 배너 쏙 집어넣기 */}
+        <div className="mb-8">
+          <AdBanner />
         </div>
 
         {/* 댓글 섹션 */}

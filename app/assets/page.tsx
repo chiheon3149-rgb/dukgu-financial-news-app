@@ -22,20 +22,9 @@ const AssetPieChart = dynamic(
     return function Chart({ data }: { data: any[] }) {
       return (
         <PieChart width={160} height={160}>
-          <Pie
-            data={data}
-            cx={80} cy={80}
-            innerRadius={55}
-            outerRadius={75}
-            paddingAngle={5}
-            dataKey="value"
-            stroke="none"
-            cornerRadius={6}
-            isAnimationActive={false}
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
+          <Pie data={data} cx={80} cy={80} innerRadius={55} outerRadius={75}
+            paddingAngle={5} dataKey="value" stroke="none" cornerRadius={6} isAnimationActive={false}>
+            {data.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
           </Pie>
         </PieChart>
       )
@@ -45,14 +34,14 @@ const AssetPieChart = dynamic(
 )
 
 const ASSET_TYPES = [
-  { id: "stocks",      name: "주식",    description: "국내 / 해외",    icon: TrendingUp, color: "emerald", href: "/assets/stocks"     },
-  { id: "realestate",  name: "부동산",  description: "아파트, 토지 등", icon: Landmark,   color: "indigo",  href: "/assets/realestate" },
-  { id: "crypto",      name: "코인",    description: "BTC, ETH 등",    icon: Bitcoin,    color: "amber",   href: "/assets/crypto"     },
-  { id: "gold",        name: "금",      description: "금 현물",        emoji: "🥇",       color: "yellow",  href: "/assets/gold"       },
-  { id: "cash",        name: "현금",    description: "원화, 외화",      icon: Banknote,   color: "emerald", href: "/assets/cash"       },
-  { id: "savings",     name: "예·적금", description: "정기 예금, 적금", icon: Building2,  color: "blue",    href: "/assets/savings"    },
-  { id: "bonds",       name: "채권",    description: "국채, 회사채",    icon: ScrollText, color: "indigo",  href: "/assets/bonds"      },
-  { id: "etc",         name: "기타",    description: "미술품, 자동차",  icon: Package,    color: "rose",    href: "/assets/etc"        },
+  { id: "stocks",     name: "주식",    description: "국내 / 해외",    icon: TrendingUp, color: "emerald", href: "/assets/stocks"     },
+  { id: "realestate", name: "부동산",  description: "아파트, 토지 등", icon: Landmark,   color: "indigo",  href: "/assets/realestate" },
+  { id: "crypto",     name: "코인",    description: "BTC, ETH 등",    icon: Bitcoin,    color: "amber",   href: "/assets/crypto"     },
+  { id: "gold",       name: "금",      description: "금 현물",        emoji: "🥇",       color: "yellow",  href: "/assets/gold"       },
+  { id: "cash",       name: "현금",    description: "원화, 외화",      icon: Banknote,   color: "emerald", href: "/assets/cash"       },
+  { id: "savings",    name: "예·적금", description: "정기 예금, 적금", icon: Building2,  color: "blue",    href: "/assets/savings"    },
+  { id: "bonds",      name: "채권",    description: "국채, 회사채",    icon: ScrollText, color: "indigo",  href: "/assets/bonds"      },
+  { id: "etc",        name: "기타",    description: "미술품, 자동차",  icon: Package,    color: "rose",    href: "/assets/etc"        },
 ]
 
 const COLOR_MAP: Record<string, any> = {
@@ -64,137 +53,220 @@ const COLOR_MAP: Record<string, any> = {
   rose:    { bg: "bg-rose-50",    text: "text-rose-500",    hover: "hover:border-rose-200"    },
 }
 
-// localStorage 헬퍼
-function readLocalJson<T>(key: string): T[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
+function calcExpectedInterest(row: any): number {
+  const start = new Date(row.start_date)
+  const end = new Date(row.end_date)
+  const months = Math.max(0, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()))
+  if (months === 0) return 0
+  if (row.type === "savings" && row.monthly_amount) {
+    const monthlyRate = Number(row.annual_rate) / 100 / 12
+    return Math.round(Number(row.monthly_amount) * monthlyRate * (months * (months + 1)) / 2)
+  }
+  return Math.round(Number(row.principal) * (Number(row.annual_rate) / 100) * (months / 12))
 }
 
 export default function AssetsPage() {
-  const { profile } = useUser()
+  const { user, profile } = useUser()
   const [mounted, setMounted] = useState(false)
   const usdToKrw = useExchangeRate()
   const { rows: stockRows } = useStockPortfolio(usdToKrw)
-  const { totalValueUsd: cryptoTotalUsd } = useCryptoPortfolio()
+  const { rows: cryptoRows, totalValueUsd: cryptoTotalUsd } = useCryptoPortfolio()
 
-  const [realEstateTotal, setRealEstateTotal] = useState(0)
-  const [goldTotal, setGoldTotal] = useState(0)
-  const [cashTotal, setCashTotal] = useState(0)
-  const [savingsTotal, setSavingsTotal] = useState(0)
-  const [bondsTotal, setBondsTotal] = useState(0)
-  const [etcTotal, setEtcTotal] = useState(0)
+  // 부동산
+  const [realEstateValue, setRealEstateValue] = useState(0)
+  const [realEstateInvested, setRealEstateInvested] = useState(0)
+  // 금
+  const [goldValue, setGoldValue] = useState(0)
+  const [goldInvested, setGoldInvested] = useState(0)
+  // 현금 (환율 의존 → raw items 저장 후 useMemo)
+  const [cashItems, setCashItems] = useState<Array<{ currency: string; amount: number }>>([])
+  // 예·적금
+  const [savingsPrincipal, setSavingsPrincipal] = useState(0)
+  const [savingsInterest, setSavingsInterest] = useState(0)
+  // 채권
+  const [bondsInvested, setBondsInvested] = useState(0)
+  const [bondsCoupon, setBondsCoupon] = useState(0)
+  // 기타
+  const [etcValue, setEtcValue] = useState(0)
+  const [etcInvested, setEtcInvested] = useState(0)
 
-  // 코인 총액 (hook에서 받은 USD × 환율)
-  const cryptoTotal = cryptoTotalUsd * usdToKrw
+  // 주식
+  const stockValue = useMemo(() =>
+    stockRows.reduce((acc, r) => acc + r.currentValue * (r.holding.currency === "USD" ? usdToKrw : 1), 0),
+    [stockRows, usdToKrw])
+  const stockInvested = useMemo(() =>
+    stockRows.reduce((acc, r) => acc + r.stats.totalInvested * (r.holding.currency === "USD" ? usdToKrw : 1), 0),
+    [stockRows, usdToKrw])
 
-  // 마운트 시: DB 자산 + localStorage 자산 로드
+  // 코인
+  const cryptoValue = cryptoTotalUsd * usdToKrw
+  const cryptoInvested = useMemo(() =>
+    cryptoRows.reduce((acc, r) => acc + r.stats.totalInvested * usdToKrw, 0),
+    [cryptoRows, usdToKrw])
+
+  // 현금 원화 환산
+  const CASH_RATE: Record<string, number> = { KRW: 1, USD: usdToKrw, EUR: 1550, JPY: 9.8, CNY: 198 }
+  const cashTotal = useMemo(() =>
+    cashItems.reduce((acc, i) => acc + i.amount * (CASH_RATE[i.currency] ?? 1), 0),
+    [cashItems, usdToKrw])
+
+  // 마운트 + 데이터 로드
   useEffect(() => {
     setMounted(true)
-    if (profile?.id) fetchRealEstateTotal()
-    loadSavingsTotal()
-    loadBondsTotal()
-    loadGoldTotal()
-    loadEtcTotal()
-  }, [profile?.id])
+    if (!user) return
 
-  // 환율 업데이트 시 현금 총액 재계산
-  useEffect(() => {
-    if (usdToKrw > 0) loadCashTotal(usdToKrw)
-  }, [usdToKrw])
+    const uid = user.id
 
-  // 부동산: Supabase에서 조회
-  const fetchRealEstateTotal = async () => {
-    const { data } = await supabase
+    // 부동산
+    supabase
       .from("asset_realestate")
       .select("current_estimated_price, acquisition_price")
-      .eq("user_id", profile?.id)
-    const sum = data?.reduce((acc, cur) => acc + (cur.current_estimated_price || cur.acquisition_price || 0), 0) || 0
-    setRealEstateTotal(sum)
-  }
+      .eq("user_id", uid)
+      .then(({ data }) => {
+        const rows = data ?? []
+        setRealEstateValue(rows.reduce((acc, r) => acc + Number(r.current_estimated_price || r.acquisition_price || 0), 0))
+        setRealEstateInvested(rows.reduce((acc, r) => acc + Number(r.acquisition_price || 0), 0))
+      })
 
-  // 금: localStorage 보유량 계산 + API 시세 조회
-  const loadGoldTotal = async () => {
-    try {
-      const holdings = readLocalJson<any>("dukgu:gold-holdings")
-      if (!holdings.length) return
-
-      const sorted = [...holdings].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      let totalGrams = 0, totalCost = 0
-      for (const h of sorted) {
-        if (h.type === "buy") {
-          totalCost += h.pricePerGram * h.grams
-          totalGrams += h.grams
-        } else {
-          const avg = totalGrams > 0 ? totalCost / totalGrams : 0
-          totalCost -= avg * h.grams
-          totalGrams -= h.grams
+    // 금: DB 보유량 → API 시세
+    supabase
+      .from("asset_gold")
+      .select("trade_date, price_per_gram, grams, trade_type")
+      .eq("user_id", uid)
+      .then(async ({ data }) => {
+        if (!data?.length) return
+        const sorted = [...data].sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
+        let totalGrams = 0, totalCost = 0
+        for (const h of sorted) {
+          if (h.trade_type === "buy") {
+            totalCost += Number(h.price_per_gram) * Number(h.grams)
+            totalGrams += Number(h.grams)
+          } else {
+            const avg = totalGrams > 0 ? totalCost / totalGrams : 0
+            totalCost -= avg * Number(h.grams)
+            totalGrams -= Number(h.grams)
+          }
         }
-      }
-      if (totalGrams <= 0) return
+        if (totalGrams <= 0) return
+        setGoldInvested(totalCost)
+        try {
+          const res = await fetch("/api/market/gold")
+          if (res.ok) {
+            const { pricePerGramKrw } = await res.json()
+            setGoldValue(totalGrams * pricePerGramKrw)
+          }
+        } catch {}
+      })
 
-      const res = await fetch("/api/market/gold")
-      if (!res.ok) return
-      const { pricePerGramKrw } = await res.json()
-      setGoldTotal(totalGrams * pricePerGramKrw)
-    } catch {}
-  }
+    // 현금
+    supabase
+      .from("asset_cash")
+      .select("currency, amount")
+      .eq("user_id", uid)
+      .then(({ data }) => {
+        setCashItems((data ?? []).map(r => ({ currency: r.currency, amount: Number(r.amount) })))
+      })
 
-  // 현금: localStorage → 원화 환산 (환율 의존)
-  const loadCashTotal = (rate: number) => {
-    const items = readLocalJson<any>("dukgu:cash-holdings")
-    const RATE: Record<string, number> = { KRW: 1, USD: rate, EUR: 1550, JPY: 9.8, CNY: 198 }
-    const total = items.reduce((acc: number, i: any) => acc + (i.amount || 0) * (RATE[i.currency] ?? 1), 0)
-    setCashTotal(total)
-  }
+    // 예·적금
+    supabase
+      .from("asset_savings")
+      .select("type, principal, annual_rate, start_date, end_date, monthly_amount")
+      .eq("user_id", uid)
+      .then(({ data }) => {
+        const rows = data ?? []
+        setSavingsPrincipal(rows.reduce((acc, r) => acc + Number(r.principal), 0))
+        setSavingsInterest(rows.reduce((acc, r) => acc + calcExpectedInterest(r), 0))
+      })
 
-  // 예·적금: localStorage 원금 합산
-  const loadSavingsTotal = () => {
-    const items = readLocalJson<any>("dukgu:savings-holdings")
-    setSavingsTotal(items.reduce((acc: number, i: any) => acc + (i.principal || 0), 0))
-  }
+    // 채권
+    supabase
+      .from("asset_bonds")
+      .select("face_value, quantity, coupon_rate, purchase_price")
+      .eq("user_id", uid)
+      .then(({ data }) => {
+        const rows = data ?? []
+        setBondsInvested(rows.reduce((acc, r) => acc + Number(r.purchase_price) * Number(r.quantity), 0))
+        setBondsCoupon(rows.reduce((acc, r) => acc + Number(r.face_value) * Number(r.quantity) * (Number(r.coupon_rate) / 100), 0))
+      })
 
-  // 채권: localStorage 투자금 합산 (매입단가 × 수량)
-  const loadBondsTotal = () => {
-    const items = readLocalJson<any>("dukgu:bond-holdings")
-    setBondsTotal(items.reduce((acc: number, i: any) => acc + (i.purchasePrice || 0) * (i.quantity || 0), 0))
-  }
+    // 기타
+    supabase
+      .from("asset_etc")
+      .select("purchase_price, current_price")
+      .eq("user_id", uid)
+      .then(({ data }) => {
+        const rows = data ?? []
+        setEtcValue(rows.reduce((acc, r) => acc + Number(r.current_price), 0))
+        setEtcInvested(rows.reduce((acc, r) => acc + Number(r.purchase_price), 0))
+      })
 
-  // 기타: localStorage 현재 추정가 합산
-  const loadEtcTotal = () => {
-    const items = readLocalJson<any>("dukgu:etc-holdings")
-    setEtcTotal(items.reduce((acc: number, i: any) => acc + (i.currentPrice || 0), 0))
-  }
-
-  // 주식 총액 (원화 환산)
-  const stockTotalKrw = useMemo(() => {
-    return stockRows.reduce((acc, row) => {
-      const rate = row.holding.currency === "USD" ? usdToKrw : 1
-      return acc + (row.currentValue * rate)
-    }, 0)
-  }, [stockRows, usdToKrw])
+  }, [user?.id])
 
   // 전체 자산 합산
-  const totalAssetKrw = stockTotalKrw + realEstateTotal + cryptoTotal + goldTotal + cashTotal + savingsTotal + bondsTotal + etcTotal
+  const totalAssetKrw = stockValue + realEstateValue + cryptoValue + goldValue + cashTotal + savingsPrincipal + bondsInvested + etcValue
 
-  // 차트용 데이터 (값 있는 항목만)
+  // 차트용 데이터
   const chartData = useMemo(() => [
-    { name: "주식",   value: stockTotalKrw,  color: "#10b981" },
-    { name: "부동산", value: realEstateTotal, color: "#6366f1" },
-    { name: "코인",   value: cryptoTotal,    color: "#f59e0b" },
-    { name: "금",     value: goldTotal,      color: "#eab308" },
-    { name: "현금",   value: cashTotal,      color: "#22c55e" },
-    { name: "예·적금",value: savingsTotal,   color: "#3b82f6" },
-    { name: "채권",   value: bondsTotal,     color: "#8b5cf6" },
-    { name: "기타",   value: etcTotal,       color: "#f43f5e" },
-  ].filter(d => d.value > 0), [stockTotalKrw, realEstateTotal, cryptoTotal, goldTotal, cashTotal, savingsTotal, bondsTotal, etcTotal])
+    { name: "주식",    value: stockValue,       color: "#10b981" },
+    { name: "부동산",  value: realEstateValue,  color: "#6366f1" },
+    { name: "코인",    value: cryptoValue,      color: "#f59e0b" },
+    { name: "금",      value: goldValue,        color: "#eab308" },
+    { name: "현금",    value: cashTotal,        color: "#22c55e" },
+    { name: "예·적금", value: savingsPrincipal, color: "#3b82f6" },
+    { name: "채권",    value: bondsInvested,    color: "#8b5cf6" },
+    { name: "기타",    value: etcValue,         color: "#f43f5e" },
+  ].filter(d => d.value > 0), [stockValue, realEstateValue, cryptoValue, goldValue, cashTotal, savingsPrincipal, bondsInvested, etcValue])
 
   const mainCategoryName = useMemo(() => {
     if (chartData.length === 0) return "데이터 없음"
     return [...chartData].sort((a, b) => b.value - a.value)[0].name
   }, [chartData])
+
+  // 카테고리별 표시 데이터 계산
+  interface CatDisplay { value: number; pnl: number | null; rate: number | null; pnlLabel?: string }
+  function getCatDisplay(id: string): CatDisplay {
+    switch (id) {
+      case "stocks": {
+        const pnl = stockValue - stockInvested
+        const rate = stockInvested > 0 ? (pnl / stockInvested) * 100 : null
+        return { value: stockValue, pnl: stockValue > 0 ? pnl : null, rate }
+      }
+      case "realestate": {
+        const pnl = realEstateValue - realEstateInvested
+        const rate = realEstateInvested > 0 ? (pnl / realEstateInvested) * 100 : null
+        return { value: realEstateValue, pnl: realEstateValue > 0 ? pnl : null, rate }
+      }
+      case "crypto": {
+        const pnl = cryptoValue - cryptoInvested
+        const rate = cryptoInvested > 0 ? (pnl / cryptoInvested) * 100 : null
+        return { value: cryptoValue, pnl: cryptoValue > 0 ? pnl : null, rate }
+      }
+      case "gold": {
+        const pnl = goldValue - goldInvested
+        const rate = goldInvested > 0 ? (pnl / goldInvested) * 100 : null
+        return { value: goldValue, pnl: goldValue > 0 ? pnl : null, rate }
+      }
+      case "cash":
+        return { value: cashTotal, pnl: null, rate: null }
+      case "savings": {
+        const rate = savingsPrincipal > 0 ? (savingsInterest / savingsPrincipal) * 100 : null
+        return { value: savingsPrincipal, pnl: savingsInterest > 0 ? savingsInterest : null, rate, pnlLabel: "예상이자" }
+      }
+      case "bonds": {
+        const rate = bondsInvested > 0 ? (bondsCoupon / bondsInvested) * 100 : null
+        return { value: bondsInvested, pnl: bondsCoupon > 0 ? bondsCoupon : null, rate, pnlLabel: "연간쿠폰" }
+      }
+      case "etc": {
+        const pnl = etcValue - etcInvested
+        const rate = etcInvested > 0 ? (pnl / etcInvested) * 100 : null
+        return { value: etcValue, pnl: etcValue > 0 ? pnl : null, rate }
+      }
+      default:
+        return { value: 0, pnl: null, rate: null }
+    }
+  }
+
+  const fmtKrw = (n: number) => `${Math.round(Math.abs(n)).toLocaleString("ko-KR")}원`
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32">
@@ -225,7 +297,6 @@ export default function AssetsPage() {
           <h3 className="text-[13px] font-black text-slate-800 flex items-center gap-2 mb-4">
             <span className="w-1.5 h-4 bg-emerald-500 rounded-full" />자산 구성 비중
           </h3>
-
           {chartData.length > 0 ? (
             <div className="flex items-center justify-between">
               <div className="w-[160px] h-[160px] relative flex items-center justify-center shrink-0">
@@ -235,7 +306,6 @@ export default function AssetsPage() {
                   <p className="text-[14px] font-black text-slate-800">{mainCategoryName}</p>
                 </div>
               </div>
-
               <div className="flex-1 pl-6 space-y-3">
                 {chartData.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between">
@@ -269,16 +339,12 @@ export default function AssetsPage() {
           {ASSET_TYPES.map((type) => {
             const theme = COLOR_MAP[type.color] || COLOR_MAP.emerald
             const Icon = type.icon
+            const { value, pnl, rate, pnlLabel } = getCatDisplay(type.id)
 
-            const categoryValue =
-              type.id === "stocks"     ? stockTotalKrw  :
-              type.id === "realestate" ? realEstateTotal :
-              type.id === "crypto"     ? cryptoTotal     :
-              type.id === "gold"       ? goldTotal       :
-              type.id === "cash"       ? cashTotal       :
-              type.id === "savings"    ? savingsTotal    :
-              type.id === "bonds"      ? bondsTotal      :
-              type.id === "etc"        ? etcTotal        : 0
+            // PnL 표시: 특수 라벨(예상이자/연간쿠폰)은 항상 양수, 일반 PnL은 부호 있음
+            const showPnl = value > 0 && pnl !== null
+            const isSpecialPnl = !!pnlLabel
+            const pnlPositive = isSpecialPnl ? true : (pnl ?? 0) >= 0
 
             return (
               <Link
@@ -287,23 +353,37 @@ export default function AssetsPage() {
                 className={`flex items-center justify-between p-5 bg-white rounded-[28px] border border-slate-100 shadow-sm ${theme.hover} transition-all group active:scale-[0.98]`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-11 h-11 ${theme.bg} rounded-2xl flex items-center justify-center`}>
+                  <div className={`w-11 h-11 ${theme.bg} rounded-2xl flex items-center justify-center shrink-0`}>
                     {Icon ? <Icon className={`w-5 h-5 ${theme.text}`} /> : <span className="text-2xl">{type.emoji}</span>}
                   </div>
                   <div>
                     <h3 className="text-[14px] font-black text-slate-800">{type.name}</h3>
-                    <p className="text-[11px] font-bold text-slate-400">
-                      {categoryValue > 0 ? `${Math.round(categoryValue).toLocaleString()}원` : type.description}
-                    </p>
+                    {value > 0 ? (
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className="text-[12px] font-bold text-slate-600">
+                          {Math.round(value).toLocaleString()}원
+                        </span>
+                        {showPnl && (
+                          <span className={`text-[10px] font-black ${pnlPositive ? "text-rose-500" : "text-blue-500"}`}>
+                            {isSpecialPnl
+                              ? `${pnlLabel} +${fmtKrw(pnl!)}`
+                              : `${pnlPositive ? "+" : "-"}${fmtKrw(pnl!)}${rate !== null ? ` (${pnlPositive ? "+" : "-"}${Math.abs(rate).toFixed(1)}%)` : ""}`
+                            }
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] font-bold text-slate-400 mt-0.5">{type.description}</p>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {categoryValue > 0 && totalAssetKrw > 0 && (
+                <div className="flex items-center gap-2 shrink-0">
+                  {value > 0 && totalAssetKrw > 0 && (
                     <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded-lg">
-                      {((categoryValue / totalAssetKrw) * 100).toFixed(1)}%
+                      {((value / totalAssetKrw) * 100).toFixed(1)}%
                     </span>
                   )}
-                  <ChevronRight className={`w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-colors`} />
+                  <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-colors" />
                 </div>
               </Link>
             )
