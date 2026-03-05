@@ -14,7 +14,7 @@ const notoSansKR = Noto_Sans_KR({
   variable: '--font-noto',
 });
 
-// [수정 포인트] Metadata API를 사용하여 네이버 소유 확인을 추가했습니다.
+// [수정 포인트] Metadata API를 사용하여 네이버 소유 확인과 Open Graph 명함을 추가했습니다.
 export const metadata: Metadata = {
   title: 'DUKGU - 금융 뉴스 커뮤니티',
   description: '매일 아침, 당신을 위한 금융 뉴스 브리핑',
@@ -22,6 +22,15 @@ export const metadata: Metadata = {
     other: {
       'naver-site-verification': 'b16874540c6463742d69cd200393d57d7de1cf25',
     },
+  },
+  // 💡 [추가된 부분] 카카오톡 공유 미리보기 및 네이버 검색 로봇을 위한 OG 데이터
+  openGraph: {
+    title: 'DUKGU - 금융 뉴스 커뮤니티',
+    description: '매일 아침, 당신을 위한 금융 뉴스 브리핑',
+    url: 'https://dukgu.kr',
+    siteName: 'DUKGU',
+    locale: 'ko_KR',
+    type: 'website',
   },
 }
 
