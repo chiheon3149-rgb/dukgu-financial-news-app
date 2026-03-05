@@ -37,6 +37,14 @@ export default function SavingsPage() {
     const start = new Date(item.startDate)
     const end = new Date(item.endDate)
     const months = Math.max(0, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()))
+    if (months === 0) return 0
+    if (item.type === "savings" && item.monthlyAmount) {
+      // 적금 단리 이자: 각 회차 납입금에 남은 기간만큼 이자 적용
+      // 합계 = monthlyAmount × (annualRate/100/12) × months×(months+1)/2
+      const monthlyRate = item.annualRate / 100 / 12
+      return Math.round(item.monthlyAmount * monthlyRate * (months * (months + 1)) / 2)
+    }
+    // 예금 단리 이자
     return Math.round(item.principal * (item.annualRate / 100) * (months / 12))
   }
 
@@ -157,14 +165,19 @@ export default function SavingsPage() {
                       </div>
                       <p className="text-[11px] font-bold text-slate-400 mt-0.5">{item.productName}</p>
                     </div>
-                    <button onClick={() => removeItem(item.id)}
+                    <button onClick={() => {
+                      toast(`'${item.bankName} ${item.productName}' 을(를) 삭제하시겠습니까?`, {
+                        action: { label: "삭제", onClick: () => removeItem(item.id) },
+                        cancel: { label: "취소", onClick: () => {} },
+                      })
+                    }}
                       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                   <div className="mt-3 pt-3 border-t border-slate-50 grid grid-cols-3 gap-2">
                     {[
-                      { label: "원금", value: fmt(item.principal) },
+                      { label: item.type === "savings" && item.monthlyAmount ? "월납입액" : "원금", value: fmt(item.type === "savings" && item.monthlyAmount ? item.monthlyAmount : item.principal) },
                       { label: "연이율", value: `${item.annualRate}%` },
                       { label: "예상이자", value: fmt(interest), color: "text-blue-500" },
                     ].map(({ label, value, color }) => (

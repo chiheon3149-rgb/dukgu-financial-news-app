@@ -402,7 +402,7 @@ export default function RealEstatePage() {
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => handleEditClick(h)} className="p-2.5 bg-slate-50 rounded-xl text-slate-300 hover:text-indigo-500 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={async () => { if (confirm(`'${h.name}' 삭제하시겠습니까?`)) { await supabase.from('asset_realestate').delete().eq('id', h.id); fetchHoldings(); }}} className="p-2.5 bg-slate-50 rounded-xl text-slate-300 hover:text-rose-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => { toast(`'${h.name}' 을(를) 삭제하시겠습니까?`, { description: "삭제된 데이터는 복구할 수 없습니다.", action: { label: "삭제", onClick: async () => { await supabase.from('asset_realestate').delete().eq('id', h.id); fetchHoldings(); } }, cancel: { label: "취소", onClick: () => {} } }) }} className="p-2.5 bg-slate-50 rounded-xl text-slate-300 hover:text-rose-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
 

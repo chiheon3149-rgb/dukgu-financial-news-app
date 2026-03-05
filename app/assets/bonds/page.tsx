@@ -133,7 +133,12 @@ export default function BondsPage() {
                       <p className="text-[14px] font-black text-slate-800">{item.name}</p>
                       <p className="text-[11px] font-bold text-slate-400">{item.issuer}</p>
                     </div>
-                    <button onClick={() => removeItem(item.id)}
+                    <button onClick={() => {
+                      toast(`'${item.name}' 을(를) 삭제하시겠습니까?`, {
+                        action: { label: "삭제", onClick: () => removeItem(item.id) },
+                        cancel: { label: "취소", onClick: () => {} },
+                      })
+                    }}
                       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

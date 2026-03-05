@@ -2,6 +2,7 @@
 
 import { useState, useMemo, use } from "react"
 import { TrendingUp, TrendingDown, Plus, Trash2, ChevronDown, AlertCircle, Loader2, BarChart2, Coins } from "lucide-react"
+import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { useCryptoPortfolio } from "@/hooks/use-crypto-portfolio"
 
@@ -258,7 +259,12 @@ export default function CryptoDetailPage({ params }: { params: Promise<{ symbol:
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-[13px] font-black text-slate-700">{fmtUsd(trade.price * trade.quantity)}</p>
-                    <button onClick={() => removeTrade(symbol, trade.id)}
+                    <button onClick={() => {
+                      toast("매매 내역을 삭제하시겠습니까?", {
+                        action: { label: "삭제", onClick: () => removeTrade(symbol, trade.id) },
+                        cancel: { label: "취소", onClick: () => {} },
+                      })
+                    }}
                       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

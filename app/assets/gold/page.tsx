@@ -284,7 +284,12 @@ export default function GoldPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="text-[13px] font-black text-slate-700">{fmt(h.pricePerGram * h.grams)}</p>
-                  <button onClick={() => handleRemoveRecord(h.id)}
+                  <button onClick={() => {
+                    toast(`${h.date.replace(/-/g, ".")} ${h.type === "buy" ? "매수" : "매도"} 내역을 삭제하시겠습니까?`, {
+                      action: { label: "삭제", onClick: () => handleRemoveRecord(h.id) },
+                      cancel: { label: "취소", onClick: () => {} },
+                    })
+                  }}
                     className="opacity-0 group-hover:opacity-100 p-1.5 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-400 transition-all">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
