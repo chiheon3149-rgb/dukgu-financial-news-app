@@ -7,9 +7,11 @@ import { NextRequest, NextResponse } from "next/server"
 
 /** 💡 1. 로그인 없이도 들어갈 수 있는 '공공장소' 목록 */
 const PUBLIC_EXACT = new Set([
-  "/", 
-  "/login", 
+  "/",
+  "/login",
   "/ads.txt",
+  "/sitemap.xml",
+  "/robots.txt",
   "/assets",
   "/onboarding", // 온보딩은 입국 심사대이므로 열어둡니다.
 ])
@@ -76,6 +78,6 @@ export const config = {
      * - favicon.ico, ads.txt 등 루트 정적 파일
      * - 이미지, 폰트 등 확장자 파일
      */
-    "/((?!_next/static|_next/image|favicon.ico|ads\\.txt|robots\\.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|ads\\.txt|robots\\.txt|sitemap\\.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 }
