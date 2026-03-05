@@ -14,16 +14,22 @@ const notoSansKR = Noto_Sans_KR({
   variable: '--font-noto',
 });
 
-// [Metadata] SEO 및 소셜 공유, 파비콘 설정을 관리합니다.
+// [Metadata] 브랜딩을 '덕구의 뉴스곳간'으로 변경하고 SEO를 강화했습니다.
 export const metadata: Metadata = {
-  title: 'DUKGU - 금융 뉴스 커뮤니티',
-  description: '매일 아침, 당신을 위한 금융 뉴스 브리핑',
+  // 💡 한글 이름을 앞세워 검색 노출 확률을 높였습니다.
+  title: '덕구의 뉴스곳간 | 금융 뉴스 브리핑',
+  description: '매일 아침 AI가 요약해주는 쉽고 빠른 금융 뉴스 브리핑과 투자 커뮤니티, 덕구의 뉴스곳간에서 자산 관리의 시작을 함께하세요.',
   
-  // 💡 [수정] 직접 만드신 favicon.ico를 가장 먼저 인식하도록 순서를 조정했습니다.
+  // 💡 대표 URL을 설정하여 네이버/구글 로봇의 리다이렉트 혼란을 방지합니다.
+  alternates: {
+    canonical: 'https://dukgu.kr',
+  },
+
+  // 파비콘 설정
   icons: {
-    icon: '/favicon.ico',          // 브라우저 탭 및 검색 결과용 표준 아이콘
-    shortcut: '/favicon.ico',      // 즐겨찾기 아이콘
-    apple: '/apple-icon.png',      // 아이폰 홈화면용 (이미지가 더 고해상도라 그대로 둠)
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-icon.png',
   },
 
   verification: {
@@ -32,12 +38,12 @@ export const metadata: Metadata = {
     },
   },
 
-  // 오픈 그래프: 카카오톡/페이스북 공유 시 보이는 카드 정보
+  // 오픈 그래프 (카톡, 소셜 공유용)
   openGraph: {
-    title: 'DUKGU - 금융 뉴스 커뮤니티',
-    description: '매일 아침, 당신을 위한 금융 뉴스 브리핑',
+    title: '덕구의 뉴스곳간 - 매일 아침 금융 뉴스 브리핑',
+    description: '어려운 경제 뉴스도 덕구가 쉽고 빠르게 요약해드린다냥! 🐾',
     url: 'https://dukgu.kr',
-    siteName: 'DUKGU',
+    siteName: '덕구의 뉴스곳간',
     locale: 'ko_KR',
     type: 'website',
     images: [
