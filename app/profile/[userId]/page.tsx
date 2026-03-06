@@ -158,14 +158,19 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
         }
       }
       for (const s of Object.values(holdingStats)) stocks += Math.max(0, s.totalCost)
+      // 같은 ticker가 여러 계좌에 있을 수 있으므로 ticker 기준으로 합산
+      const byTicker: Record<string, { name: string; currency: "KRW" | "USD"; totalCost: number; totalShares: number }> = {}
+      for (const h of stockHoldingsResult.data ?? []) {
+        const s = holdingStats[h.id]
+        if (!s || s.totalShares <= 0) continue
+        if (!byTicker[h.ticker]) byTicker[h.ticker] = { name: h.name, currency: h.currency, totalCost: 0, totalShares: 0 }
+        byTicker[h.ticker].totalCost += s.totalCost
+        byTicker[h.ticker].totalShares += s.totalShares
+      }
       setStockHoldingsList(
-        (stockHoldingsResult.data ?? [])
-          .filter((h: any) => (holdingStats[h.id]?.totalShares ?? 0) > 0)
-          .map((h: any) => {
-            const s = holdingStats[h.id] ?? { totalCost: 0, totalShares: 0 }
-            return { ticker: h.ticker, name: h.name, currency: h.currency, invested: Math.max(0, s.totalCost), totalShares: s.totalShares, avgCostPrice: s.totalShares > 0 ? s.totalCost / s.totalShares : 0 }
-          })
-          .sort((a: any, b: any) => b.invested - a.invested)
+        Object.entries(byTicker)
+          .map(([ticker, d]) => ({ ticker, name: d.name, currency: d.currency, invested: Math.max(0, d.totalCost), totalShares: d.totalShares, avgCostPrice: d.totalShares > 0 ? d.totalCost / d.totalShares : 0 }))
+          .sort((a, b) => b.invested - a.invested)
       )
 
       // 금: 평균 단가 × 보유 수량
