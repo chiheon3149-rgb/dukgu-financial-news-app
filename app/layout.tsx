@@ -6,6 +6,7 @@ import './globals.css'
 import { BottomNav } from "@/components/dukgu/bottom-nav"
 import { UserProvider } from "@/context/user-context"
 import Script from 'next/script'
+import { GoogleTagManager } from '@next/third-parties/google'
 
 // 폰트 설정
 const notoSansKR = Noto_Sans_KR({ 
@@ -72,6 +73,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
+      <GoogleTagManager gtmId="GTM-WMV8P3DM" />
       <head>
         {/* 구글 애드센스 광고 엔진 */}
         <Script
