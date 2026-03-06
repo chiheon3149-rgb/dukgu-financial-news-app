@@ -193,10 +193,11 @@ export default function MyPage() {
       {showDeleteModal && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
            {/* ... 모달 내용은 기획자님의 기존 코드와 동일합니다 ... */}
-           <div className="bg-white w-full max-w-md rounded-[32px] p-6 text-center">
-             <h3 className="text-xl font-black mb-4">정말 탈퇴하시겠어요?</h3>
-             <button onClick={handleDeleteAccount} className="w-full py-4 bg-red-500 text-white rounded-2xl font-black">탈퇴하기</button>
-             <button onClick={() => setShowDeleteModal(false)} className="w-full py-4 text-slate-400 font-bold mt-2">취소</button>
+           <div className="bg-red-50 border border-red-200 w-full max-w-md rounded-[32px] p-6 text-center">
+             <h3 className="text-xl font-black mb-2 text-red-700">정말 탈퇴하시겠어요?</h3>
+             <p className="text-[12px] font-bold text-red-400 mb-4">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+             <button onClick={handleDeleteAccount} className="w-full py-4 bg-red-500 text-white rounded-2xl font-black hover:bg-red-600 transition-colors">탈퇴하기</button>
+             <button onClick={() => setShowDeleteModal(false)} className="w-full py-4 text-red-300 font-bold mt-2">취소</button>
            </div>
         </div>
       )}

@@ -1,41 +1,20 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import type { FollowRelation } from "@/types"
 import { useUser } from "@/context/user-context"
+import { supabase } from "@/lib/supabase"
+import { getLevelMeta } from "@/lib/mock/user"
 
 // =============================================================================
 // 👥 useFollow
 //
-// 팔로우/팔로워 관계를 관리합니다.
-// 현재: localStorage 저장 (로그인 유저 ID 기반)
-// Supabase 전환 시: follows 테이블 (follower_id, following_id, followed_at)
+// 팔로우/팔로워 관계를 Supabase follows 테이블로 관리합니다.
+// follows (follower_id, following_id, followed_at)
 // =============================================================================
-
-const STORAGE_KEY = "dukgu_follows"
-
-function loadFollows(myId: string): FollowRelation[] {
-  if (typeof window === "undefined") return []
-  try {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")
-    return (all[myId] as FollowRelation[]) ?? []
-  } catch {
-    return []
-  }
-}
-
-function saveFollows(myId: string, data: FollowRelation[]) {
-  if (typeof window === "undefined") return
-  try {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")
-    all[myId] = data
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
-  } catch {}
-}
 
 interface UseFollowReturn {
   following: FollowRelation[]
-  /** 나를 팔로우하는 유저 목록 — Supabase 전환 전까지는 빈 배열 */
   followers: FollowRelation[]
   isFollowing: (userId: string) => boolean
   toggleFollow: (target: { id: string; nickname: string; emoji: string; level: number }) => void
@@ -45,9 +24,68 @@ export function useFollow(): UseFollowReturn {
   const { profile } = useUser()
   const myId = profile?.id ?? null
 
-  const [following, setFollowing] = useState<FollowRelation[]>(() =>
-    myId ? loadFollows(myId) : []
-  )
+  const [following, setFollowing] = useState<FollowRelation[]>([])
+  const [followers, setFollowers] = useState<FollowRelation[]>([])
+
+  useEffect(() => {
+    if (!myId) {
+      setFollowing([])
+      setFollowers([])
+      return
+    }
+
+    // 내가 팔로우하는 사람들
+    supabase
+      .from("follows")
+      .select("following_id, followed_at")
+      .eq("follower_id", myId)
+      .then(async ({ data: followRows }) => {
+        if (!followRows?.length) { setFollowing([]); return }
+        const ids = followRows.map(r => r.following_id)
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("id, nickname, avatar_emoji, total_xp")
+          .in("id", ids)
+        const profileMap = Object.fromEntries((profileRows ?? []).map(p => [p.id, p]))
+        setFollowing(followRows.map(r => {
+          const p = profileMap[r.following_id]
+          return {
+            followerId: myId,
+            followingId: r.following_id,
+            followedAt: r.followed_at,
+            targetNickname: p?.nickname ?? "알 수 없음",
+            targetEmoji: p?.avatar_emoji ?? "🐱",
+            targetLevel: getLevelMeta(p?.total_xp ?? 0).level,
+          }
+        }))
+      })
+
+    // 나를 팔로우하는 사람들
+    supabase
+      .from("follows")
+      .select("follower_id, followed_at")
+      .eq("following_id", myId)
+      .then(async ({ data: followRows }) => {
+        if (!followRows?.length) { setFollowers([]); return }
+        const ids = followRows.map(r => r.follower_id)
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("id, nickname, avatar_emoji, total_xp")
+          .in("id", ids)
+        const profileMap = Object.fromEntries((profileRows ?? []).map(p => [p.id, p]))
+        setFollowers(followRows.map(r => {
+          const p = profileMap[r.follower_id]
+          return {
+            followerId: r.follower_id,
+            followingId: myId,
+            followedAt: r.followed_at,
+            targetNickname: p?.nickname ?? "알 수 없음",
+            targetEmoji: p?.avatar_emoji ?? "🐱",
+            targetLevel: getLevelMeta(p?.total_xp ?? 0).level,
+          }
+        }))
+      })
+  }, [myId])
 
   const isFollowing = useCallback(
     (userId: string) => following.some((f) => f.followingId === userId),
@@ -57,32 +95,27 @@ export function useFollow(): UseFollowReturn {
   const toggleFollow = useCallback(
     (target: { id: string; nickname: string; emoji: string; level: number }) => {
       if (!myId) return
-      setFollowing((prev) => {
-        let next: FollowRelation[]
-        if (prev.some((f) => f.followingId === target.id)) {
-          next = prev.filter((f) => f.followingId !== target.id)
-        } else {
-          next = [
-            ...prev,
-            {
-              followerId: myId,
-              followingId: target.id,
-              followedAt: new Date().toISOString(),
-              targetNickname: target.nickname,
-              targetEmoji: target.emoji,
-              targetLevel: target.level,
-            },
-          ]
+      if (myId === target.id) return  // 자기 자신 팔로우 방지
+      const alreadyFollowing = following.some(f => f.followingId === target.id)
+
+      if (alreadyFollowing) {
+        setFollowing(prev => prev.filter(f => f.followingId !== target.id))
+        supabase.from("follows").delete().eq("follower_id", myId).eq("following_id", target.id).then()
+      } else {
+        const newRelation: FollowRelation = {
+          followerId: myId,
+          followingId: target.id,
+          followedAt: new Date().toISOString(),
+          targetNickname: target.nickname,
+          targetEmoji: target.emoji,
+          targetLevel: target.level,
         }
-        saveFollows(myId, next)
-        return next
-      })
+        setFollowing(prev => [...prev, newRelation])
+        supabase.from("follows").insert({ follower_id: myId, following_id: target.id }).then()
+      }
     },
-    [myId]
+    [myId, following]
   )
 
-  // followers: 실제 팔로워는 Supabase follows 테이블 쿼리가 필요합니다.
-  // localStorage 기반으로는 다른 유저가 나를 팔로우했는지 알 수 없으므로 빈 배열 반환.
-  // Supabase 전환 시: supabase.from("follows").select("*").eq("following_id", myId)
-  return { following, followers: [], isFollowing, toggleFollow }
+  return { following, followers, isFollowing, toggleFollow }
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Landmark, Plus, Trash2, Loader2, Home, Building2, MapPin, Pencil, X, CreditCard, Calculator, Activity, TrendingUp as TrendUpIcon, Search, RefreshCw, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
@@ -38,6 +39,9 @@ function MiniPriceChart({ data }: { data: { price: number }[] }) {
 
 export default function RealEstatePage() {
   const { profile } = useUser()
+  const searchParams = useSearchParams()
+  const viewUserId = searchParams.get("viewUserId")
+  const isReadOnly = !!viewUserId
   const [holdings, setHoldings] = useState<RealEstateHolding[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -57,14 +61,15 @@ export default function RealEstatePage() {
   })
 
   const fetchHoldings = async () => {
-    if (!profile?.id) return
+    const uid = viewUserId ?? profile?.id
+    if (!uid) return
     setIsLoading(true)
-    const { data } = await supabase.from('asset_realestate').select('*').eq('user_id', profile.id).order('created_at', { ascending: false })
+    const { data } = await supabase.from('asset_realestate').select('*').eq('user_id', uid).order('created_at', { ascending: false })
     setHoldings(data || [])
     setIsLoading(false)
   }
 
-  useEffect(() => { fetchHoldings() }, [profile?.id])
+  useEffect(() => { fetchHoldings() }, [profile?.id, viewUserId])
 
   const handleAddressSearch = () => {
     if (!(window as any).daum) {
@@ -302,7 +307,7 @@ export default function RealEstatePage() {
 
         <div className="flex items-center justify-between px-1">
           <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2"><span className="w-1.5 h-4 bg-indigo-500 rounded-full" />보유 리스트</h3>
-          {!isFormOpen && <button onClick={() => setIsFormOpen(true)} className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full flex items-center gap-1 active:scale-95 transition-all"><Plus className="w-3.5 h-3.5" /> 추가</button>}
+          {!isReadOnly && !isFormOpen && <button onClick={() => setIsFormOpen(true)} className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full flex items-center gap-1 active:scale-95 transition-all"><Plus className="w-3.5 h-3.5" /> 추가</button>}
         </div>
 
         {isFormOpen && (
@@ -400,19 +405,23 @@ export default function RealEstatePage() {
                     <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">{h.asset_type === 'apartment' ? <Home className="w-5 h-5" /> : <Building2 className="w-5 h-5" />}</div>
                     <div><h4 className="text-[16px] font-black text-slate-800 tracking-tight">{h.name} {h.exclusive_area ? `(${h.exclusive_area}㎡)` : ""}</h4></div>
                   </div>
-                  <div className="flex gap-1.5">
-                    <button onClick={() => handleEditClick(h)} className="p-2.5 bg-slate-50 rounded-xl text-slate-300 hover:text-indigo-500 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => { toast(`'${h.name}' 을(를) 삭제하시겠습니까?`, { description: "삭제된 데이터는 복구할 수 없습니다.", action: { label: "삭제", onClick: async () => { await supabase.from('asset_realestate').delete().eq('id', h.id); fetchHoldings(); } }, cancel: { label: "취소", onClick: () => {} } }) }} className="p-2.5 bg-slate-50 rounded-xl text-slate-300 hover:text-rose-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
+                  {!isReadOnly && (
+                    <div className="flex gap-1.5">
+                      <button onClick={() => handleEditClick(h)} className="p-2.5 bg-slate-50 rounded-xl text-slate-300 hover:text-indigo-500 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => { toast(`'${h.name}' 을(를) 삭제하시겠습니까?`, { description: "삭제된 데이터는 복구할 수 없습니다.", action: { label: "삭제", onClick: async () => { await supabase.from('asset_realestate').delete().eq('id', h.id); fetchHoldings(); } }, cancel: { label: "취소", onClick: () => {} } }) }} className="p-2.5 bg-slate-50 rounded-xl text-slate-300 hover:text-rose-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex items-center gap-4">
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-indigo-500"><Activity className="w-3 h-3" /><span className="text-[10px] font-black uppercase tracking-tighter">최근 12개월 실거래 추이</span></div>
-                        <button onClick={() => updateRealEstatePrice(h)} disabled={isUpdatingPrice === h.id} className="p-1 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-500 active:rotate-180 transition-all">
+                        {!isReadOnly && (
+                          <button onClick={() => updateRealEstatePrice(h)} disabled={isUpdatingPrice === h.id} className="p-1 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-500 active:rotate-180 transition-all">
                             {isUpdatingPrice === h.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        </button>
+                          </button>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[15px] font-black text-slate-900">{fmt(currentPrice)}</span>

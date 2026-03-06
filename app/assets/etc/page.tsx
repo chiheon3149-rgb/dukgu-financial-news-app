@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Package, Trash2, Pencil, X } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
@@ -37,6 +38,9 @@ function rowToItem(row: Record<string, unknown>): EtcItem {
 
 export default function EtcPage() {
   const { user } = useUser()
+  const searchParams = useSearchParams()
+  const viewUserId = searchParams.get("viewUserId")
+  const isReadOnly = !!viewUserId
   const [items, setItems] = useState<EtcItem[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -44,14 +48,14 @@ export default function EtcPage() {
   const [form, setForm] = useState(defaultForm)
 
   useEffect(() => {
-    if (!user) { setIsLoadingData(false); return }
-    supabase.from("asset_etc").select("*").eq("user_id", user.id).order("created_at", { ascending: false })
+    if (!user && !viewUserId) { setIsLoadingData(false); return }
+    supabase.from("asset_etc").select("*").eq("user_id", viewUserId ?? user!.id).order("created_at", { ascending: false })
       .then(({ data, error }) => {
         if (error) toast.error("기타 자산을 불러오지 못했습니다.")
         else setItems((data ?? []).map(rowToItem))
         setIsLoadingData(false)
       })
-  }, [user])
+  }, [user, viewUserId])
 
   const totalValue = useMemo(() => items.reduce((acc, i) => acc + i.currentPrice, 0), [items])
   const totalPurchase = useMemo(() => items.reduce((acc, i) => acc + i.purchasePrice, 0), [items])
@@ -131,11 +135,19 @@ export default function EtcPage() {
         </section>
 
         <section className="space-y-4">
-          <AssetSectionHeader
-            title="보유 자산" count={items.length} barClass="bg-rose-500"
-            buttonClass="text-rose-600 bg-rose-50"
-            onToggle={() => { if (editingId) handleCancel(); else setIsFormOpen(v => !v) }}
-          />
+          {isReadOnly ? (
+            <div className="flex items-center px-1">
+              <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
+                <span className="w-1.5 h-4 bg-rose-500 rounded-full" />보유 자산 ({items.length})
+              </h3>
+            </div>
+          ) : (
+            <AssetSectionHeader
+              title="보유 자산" count={items.length} barClass="bg-rose-500"
+              buttonClass="text-rose-600 bg-rose-50"
+              onToggle={() => { if (editingId) handleCancel(); else setIsFormOpen(v => !v) }}
+            />
+          )}
 
           {isFormOpen && (
             <div className="bg-white rounded-[24px] border border-rose-100 shadow-sm p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
@@ -196,17 +208,19 @@ export default function EtcPage() {
                         <p className="text-[14px] font-black text-slate-800 mt-1">{item.name}</p>
                         <p className="text-[10px] font-bold text-slate-300">{item.purchaseDate.replace(/-/g, ".")} 매입</p>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => handleEditClick(item)} className="p-2 bg-slate-50 rounded-xl text-slate-300 hover:text-rose-500 transition-colors">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => toast(`'${item.name}' 을(를) 삭제하시겠습니까?`, {
-                          action: { label: "삭제", onClick: () => handleRemove(item.id) },
-                          cancel: { label: "취소", onClick: () => {} },
-                        })} className="p-2 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => handleEditClick(item)} className="p-2 bg-slate-50 rounded-xl text-slate-300 hover:text-rose-500 transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => toast(`'${item.name}' 을(를) 삭제하시겠습니까?`, {
+                            action: { label: "삭제", onClick: () => handleRemove(item.id) },
+                            cancel: { label: "취소", onClick: () => {} },
+                          })} className="p-2 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
                       <div>

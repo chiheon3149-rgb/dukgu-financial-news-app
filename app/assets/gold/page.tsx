@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Plus, Trash2, ChevronDown, RefreshCw, TrendingUp, TrendingDown, Pencil, X } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
@@ -33,6 +34,9 @@ function rowToHolding(row: Record<string, unknown>): GoldHolding {
 
 export default function GoldPage() {
   const { user } = useUser()
+  const searchParams = useSearchParams()
+  const viewUserId = searchParams.get("viewUserId")
+  const isReadOnly = !!viewUserId
   const [holdings, setHoldings] = useState<GoldHolding[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [quote, setQuote] = useState<GoldQuote | null>(null)
@@ -49,17 +53,17 @@ export default function GoldPage() {
   const [formMemo, setFormMemo] = useState("")
 
   useEffect(() => {
-    if (!user) { setIsLoadingData(false); return }
+    if (!user && !viewUserId) { setIsLoadingData(false); return }
     const fetchData = async () => {
       setIsLoadingData(true)
       const { data, error } = await supabase
-        .from("asset_gold").select("*").eq("user_id", user.id).order("trade_date", { ascending: false })
+        .from("asset_gold").select("*").eq("user_id", viewUserId ?? user!.id).order("trade_date", { ascending: false })
       if (error) toast.error("금 내역을 불러오지 못했습니다.")
       else setHoldings((data ?? []).map(rowToHolding))
       setIsLoadingData(false)
     }
     fetchData()
-  }, [user])
+  }, [user, viewUserId])
 
   const fetchGoldPrice = async () => {
     setIsLoadingPrice(true); setPriceError(null)
@@ -197,10 +201,12 @@ export default function GoldPage() {
             <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
               <span className="w-1.5 h-4 bg-amber-500 rounded-full" />매매 내역
             </h3>
-            <button onClick={() => { if (editingId) handleCancelEdit(); else setIsFormOpen(v => !v) }}
-              className="text-[11px] font-bold text-amber-600 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-full transition-all active:scale-95">
-              <Plus className="w-3 h-3" /> 내역 추가
-            </button>
+            {!isReadOnly && (
+              <button onClick={() => { if (editingId) handleCancelEdit(); else setIsFormOpen(v => !v) }}
+                className="text-[11px] font-bold text-amber-600 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-full transition-all active:scale-95">
+                <Plus className="w-3 h-3" /> 내역 추가
+              </button>
+            )}
           </div>
 
           {isFormOpen && (
@@ -268,15 +274,19 @@ export default function GoldPage() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <p className="text-[13px] font-black text-slate-700">{fmt(h.pricePerGram * h.grams)}</p>
-                    <button onClick={() => handleEditClick(h)} className="p-2 bg-slate-50 rounded-xl text-slate-300 hover:text-amber-500 transition-colors">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => toast(`${h.date.replace(/-/g, ".")} 내역을 삭제하시겠습니까?`, {
-                      action: { label: "삭제", onClick: () => handleRemove(h.id) },
-                      cancel: { label: "취소", onClick: () => {} },
-                    })} className="p-2 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {!isReadOnly && (
+                      <>
+                        <button onClick={() => handleEditClick(h)} className="p-2 bg-slate-50 rounded-xl text-slate-300 hover:text-amber-500 transition-colors">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => toast(`${h.date.replace(/-/g, ".")} 내역을 삭제하시겠습니까?`, {
+                          action: { label: "삭제", onClick: () => handleRemove(h.id) },
+                          cancel: { label: "취소", onClick: () => {} },
+                        })} className="p-2 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}

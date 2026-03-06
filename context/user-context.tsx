@@ -155,11 +155,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const updateNickname = useCallback((nickname: string) => setProfile(p => p ? { ...p, nickname } : p), [])
   const updateAvatar = useCallback((emoji: string) => setProfile(p => p ? { ...p, avatarEmoji: emoji } : p), [])
   const updatePortfolioPublic = useCallback((v: boolean) => {
-    setProfile(p => {
-      if (!p) return p
-      supabase.from("profiles").update({ portfolio_public: v }).eq("id", p.id)
-      return { ...p, portfolioPublic: v }
-    })
+    const p = profileRef.current
+    if (!p) return
+    setProfile(prev => prev ? { ...prev, portfolioPublic: v } : prev)
+    supabase.from("profiles").update({ portfolio_public: v }).eq("id", p.id)
+      .then(({ error }) => {
+        if (error) {
+          console.error("[updatePortfolioPublic] DB 저장 실패:", error.message)
+          // 저장 실패 시 UI 롤백
+          setProfile(prev => prev ? { ...prev, portfolioPublic: !v } : prev)
+        }
+      })
   }, [])
 
   return (

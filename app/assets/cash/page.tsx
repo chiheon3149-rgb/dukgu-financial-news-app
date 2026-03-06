@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Banknote, Plus, Trash2, Pencil, X } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
@@ -20,6 +21,9 @@ const defaultForm = { label: "", currency: "KRW" as CashItem["currency"], amount
 
 export default function CashPage() {
   const { user } = useUser()
+  const searchParams = useSearchParams()
+  const viewUserId = searchParams.get("viewUserId")
+  const isReadOnly = !!viewUserId
   const usdRate = useExchangeRate()
   const EXCHANGE_RATE = useMemo<Record<string, number>>(
     () => ({ KRW: 1, USD: usdRate, EUR: 1550, JPY: 9.8, CNY: 198 }),
@@ -33,8 +37,8 @@ export default function CashPage() {
   const [form, setForm] = useState(defaultForm)
 
   useEffect(() => {
-    if (!user) { setIsLoadingData(false); return }
-    supabase.from("asset_cash").select("*").eq("user_id", user.id).order("created_at", { ascending: false })
+    if (!user && !viewUserId) { setIsLoadingData(false); return }
+    supabase.from("asset_cash").select("*").eq("user_id", viewUserId ?? user!.id).order("created_at", { ascending: false })
       .then(({ data, error }) => {
         if (error) toast.error("현금 자산을 불러오지 못했습니다.")
         else setItems((data ?? []).map(r => ({
@@ -43,7 +47,7 @@ export default function CashPage() {
         })))
         setIsLoadingData(false)
       })
-  }, [user])
+  }, [user, viewUserId])
 
   const totalKrw = useMemo(() =>
     items.reduce((acc, i) => acc + i.amount * (EXCHANGE_RATE[i.currency] ?? 1), 0),
@@ -119,10 +123,12 @@ export default function CashPage() {
             <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2">
               <span className="w-1.5 h-4 bg-emerald-500 rounded-full" />보유 현금 ({items.length})
             </h3>
-            <button onClick={() => { if (editingId) handleCancel(); else setIsFormOpen(v => !v) }}
-              className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full transition-all active:scale-95">
-              <Plus className="w-3 h-3" /> 추가
-            </button>
+            {!isReadOnly && (
+              <button onClick={() => { if (editingId) handleCancel(); else setIsFormOpen(v => !v) }}
+                className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full transition-all active:scale-95">
+                <Plus className="w-3 h-3" /> 추가
+              </button>
+            )}
           </div>
 
           {isFormOpen && (
@@ -185,15 +191,19 @@ export default function CashPage() {
                         <p className="text-[14px] font-black text-slate-800">{fmt(krw)}</p>
                         <p className="text-[9px] font-bold text-slate-300">{item.currency} 환산</p>
                       </div>
-                      <button onClick={() => handleEditClick(item)} className="p-2 bg-slate-50 rounded-xl text-slate-300 hover:text-emerald-500 transition-colors">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => toast(`'${item.label}' 을(를) 삭제하시겠습니까?`, {
-                        action: { label: "삭제", onClick: () => handleRemove(item.id) },
-                        cancel: { label: "취소", onClick: () => {} },
-                      })} className="p-2 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {!isReadOnly && (
+                        <>
+                          <button onClick={() => handleEditClick(item)} className="p-2 bg-slate-50 rounded-xl text-slate-300 hover:text-emerald-500 transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => toast(`'${item.label}' 을(를) 삭제하시겠습니까?`, {
+                            action: { label: "삭제", onClick: () => handleRemove(item.id) },
+                            cancel: { label: "취소", onClick: () => {} },
+                          })} className="p-2 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )
