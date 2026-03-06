@@ -5,12 +5,13 @@ import dynamic from "next/dynamic"
 import Link from "next/link"
 import {
   Lock, TrendingUp, UserPlus, UserMinus,
-  Landmark, Bitcoin, Banknote, Building2, ScrollText, Package, PieChart as PieIcon
+  Landmark, Bitcoin, Banknote, Building2, ScrollText, Package, PieChart as PieIcon, ChevronDown
 } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { useFollow } from "@/hooks/use-follow"
 import { useUser } from "@/context/user-context"
 import { useExchangeRate } from "@/hooks/use-exchange-rate"
+import { useMarketPrice } from "@/hooks/use-market-price"
 import { getLevelMeta } from "@/lib/mock/user"
 import { supabase } from "@/lib/supabase"
 
@@ -96,7 +97,8 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   const [targetProfile, setTargetProfile] = useState<ProfileRow | null | undefined>(undefined)
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null)
   const [portfolioLoading, setPortfolioLoading] = useState(false)
-  const [stockHoldingsList, setStockHoldingsList] = useState<{ticker: string, name: string, invested: number, currency: "KRW" | "USD"}[]>([])
+  const [stockHoldingsList, setStockHoldingsList] = useState<{ticker: string, name: string, invested: number, totalShares: number, avgCostPrice: number, currency: "KRW" | "USD"}[]>([])
+  const [stockAccordionOpen, setStockAccordionOpen] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -118,6 +120,9 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   const following = isFollowing(userId)
   const canView = following && !!targetProfile?.portfolio_public
 
+  const tickers = useMemo(() => stockHoldingsList.map(h => h.ticker), [stockHoldingsList])
+  const { quotes: stockQuotes } = useMarketPrice(tickers)
+
   useEffect(() => {
     if (!canView || !targetProfile?.id) return
     const uid = targetProfile.id
@@ -136,19 +141,30 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
       supabase.from("asset_etc").select("purchase_price, current_price").eq("user_id", uid),
       fetch("/api/market/gold").then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([stockHoldingsResult, trades, realestate, goldRows, cash, savings, bonds, etc, goldQuote]) => {
-      // 주식: 매수 누계 + 보유 종목 목록
+      // 주식: 매도 반영 잔여 보유량 기준 비용 계산 + 종목별 통계
       let stocks = 0
-      const holdingInvestment: Record<string, number> = {}
+      const holdingStats: Record<string, { totalCost: number; totalShares: number }> = {}
       for (const t of trades.data ?? []) {
+        const hid = t.holding_id
+        if (!hid) continue
+        if (!holdingStats[hid]) holdingStats[hid] = { totalCost: 0, totalShares: 0 }
         if (t.trade_type === "buy") {
-          stocks += Number(t.price) * Number(t.quantity)
-          if (t.holding_id) holdingInvestment[t.holding_id] = (holdingInvestment[t.holding_id] ?? 0) + Number(t.price) * Number(t.quantity)
+          holdingStats[hid].totalCost += Number(t.price) * Number(t.quantity)
+          holdingStats[hid].totalShares += Number(t.quantity)
+        } else {
+          const avg = holdingStats[hid].totalShares > 0 ? holdingStats[hid].totalCost / holdingStats[hid].totalShares : 0
+          holdingStats[hid].totalCost -= avg * Number(t.quantity)
+          holdingStats[hid].totalShares -= Number(t.quantity)
         }
       }
+      for (const s of Object.values(holdingStats)) stocks += Math.max(0, s.totalCost)
       setStockHoldingsList(
         (stockHoldingsResult.data ?? [])
-          .filter((h: any) => (holdingInvestment[h.id] ?? 0) > 0)
-          .map((h: any) => ({ ticker: h.ticker, name: h.name, currency: h.currency, invested: holdingInvestment[h.id] ?? 0 }))
+          .filter((h: any) => (holdingStats[h.id]?.totalShares ?? 0) > 0)
+          .map((h: any) => {
+            const s = holdingStats[h.id] ?? { totalCost: 0, totalShares: 0 }
+            return { ticker: h.ticker, name: h.name, currency: h.currency, invested: Math.max(0, s.totalCost), totalShares: s.totalShares, avgCostPrice: s.totalShares > 0 ? s.totalCost / s.totalShares : 0 }
+          })
           .sort((a: any, b: any) => b.invested - a.invested)
       )
 
@@ -359,16 +375,19 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
                   const pnlPositive = isSpecialPnl ? true : (pnl ?? 0) >= 0
                   const href = type.detailPath ? `${type.detailPath}?viewUserId=${userId}` : null
 
-                  // 주식: 보유 종목 인라인 표시 (별도 페이지 없이 3 depth)
+                  // 주식: 아코디언 (수익률 + 증감금액)
                   if (type.key === "stocks") {
                     return (
-                      <div key={type.key} className="p-5 bg-white rounded-[28px] border border-slate-100 shadow-sm">
-                        <div className="flex items-center justify-between">
+                      <div key={type.key} className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden">
+                        <button
+                          onClick={() => setStockAccordionOpen(v => !v)}
+                          className="w-full p-5 flex items-center justify-between active:bg-slate-50 transition-colors"
+                        >
                           <div className="flex items-center gap-4">
                             <div className={`w-11 h-11 ${theme.bg} rounded-2xl flex items-center justify-center shrink-0`}>
                               <TrendingUp className={`w-5 h-5 ${theme.text}`} />
                             </div>
-                            <div>
+                            <div className="text-left">
                               <h3 className="text-[14px] font-black text-slate-800">주식</h3>
                               {value > 0 ? (
                                 <span className="text-[12px] font-bold text-slate-600">{Math.round(value).toLocaleString()}원</span>
@@ -377,28 +396,56 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
                               )}
                             </div>
                           </div>
-                          {value > 0 && totalAsset > 0 && (
-                            <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded-lg shrink-0">
-                              {((value / totalAsset) * 100).toFixed(1)}%
-                            </span>
-                          )}
-                        </div>
-                        {stockHoldingsList.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-slate-50 space-y-2">
-                            {stockHoldingsList.slice(0, 5).map((h) => (
-                              <div key={h.ticker} className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg ${h.currency === "USD" ? "bg-blue-50 text-blue-500" : "bg-emerald-50 text-emerald-600"}`}>
-                                    {h.ticker}
-                                  </span>
-                                  <span className="text-[11px] font-bold text-slate-600">{h.name}</span>
-                                </div>
-                                <span className="text-[11px] font-black text-slate-700">{Math.round(h.invested).toLocaleString()}원</span>
-                              </div>
-                            ))}
-                            {stockHoldingsList.length > 5 && (
-                              <p className="text-[10px] font-bold text-slate-400 text-center">외 {stockHoldingsList.length - 5}개 종목</p>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {value > 0 && totalAsset > 0 && (
+                              <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded-lg">
+                                {((value / totalAsset) * 100).toFixed(1)}%
+                              </span>
                             )}
+                            {stockHoldingsList.length > 0 && (
+                              <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${stockAccordionOpen ? "rotate-180" : ""}`} />
+                            )}
+                          </div>
+                        </button>
+                        {stockAccordionOpen && stockHoldingsList.length > 0 && (
+                          <div className="border-t border-slate-50 px-5 pb-2">
+                            {stockHoldingsList.map((h) => {
+                              const quote = stockQuotes[h.ticker]
+                              const rate = h.currency === "USD" ? usdToKrw : 1
+                              const currentValue = quote ? h.totalShares * quote.currentPrice * rate : null
+                              const pnl = currentValue !== null ? currentValue - h.invested : null
+                              const returnRate = pnl !== null && h.invested > 0 ? (pnl / h.invested) * 100 : null
+                              const isUp = returnRate !== null && returnRate > 0
+                              const isDown = returnRate !== null && returnRate < 0
+                              return (
+                                <div key={h.ticker} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg shrink-0 ${h.currency === "USD" ? "bg-blue-50 text-blue-500" : "bg-emerald-50 text-emerald-600"}`}>
+                                      {h.ticker}
+                                    </span>
+                                    <div>
+                                      <p className="text-[12px] font-black text-slate-700">{h.name}</p>
+                                      <p className="text-[10px] font-bold text-slate-400">매입 {Math.round(h.invested).toLocaleString()}원</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    {currentValue !== null ? (
+                                      <>
+                                        <p className="text-[12px] font-black text-slate-700">{Math.round(currentValue).toLocaleString()}원</p>
+                                        {returnRate !== null && (
+                                          <p className={`text-[10px] font-black ${isUp ? "text-rose-500" : isDown ? "text-blue-500" : "text-slate-400"}`}>
+                                            {returnRate >= 0 ? "+" : ""}{returnRate.toFixed(2)}%{" "}
+                                            ({pnl! >= 0 ? "+" : ""}{Math.round(pnl!).toLocaleString()}원)
+                                          </p>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <p className="text-[12px] font-black text-slate-400">{Math.round(h.invested).toLocaleString()}원</p>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
                         )}
                       </div>
