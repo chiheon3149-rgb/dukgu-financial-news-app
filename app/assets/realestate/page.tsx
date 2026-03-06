@@ -1,5 +1,7 @@
 "use client"
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useMemo, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { Landmark, Plus, Trash2, Loader2, Home, Building2, MapPin, Pencil, X, CreditCard, Calculator, Activity, TrendingUp as TrendUpIcon, Search, RefreshCw, ChevronRight } from "lucide-react"
