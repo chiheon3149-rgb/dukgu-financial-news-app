@@ -1,8 +1,6 @@
 "use client"
 
-export const dynamic = 'force-dynamic'
-
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Building2, Trash2, Pencil, X } from "lucide-react"
 import { toast } from "sonner"
@@ -41,7 +39,7 @@ function rowToItem(row: Record<string, unknown>): SavingsItem {
   }
 }
 
-export default function SavingsPage() {
+function SavingsPageInner() {
   const { user } = useUser()
   const searchParams = useSearchParams()
   const viewUserId = searchParams.get("viewUserId")
@@ -267,4 +265,8 @@ export default function SavingsPage() {
       </main>
     </div>
   )
+}
+
+export default function SavingsPage() {
+  return <Suspense fallback={null}><SavingsPageInner /></Suspense>
 }

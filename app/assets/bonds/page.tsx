@@ -1,8 +1,6 @@
 "use client"
 
-export const dynamic = 'force-dynamic'
-
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { ScrollText, Trash2, Pencil, X } from "lucide-react"
 import { toast } from "sonner"
@@ -39,7 +37,7 @@ function rowToItem(row: Record<string, unknown>): BondItem {
   }
 }
 
-export default function BondsPage() {
+function BondsPageInner() {
   const { user } = useUser()
   const searchParams = useSearchParams()
   const viewUserId = searchParams.get("viewUserId")
@@ -239,4 +237,8 @@ export default function BondsPage() {
       </main>
     </div>
   )
+}
+
+export default function BondsPage() {
+  return <Suspense fallback={null}><BondsPageInner /></Suspense>
 }

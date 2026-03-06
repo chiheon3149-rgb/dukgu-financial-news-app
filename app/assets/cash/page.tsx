@@ -1,8 +1,6 @@
 "use client"
 
-export const dynamic = 'force-dynamic'
-
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Banknote, Plus, Trash2, Pencil, X } from "lucide-react"
 import { toast } from "sonner"
@@ -21,7 +19,7 @@ interface CashItem {
 
 const defaultForm = { label: "", currency: "KRW" as CashItem["currency"], amount: "", note: "" }
 
-export default function CashPage() {
+function CashPageInner() {
   const { user } = useUser()
   const searchParams = useSearchParams()
   const viewUserId = searchParams.get("viewUserId")
@@ -222,4 +220,8 @@ export default function CashPage() {
       </main>
     </div>
   )
+}
+
+export default function CashPage() {
+  return <Suspense fallback={null}><CashPageInner /></Suspense>
 }

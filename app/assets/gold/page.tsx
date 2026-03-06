@@ -1,8 +1,6 @@
 "use client"
 
-export const dynamic = 'force-dynamic'
-
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Plus, Trash2, ChevronDown, RefreshCw, TrendingUp, TrendingDown, Pencil, X } from "lucide-react"
 import { toast } from "sonner"
@@ -34,7 +32,7 @@ function rowToHolding(row: Record<string, unknown>): GoldHolding {
   }
 }
 
-export default function GoldPage() {
+function GoldPageInner() {
   const { user } = useUser()
   const searchParams = useSearchParams()
   const viewUserId = searchParams.get("viewUserId")
@@ -305,4 +303,8 @@ export default function GoldPage() {
       </main>
     </div>
   )
+}
+
+export default function GoldPage() {
+  return <Suspense fallback={null}><GoldPageInner /></Suspense>
 }

@@ -1,8 +1,6 @@
 "use client"
 
-export const dynamic = 'force-dynamic'
-
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Landmark, Plus, Trash2, Loader2, Home, Building2, MapPin, Pencil, X, CreditCard, Calculator, Activity, TrendingUp as TrendUpIcon, Search, RefreshCw, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
@@ -39,7 +37,7 @@ function MiniPriceChart({ data }: { data: { price: number }[] }) {
   )
 }
 
-export default function RealEstatePage() {
+function RealEstatePageInner() {
   const { profile } = useUser()
   const searchParams = useSearchParams()
   const viewUserId = searchParams.get("viewUserId")
@@ -456,4 +454,7 @@ export default function RealEstatePage() {
       </main>
     </div>
   )
+}
+export default function RealEstatePage() {
+  return <Suspense fallback={null}><RealEstatePageInner /></Suspense>
 }
