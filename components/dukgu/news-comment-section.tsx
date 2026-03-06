@@ -49,7 +49,7 @@ export function NewsCommentSection({
   newsId: string; 
   onCountChange?: (count: number) => void 
 }) {
-  const { profile } = useUser()
+  const { profile, currentLevel } = useUser()
   const router = useRouter()
   const [comments, setComments] = useState<NewsComment[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -111,7 +111,7 @@ export function NewsCommentSection({
         author_id: profile.id, // 👈 로그인된 유저의 진짜 ID를 넣습니다.
         author_nickname: profile.nickname,
         author_emoji: profile.avatarEmoji,
-        author_level: 1, // 필요 시 로직 추가
+        author_level: currentLevel.level,
         content: inputText.trim(),
       })
       .select().single()

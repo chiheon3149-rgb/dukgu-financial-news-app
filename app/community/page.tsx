@@ -22,16 +22,17 @@ const TABS: { id: CommunityCategory | "all"; label: string }[] = [
 export default function CommunityPage() {
   const router = useRouter()
   
-  const { 
-    filteredPosts, 
-    isLoading, 
-    activeCategory, 
-    setActiveCategory, 
-    searchQuery, 
-    setSearchQuery, 
-    reactPost, 
+  const {
+    filteredPosts,
+    isLoading,
+    activeCategory,
+    setActiveCategory,
+    searchQuery,
+    setSearchQuery,
+    reactPost,
     deletePost,
-    fetchPosts 
+    fetchPosts,
+    userReactions,
   } = useCommunity()
   
   const { profile } = useUser()
@@ -119,6 +120,7 @@ export default function CommunityPage() {
                   onReact={reactPost}
                   onDelete={deletePost}
                   currentUserId={profile?.id}
+                  initialReaction={profile?.id ? (userReactions[post.id] ?? null) : null}
                   onProfileClick={(authorId: string) => router.push(`/profile/${authorId}`)}
                 />
                 

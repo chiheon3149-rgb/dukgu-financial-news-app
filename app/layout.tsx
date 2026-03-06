@@ -6,7 +6,6 @@ import './globals.css'
 import { BottomNav } from "@/components/dukgu/bottom-nav"
 import { UserProvider } from "@/context/user-context"
 import Script from 'next/script'
-import { GoogleTagManager } from '@next/third-parties/google'
 
 // 폰트 설정
 const notoSansKR = Noto_Sans_KR({ 
@@ -73,8 +72,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <GoogleTagManager gtmId="GTM-WMV8P3DM" />
       <head>
+        {/* 구글 태그 매니저 */}
+        <Script
+          id="gtm-script"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WMV8P3DM');`,
+          }}
+        />
         {/* 구글 애드센스 광고 엔진 */}
         <Script
           async
@@ -83,10 +89,19 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
       </head>
-      <body 
-        className={`${notoSansKR.className} antialiased selection:bg-blue-100 selection:text-blue-900`} 
+      <body
+        className={`${notoSansKR.className} antialiased selection:bg-blue-100 selection:text-blue-900`}
         suppressHydrationWarning
       >
+        {/* 구글 태그 매니저 noscript */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-WMV8P3DM"
+            height="0"
+            width="0"
+            style={{ display: 'none', visibility: 'hidden' }}
+          />
+        </noscript>
         <UserProvider>
           <main className="min-h-screen pb-20">
             {children}

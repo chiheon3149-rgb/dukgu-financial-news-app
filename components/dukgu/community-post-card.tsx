@@ -12,6 +12,7 @@ interface CommunityPostCardProps {
   onReact: (postId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => void
   onDelete?: (postId: string) => Promise<void>
   currentUserId?: string
+  initialReaction?: "like" | "dislike" | null
   onProfileClick?: (authorId: string) => void
 }
 
@@ -22,16 +23,16 @@ const CATEGORY_COLOR: Record<string, string> = {
   sports: "bg-blue-50 text-blue-700",
 }
 
-export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onProfileClick }: CommunityPostCardProps) {
+export function CommunityPostCard({ post, onReact, onDelete, currentUserId, initialReaction, onProfileClick }: CommunityPostCardProps) {
   const router = useRouter()
-  
+
   // 💡 [추가] 탈퇴 유저 여부 판단
   const isWithdrawn = !post.authorId
 
-  const REACTION_KEY = currentUserId 
-    ? `dukgu:reactions_${currentUserId}` 
+  const REACTION_KEY = currentUserId
+    ? `dukgu:reactions_${currentUserId}`
     : "dukgu:reactions_guest"
-  
+
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(() => {
     if (typeof window === "undefined") return null
     try {
@@ -39,9 +40,23 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, onPr
       return (cache[post.id] ?? null) as "like" | "dislike" | null
     } catch { return null }
   })
-  
+
   const [counts, setCounts] = useState({ like: post.likeCount, dislike: post.dislikeCount })
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // DB에서 조회한 실제 반응으로 초기 상태 동기화 (새로고침 후 정확한 상태 복원)
+  useEffect(() => {
+    if (initialReaction === undefined) return
+    setReaction(initialReaction)
+    try {
+      const cache = JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}")
+      if (initialReaction) cache[post.id] = initialReaction
+      else delete cache[post.id]
+      localStorage.setItem(REACTION_KEY, JSON.stringify(cache))
+    } catch {}
+  // initialReaction이 DB에서 처음 도착할 때 한 번만 동기화
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialReaction])
 
   useEffect(() => {
     setCounts({ like: post.likeCount, dislike: post.dislikeCount })

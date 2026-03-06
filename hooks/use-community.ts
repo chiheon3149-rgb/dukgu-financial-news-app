@@ -107,10 +107,26 @@ export function useCommunity(postId?: string) {
   const [activeCategory, setActiveCategory] = useState<CommunityCategory | "all">("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [userId, setUserId] = useState<string | null>(null)
+  const [userReactions, setUserReactions] = useState<Record<string, "like" | "dislike">>({})
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
   }, [])
+
+  // 로그인 유저의 실제 반응을 DB에서 일괄 조회 (새로고침 후 상태 복원)
+  useEffect(() => {
+    if (!userId) return
+    supabase
+      .from("community_post_reactions")
+      .select("post_id, reaction")
+      .eq("user_key", userId)
+      .then(({ data }) => {
+        if (!data) return
+        const map: Record<string, "like" | "dislike"> = {}
+        data.forEach(r => { map[r.post_id] = r.reaction as "like" | "dislike" })
+        setUserReactions(map)
+      })
+  }, [userId])
 
   useEffect(() => {
     const handleSync = () => setPosts([..._cachedPosts]);
@@ -215,12 +231,12 @@ export function useCommunity(postId?: string) {
     } catch (e) { console.error(e) }
   }, []);
 
-  // 💡 [좋아요/싫어요 DB 원본 동기화 유지]
+  // 💡 [좋아요/싫어요] 카운트는 DB 트리거가 단독 관리, 직접 update 제거로 이중 증가 방지
   const reactPost = useCallback((postId: string, type: "like" | "dislike", currentReaction: "like" | "dislike" | null) => {
     const isToggleOff = currentReaction === type
     const userKey = userId ?? getOrCreateDeviceKey()
     const target = _cachedPosts.find(p => p.id === postId);
-    
+
     if (target) {
       let newLike = target.likeCount;
       let newDislike = target.dislikeCount;
@@ -239,19 +255,32 @@ export function useCommunity(postId?: string) {
         }
       }
 
+      // 낙관적 UI 업데이트만 (DB 직접 update 제거 - 트리거가 처리)
       updateCachedPost(postId, { likeCount: newLike, dislikeCount: newDislike });
-      
-      supabase.from("community_posts").update({ 
-        like_count: newLike, 
-        dislike_count: newDislike 
-      }).eq("id", postId).then(({error}) => {
-        if(error) console.error("DB 좋아요 업데이트 실패:", error);
-      });
     }
 
+    // userReactions 상태 동기화
+    setUserReactions(prev => {
+      const next = { ...prev }
+      if (isToggleOff) delete next[postId]
+      else next[postId] = type
+      return next
+    })
+
+    // DB: 명시적 INSERT / UPDATE(반응 전환) / DELETE — upsert 제거로 트리거 오발 방지
     const sync = async () => {
-      if (isToggleOff) await supabase.from("community_post_reactions").delete().eq("post_id", postId).eq("user_key", userKey)
-      else await supabase.from("community_post_reactions").upsert({ post_id: postId, user_key: userKey, reaction: type })
+      if (isToggleOff) {
+        await supabase.from("community_post_reactions")
+          .delete().eq("post_id", postId).eq("user_key", userKey)
+      } else if (currentReaction !== null) {
+        // like ↔ dislike 전환: UPDATE → 트리거의 UPDATE 분기 실행
+        await supabase.from("community_post_reactions")
+          .update({ reaction: type }).eq("post_id", postId).eq("user_key", userKey)
+      } else {
+        // 새 반응: INSERT → 트리거의 INSERT 분기 실행
+        await supabase.from("community_post_reactions")
+          .insert({ post_id: postId, user_key: userKey, reaction: type })
+      }
     }
     sync().catch(console.error)
   }, [userId])
@@ -336,7 +365,8 @@ export function useCommunity(postId?: string) {
   }, [posts, activeCategory, searchQuery])
 
   return {
-    posts, comments, isLoading, activeCategory, setActiveCategory, searchQuery, setSearchQuery, filteredPosts, getComments, 
-    createPost, updatePost, deletePost, reactPost, addComment, editComment, deleteComment, reactComment, reportComment, reportPost, incrementViewCount, fetchPosts 
+    posts, comments, isLoading, activeCategory, setActiveCategory, searchQuery, setSearchQuery, filteredPosts, getComments,
+    userReactions,
+    createPost, updatePost, deletePost, reactPost, addComment, editComment, deleteComment, reactComment, reportComment, reportPost, incrementViewCount, fetchPosts
   }
 }
