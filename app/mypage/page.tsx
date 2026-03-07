@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -35,7 +35,7 @@ function MenuRow({
       </div>
       <div className="flex items-center gap-2">
         {badge !== undefined && badge > 0 && (
-          <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{badge}</span>
+          <span className="text-[10px] font-black text-white bg-rose-500 px-2 py-0.5 rounded-full min-w-[20px] text-center">{badge}</span>
         )}
         <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-500 transition-colors" />
       </div>
@@ -50,6 +50,17 @@ export default function MyPage() {
   const { following } = useFollow()
   const [showLevelMap, setShowLevelMap] = useState(false)
   const [openPolicy, setOpenPolicy] = useState<PolicyType | null>(null)
+
+  const [pendingInquiryCount, setPendingInquiryCount] = useState(0)
+
+  useEffect(() => {
+    if (!profile?.is_admin) return
+    supabase
+      .from("inquiries")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .then(({ count }) => setPendingInquiryCount(count ?? 0))
+  }, [profile?.is_admin])
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [leaveReason, setLeaveReason] = useState<string>("")
@@ -154,11 +165,12 @@ export default function MyPage() {
           {/* ⭐ [비밀의 문] 관리자(is_admin)에게만 노출되는 메뉴 */}
           {profile.is_admin && (
             <div className="bg-blue-50/50">
-              <MenuRow 
-                icon={<ShieldAlert className="w-4 h-4" />} 
-                label="관리자 센터 (퀴즈/CS)" 
-                href="/mypage/inquiry" 
-                color="text-blue-600" 
+              <MenuRow
+                icon={<ShieldAlert className="w-4 h-4" />}
+                label="관리자 센터 (퀴즈/CS)"
+                href="/mypage/inquiry"
+                badge={pendingInquiryCount}
+                color="text-blue-600"
               />
             </div>
           )}

@@ -198,6 +198,226 @@ export default function InquiryPage() {
     )
   }
 
-  // 일반 유저용 화면 (생략 가능 - 기존과 동일)
-  return <div>일반 유저 화면... (중략)</div>
+  // 일반 유저용 화면
+  return <InquiryUserView
+    tab={tab}
+    setTab={setTab}
+    inquiries={inquiries}
+    isLoadingHistory={isLoadingHistory}
+    profile={profile}
+    onRefresh={loadInquiries}
+  />
+}
+
+// =============================================================================
+// 일반 유저 전용 문의하기 뷰
+// =============================================================================
+
+function InquiryUserView({
+  tab,
+  setTab,
+  inquiries,
+  isLoadingHistory,
+  profile,
+  onRefresh,
+}: {
+  tab: "write" | "history"
+  setTab: (t: "write" | "history") => void
+  inquiries: (InquiryMessage & { userEmail?: string; userNickname?: string })[]
+  isLoadingHistory: boolean
+  profile: any
+  onRefresh: () => void
+}) {
+  const [category, setCategory] = useState<InquiryCategory>("bug")
+  const [title, setTitle] = useState("")
+  const [body, setBody] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!title.trim() || !body.trim()) {
+      toast.error("제목과 내용을 모두 입력해주세요.")
+      return
+    }
+    setIsSubmitting(true)
+    try {
+      const res = await fetch("/api/inquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category,
+          title: title.trim(),
+          body: body.trim(),
+          userNickname: profile?.nickname ?? "익명",
+          userEmail: profile?.email ?? "",
+        }),
+      })
+      if (!res.ok) throw new Error("전송 실패")
+      setSubmitted(true)
+      toast.success("문의가 접수되었다냥! 🐾")
+      setTitle("")
+      setBody("")
+      setCategory("bug")
+      onRefresh()
+    } catch {
+      toast.error("전송 중 오류가 발생했습니다.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="min-h-dvh bg-slate-50 pb-24">
+      {/* 헤더 */}
+      <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-100 z-10">
+        <div className="max-w-md mx-auto px-5 py-4 flex items-center gap-3">
+          <Link href="/mypage" className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors">
+            <ArrowLeft className="w-5 h-5 text-slate-600" />
+          </Link>
+          <span className="text-[16px] font-black text-slate-900 flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-emerald-500" /> 문의하기
+          </span>
+        </div>
+
+        {/* 탭 */}
+        <div className="max-w-md mx-auto px-5 pb-3 flex gap-2">
+          {(["write", "history"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-2 rounded-full text-[12px] font-black transition-all ${
+                tab === t
+                  ? "bg-emerald-500 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
+            >
+              {t === "write" ? "문의 작성" : `내 문의 (${inquiries.length})`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <main className="max-w-md mx-auto px-5 py-5">
+        {/* 작성 탭 */}
+        {tab === "write" && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {submitted && (
+              <div className="bg-emerald-50 border border-emerald-100 rounded-[20px] p-4 flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
+                <p className="text-[13px] font-bold text-emerald-700">문의가 접수되었습니다. 답변은 내 문의 탭에서 확인하세요.</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* 카테고리 */}
+              <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 space-y-3">
+                <p className="text-[13px] font-black text-slate-700">문의 유형</p>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      onClick={() => setCategory(cat.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-black transition-all border ${
+                        category === cat.key
+                          ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                          : "bg-slate-50 text-slate-500 border-slate-100 hover:border-emerald-200"
+                      }`}
+                    >
+                      <span>{cat.emoji}</span> {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 제목 */}
+              <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 space-y-2">
+                <p className="text-[13px] font-black text-slate-700">제목</p>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="문의 제목을 입력해주세요"
+                  className="w-full text-[13px] font-medium text-slate-800 placeholder:text-slate-300 outline-none bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 focus:border-emerald-300 transition-colors"
+                  maxLength={100}
+                />
+              </div>
+
+              {/* 내용 */}
+              <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 space-y-2">
+                <p className="text-[13px] font-black text-slate-700">내용</p>
+                <textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="문의 내용을 자세히 적어주세요"
+                  rows={6}
+                  className="w-full text-[13px] font-medium text-slate-800 placeholder:text-slate-300 outline-none bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 focus:border-emerald-300 transition-colors resize-none leading-relaxed"
+                  maxLength={2000}
+                />
+                <p className="text-right text-[11px] font-bold text-slate-300">{body.length} / 2000</p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 bg-emerald-500 text-white rounded-[20px] text-[14px] font-black shadow-sm shadow-emerald-100 hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                문의 보내기
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* 내 문의 탭 */}
+        {tab === "history" && (
+          <div className="space-y-3 animate-in fade-in duration-200">
+            {isLoadingHistory ? (
+              <div className="py-24 flex flex-col items-center text-slate-300">
+                <Loader2 className="w-8 h-8 animate-spin mb-3" />
+              </div>
+            ) : inquiries.length === 0 ? (
+              <div className="py-24 flex flex-col items-center text-slate-300">
+                <MessageSquare className="w-10 h-10 opacity-20 mb-3" />
+                <p className="text-[13px] font-bold">아직 문의 내역이 없습니다</p>
+              </div>
+            ) : (
+              inquiries.map((inq) => (
+                <div key={inq.id} className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {CATEGORIES.find((c) => c.key === inq.category)?.label ?? inq.category}
+                      </span>
+                      <p className="text-[14px] font-black text-slate-800">{inq.title}</p>
+                      <p className="text-[11px] font-bold text-slate-400">
+                        {new Date(inq.submittedAt).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}
+                      </p>
+                    </div>
+                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full shrink-0 ${STATUS_CONFIG[inq.status as keyof typeof STATUS_CONFIG]?.color ?? "bg-slate-100"}`}>
+                      {STATUS_CONFIG[inq.status as keyof typeof STATUS_CONFIG]?.label ?? "대기"}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl text-[12px] font-medium text-slate-600 leading-relaxed whitespace-pre-wrap">
+                    {inq.body}
+                  </div>
+                  {inq.reply && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl space-y-1">
+                      <p className="text-[10px] font-black text-emerald-600">덕구팀 답변</p>
+                      <p className="text-[12px] font-medium text-emerald-800 leading-relaxed">{inq.reply}</p>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  )
 }
