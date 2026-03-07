@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseServer } from "@/lib/supabase-server"
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 // =============================================================================
 // 📬 /api/inquiry
 //
@@ -53,7 +51,8 @@ export async function POST(req: NextRequest) {
 
     // 관리자 이메일 알림 (실패해도 문의 접수 자체는 성공 처리)
     const adminEmail = process.env.ADMIN_EMAIL
-    if (adminEmail) {
+    if (adminEmail && process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY)
       const categoryLabel: Record<string, string> = {
         bug: "🐛 버그/오류 신고", feature: "💡 기능 제안",
         account: "🔐 계정 문의", data: "📊 데이터 오류", other: "📝 기타",
