@@ -248,7 +248,7 @@ export function TickerSettingsSheet({
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-md mx-auto animate-in slide-in-from-bottom-4 duration-300 flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-md mx-auto animate-in slide-in-from-bottom-4 duration-300 flex flex-col overflow-hidden"
         style={{ maxHeight: "88dvh" }}
       >
         {/* 핸들 + 헤더 */}
@@ -277,7 +277,7 @@ export function TickerSettingsSheet({
         </div>
 
         {/* 리스트 */}
-        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-5">
+        <div className="overflow-y-auto flex-1 min-h-0 px-4 py-3 space-y-5">
 
           {/* ── 기본 지수 ── */}
           <div>
