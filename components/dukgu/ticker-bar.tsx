@@ -1,7 +1,16 @@
 "use client"
 
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useState, useRef, useMemo, useCallback } from "react"
+import { Settings } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import {
+  TickerSettingsSheet,
+  loadTickerSettings,
+  type TickerSettings,
+  TICKER_SETTINGS_CHANGED,
+  DEFAULT_TICKER_NAMES,
+} from "./ticker-settings-sheet"
 
 const SYMBOL_ORDER = ["^DJI", "^NDX", "^GSPC", "^RUT", "^KS11", "^KQ11", "KRW=X", "JPYKRW=X"]
 
@@ -34,178 +43,283 @@ function mapRow(row: DbRow): IndexQuote {
   }
 }
 
-function sortByOrder(items: IndexQuote[]): IndexQuote[] {
+function sortByOrder(items: IndexQuote[], orderList: string[]): IndexQuote[] {
   return [...items].sort((a, b) => {
-    const ai = SYMBOL_ORDER.indexOf(a.symbol)
-    const bi = SYMBOL_ORDER.indexOf(b.symbol)
+    const ai = orderList.indexOf(a.symbol)
+    const bi = orderList.indexOf(b.symbol)
     return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
   })
 }
 
-function IndexChip({ index, fresh }: { index: IndexQuote; fresh: boolean }) {
-  const isUp = index.changeStatus === "up"
+// -------------------------------------------------------
+// 단일 칩
+// -------------------------------------------------------
+interface IndexChipProps {
+  index: IndexQuote
+  fresh: boolean
+  displayName: string
+  onClick: (symbol: string) => void
+  isDragging: boolean
+}
+
+function IndexChip({ index, fresh, displayName, onClick, isDragging }: IndexChipProps) {
+  const isUp   = index.changeStatus === "up"
   const isDown = index.changeStatus === "down"
-  const displayPrice = index.symbol === "JPYKRW=X" ? index.price * 100 : index.price;
-  const displayName = index.symbol === "JPYKRW=X" ? "엔/원(100엔)" : index.name;
+  const displayPrice =
+    index.symbol === "JPYKRW=X" ? index.price * 100 : index.price
+
+  const handleClick = () => {
+    if (isDragging) return
+    onClick(index.symbol)
+  }
 
   return (
-    <div className="inline-flex items-center gap-2 px-4 whitespace-nowrap border-r border-slate-200 h-9 shrink-0 select-none">
+    <button
+      onClick={handleClick}
+      className="inline-flex items-center gap-2 px-4 whitespace-nowrap border-r border-slate-200 h-9 shrink-0 select-none cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors"
+    >
       <span className="text-[11px] font-medium text-slate-500">{displayName}</span>
-      <span className={`text-[12px] font-bold transition-all duration-500 ${
-        fresh ? (isUp ? "text-emerald-400 scale-110" : isDown ? "text-rose-400 scale-110" : "text-blue-400") : "text-slate-800"
-      }`}>
-        {index.symbol.includes("=X") ? `${displayPrice.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원` : displayPrice.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+      <span
+        className={`text-[12px] font-bold transition-all duration-500 ${
+          fresh
+            ? isUp
+              ? "text-emerald-400 scale-110"
+              : isDown
+              ? "text-rose-400 scale-110"
+              : "text-blue-400"
+            : "text-slate-800"
+        }`}
+      >
+        {index.symbol.includes("=X")
+          ? `${displayPrice.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`
+          : displayPrice.toLocaleString("en-US", { maximumFractionDigits: 2 })}
       </span>
-      <span className={`text-[11px] font-semibold ${isUp ? "text-emerald-500" : isDown ? "text-rose-500" : "text-slate-400"}`}>
-        {isUp ? "▲" : isDown ? "▼" : ""}{index.changeRate.toFixed(2)}%
+      <span
+        className={`text-[11px] font-semibold ${
+          isUp ? "text-emerald-500" : isDown ? "text-rose-500" : "text-slate-400"
+        }`}
+      >
+        {isUp ? "▲" : isDown ? "▼" : ""}
+        {index.changeRate.toFixed(2)}%
       </span>
-    </div>
+    </button>
   )
 }
 
+// -------------------------------------------------------
+// 메인 컴포넌트
+// -------------------------------------------------------
 export function TickerBar() {
-  const [indices, setIndices] = useState<IndexQuote[]>([])
-  const [hasData, setHasData] = useState(false)
-  const [failed, setFailed] = useState(false)
-  const [fresh, setFresh] = useState(false)
-  
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const animationRef = useRef<number | null>(null)
-  
-  // 💡 [개선] 소수점 단위 스크롤을 정확히 계산하기 위한 정밀 기록장
-  const scrollPosRef = useRef(0) 
-  
-  const [isInteracting, setIsInteracting] = useState(false)
-  const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0 })
+  const [dbIndices, setDbIndices]     = useState<IndexQuote[]>([])
+  const [customQuotes, setCustomQuotes] = useState<IndexQuote[]>([])
+  const [hasData, setHasData]         = useState(false)
+  const [failed, setFailed]           = useState(false)
+  const [fresh, setFresh]             = useState(false)
 
-  // 1. 데이터 로드 및 리얼타임 구독
+  const [settings, setSettings]       = useState<TickerSettings>({
+    customNames: {}, hiddenSymbols: [], customTickers: [],
+  })
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const router = useRouter()
+
+  const scrollRef    = useRef<HTMLDivElement>(null)
+  const animationRef = useRef<number | null>(null)
+  const scrollPosRef = useRef(0)
+  const [isInteracting, setIsInteracting] = useState(false)
+  const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false })
+
+  // ── 설정 로드 ──
+  useEffect(() => {
+    setSettings(loadTickerSettings())
+    const handler = () => setSettings(loadTickerSettings())
+    window.addEventListener(TICKER_SETTINGS_CHANGED, handler)
+    return () => window.removeEventListener(TICKER_SETTINGS_CHANGED, handler)
+  }, [])
+
+  // ── DB 데이터 로드 + 리얼타임 구독 ──
   useEffect(() => {
     const fetchData = async () => {
       const { data, error } = await supabase.from("market_indices").select("*")
-      if (error) { setFailed(true); return; }
-      if (data) { setIndices(sortByOrder(data.map(mapRow))); setHasData(true); }
+      if (error) { setFailed(true); return }
+      if (data) { setDbIndices(sortByOrder(data.map(mapRow), SYMBOL_ORDER)); setHasData(true) }
     }
     fetchData()
 
-    const channel = supabase.channel("market_indices_rt")
+    const channel = supabase
+      .channel("market_indices_rt")
       .on("postgres_changes", { event: "*", schema: "public", table: "market_indices" }, (payload) => {
-        setIndices(prev => prev.map(idx => idx.symbol === (payload.new as DbRow).symbol ? mapRow(payload.new as DbRow) : idx))
-        setFresh(true);
-        setTimeout(() => setFresh(false), 700);
-      }).subscribe()
-    return () => { supabase.removeChannel(channel); }
+        setDbIndices((prev) =>
+          prev.map((idx) =>
+            idx.symbol === (payload.new as DbRow).symbol ? mapRow(payload.new as DbRow) : idx
+          )
+        )
+        setFresh(true)
+        setTimeout(() => setFresh(false), 700)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
-  // 2. 무한 자동 흐르기 로직 (모바일 멈춤 현상 해결)
+  // ── 커스텀 티커 fetch (설정 변경 시) ──
   useEffect(() => {
-    if (!hasData || isInteracting) return;
+    const tickers = settings.customTickers ?? []
+    if (tickers.length === 0) { setCustomQuotes([]); return }
 
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/market/quotes?tickers=${tickers.join(",")}`)
+        if (!res.ok) return
+        const data: Array<{
+          ticker: string; name?: string; currentPrice: number
+          change?: number; changePercent: number
+        }> = await res.json()
+
+        const quotes: IndexQuote[] = data.map((q) => ({
+          symbol:       q.ticker,
+          name:         q.name ?? q.ticker,
+          price:        q.currentPrice,
+          change:       q.change ?? 0,
+          changeRate:   q.changePercent,
+          changeStatus: q.changePercent > 0 ? "up" : q.changePercent < 0 ? "down" : "same",
+        }))
+        setCustomQuotes(quotes)
+      } catch { /* 조용히 실패 */ }
+    }
+    load()
+  }, [settings.customTickers])
+
+  // ── 자동 흐르기 ──
+  useEffect(() => {
+    if (!hasData || isInteracting) return
     const scroll = () => {
       if (scrollRef.current) {
-        // 브라우저의 정수값 scrollLeft 대신, useRef에 소수점을 계속 더함
-        scrollPosRef.current += 0.8; 
-        
-        // 실제 화면을 옮길 때 소수점 값을 대입 (브라우저가 최적으로 렌더링함)
-        scrollRef.current.scrollLeft = scrollPosRef.current;
-        
-        // 무한 루프 체크: 절반 이상 가면 다시 처음으로
+        scrollPosRef.current += 0.8
+        scrollRef.current.scrollLeft = scrollPosRef.current
         if (scrollPosRef.current >= scrollRef.current.scrollWidth / 2) {
-          scrollPosRef.current = 0;
-          scrollRef.current.scrollLeft = 0;
+          scrollPosRef.current = 0
+          scrollRef.current.scrollLeft = 0
         }
       }
-      animationRef.current = requestAnimationFrame(scroll);
-    };
-
-    animationRef.current = requestAnimationFrame(scroll);
-    return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
-  }, [hasData, isInteracting, indices]);
-
-  // 3. 유저 수동 슬라이드(드래그) 이벤트 핸들러
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setIsInteracting(true);
-    dragState.current.isDragging = true;
-    dragState.current.startX = e.pageX;
-    if (scrollRef.current) {
-      dragState.current.scrollLeft = scrollRef.current.scrollLeft;
+      animationRef.current = requestAnimationFrame(scroll)
     }
-  };
+    animationRef.current = requestAnimationFrame(scroll)
+    return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current) }
+  }, [hasData, isInteracting, dbIndices, customQuotes])
+
+  // ── 드래그 핸들러 ──
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setIsInteracting(true)
+    dragState.current = { isDragging: true, startX: e.pageX, scrollLeft: scrollRef.current?.scrollLeft ?? 0, moved: false }
+  }
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragState.current.isDragging || !scrollRef.current) return;
-    
-    // 💡 [핵심] 모바일 브라우저의 스크롤 가로채기 방지
-    if (e.cancelable) e.preventDefault(); 
+    if (!dragState.current.isDragging || !scrollRef.current) return
+    if (e.cancelable) e.preventDefault()
+    const dx = Math.abs(e.pageX - dragState.current.startX)
+    if (dx > 5) dragState.current.moved = true
 
-    const x = e.pageX;
-    const walk = (dragState.current.startX - x) * 1.5; // 슬라이드 감도
-    let nextScrollLeft = dragState.current.scrollLeft + walk;
+    const walk      = (dragState.current.startX - e.pageX) * 1.5
+    let nextScroll  = dragState.current.scrollLeft + walk
+    const halfWidth = scrollRef.current.scrollWidth / 2
 
-    const halfWidth = scrollRef.current.scrollWidth / 2;
-
-    // 수동 조작 시에도 루프가 끊기지 않게 보정
-    if (nextScrollLeft >= halfWidth) {
-      nextScrollLeft -= halfWidth;
-      dragState.current.startX = x;
-      dragState.current.scrollLeft = nextScrollLeft;
-    } else if (nextScrollLeft <= 0) {
-      nextScrollLeft += halfWidth;
-      dragState.current.startX = x;
-      dragState.current.scrollLeft = nextScrollLeft;
+    if (nextScroll >= halfWidth) {
+      nextScroll -= halfWidth; dragState.current.startX = e.pageX; dragState.current.scrollLeft = nextScroll
+    } else if (nextScroll <= 0) {
+      nextScroll += halfWidth; dragState.current.startX = e.pageX; dragState.current.scrollLeft = nextScroll
     }
-
-    scrollRef.current.scrollLeft = nextScrollLeft;
-    scrollPosRef.current = nextScrollLeft; // 자동 흐름 재개 시 위치 동기화
-  };
+    scrollRef.current.scrollLeft = nextScroll
+    scrollPosRef.current = nextScroll
+  }
 
   const handlePointerUpOrLeave = () => {
-    setIsInteracting(false);
-    dragState.current.isDragging = false;
-  };
+    setIsInteracting(false)
+    dragState.current.isDragging = false
+  }
 
-  const tickerItems = useMemo(() => [...indices, ...indices], [indices])
+  // ── 칩 클릭 → 주요 지수 페이지 이동 ──
+  const handleChipClick = useCallback((symbol: string) => {
+    if (dragState.current.moved) return
+    router.push("/market")
+  }, [router])
+
+  // ── 렌더 데이터 (DB + 커스텀, 숨김 필터 적용) ──
+  const allIndices = useMemo(
+    () => [...dbIndices, ...customQuotes],
+    [dbIndices, customQuotes]
+  )
+
+  const visibleIndices = useMemo(
+    () => allIndices.filter((i) => !(settings.hiddenSymbols ?? []).includes(i.symbol)),
+    [allIndices, settings.hiddenSymbols]
+  )
+
+  const getDisplayName = (symbol: string) =>
+    settings.customNames[symbol] ?? DEFAULT_TICKER_NAMES[symbol] ?? symbol
+
+  const tickerItems = useMemo(
+    () => [...visibleIndices, ...visibleIndices],
+    [visibleIndices]
+  )
 
   if (failed) return null
-  if (!hasData || indices.length === 0) return <div className="h-9 bg-white border-b border-slate-200 w-full" />
+  if (!hasData || dbIndices.length === 0)
+    return <div className="h-9 bg-white border-b border-slate-200 w-full" />
 
   return (
-    <div className="bg-white border-b border-slate-200 h-9 flex items-center relative w-full overflow-hidden">
-      {/* 'On' 고정 레이블 */}
-      <div className="flex items-center px-3 bg-white z-20 h-full border-r border-slate-200 shadow-[4px_0_8px_rgba(0,0,0,0.03)] shrink-0">
-        <span className="relative flex h-1.5 w-1.5 mr-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-        </span>
-        <span className="text-[11px] font-black text-slate-700 uppercase">On</span>
+    <>
+      <div className="bg-white border-b border-slate-200 h-9 flex items-center relative w-full overflow-hidden">
+        
+        {/* 'On' 레이블 및 아이콘 삭제됨 -> 바로 스크롤 영역 시작 */}
+        
+        {/* 스크롤 영역 */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-x-hidden h-full flex items-center scrollbar-hide"
+          style={{ scrollBehavior: "auto", cursor: isInteracting ? "grabbing" : "grab", touchAction: "none" }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUpOrLeave}
+          onPointerLeave={handlePointerUpOrLeave}
+          onPointerCancel={handlePointerUpOrLeave}
+        >
+          <div className="flex items-center">
+            {tickerItems.map((idx, i) => (
+              <IndexChip
+                key={`${idx.symbol}-${i}`}
+                index={idx}
+                fresh={fresh}
+                displayName={getDisplayName(idx.symbol)}
+                onClick={handleChipClick}
+                isDragging={dragState.current.moved}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 설정 버튼 (우측 고정) */}
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="flex items-center justify-center w-9 h-9 bg-white z-20 border-l border-slate-200 shrink-0 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+          title="지수 설정"
+          aria-label="지수 설정"
+        >
+          <Settings className="w-3.5 h-3.5 text-slate-400" />
+        </button>
       </div>
 
-      {/* 스크롤 및 슬라이드 인터랙션 영역 */}
-      <div 
-        ref={scrollRef}
-        className="flex-1 overflow-x-hidden h-full flex items-center scrollbar-hide"
-        style={{ 
-          scrollBehavior: 'auto', 
-          cursor: isInteracting ? 'grabbing' : 'grab',
-          // 💡 [핵심] 모바일 터치 시 브라우저가 멋대로 페이지를 넘기지 못하게 함
-          touchAction: 'none' 
-        }} 
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUpOrLeave}
-        onPointerLeave={handlePointerUpOrLeave}
-        onPointerCancel={handlePointerUpOrLeave}
-      >
-        <div className="flex items-center">
-          {tickerItems.map((idx, i) => (
-            <IndexChip key={`${idx.symbol}-${i}`} index={idx} fresh={fresh} />
-          ))}
-        </div>
-      </div>
+      <TickerSettingsSheet
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        symbols={SYMBOL_ORDER}
+        settings={settings}
+        onSave={setSettings}
+      />
 
       <style jsx global>{`
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
-    </div>
+    </>
   )
 }
