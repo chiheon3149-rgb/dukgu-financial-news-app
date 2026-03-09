@@ -42,20 +42,19 @@ export function VoteCard({ catIcon }: VoteCardProps) {
   const xPercent = 100 - oPercent
 
   return (
-    // 💡 뉴스 카드(NewsCard)와 완벽하게 동일한 뼈대 (rounded-24px, p-4, shadow-sm, border-slate-100)
-    <div className="rounded-[24px] bg-white p-4 shadow-sm border border-slate-100 transition-all mx-4 flex flex-col group">
+    // 💡 범인 검거 완료: mx-4 삭제 및 w-full 추가!
+    <div className="rounded-[24px] bg-white p-4 shadow-sm border border-slate-100 transition-all w-full flex flex-col group">
       
       {/* 상단: 카테고리 뱃지 & 코멘트 */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
-          {/* 💡 뉴스 카드의 카테고리 뱃지 스타일(각진 rounded-md, 10px 폰트) 차용 */}
           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 uppercase tracking-tight flex items-center gap-1">
             {catIcon ? (
               <div className="relative h-3 w-3 rounded-full overflow-hidden shrink-0">
                 <Image src={catIcon} alt="Cat Icon" fill className="object-cover" />
               </div>
             ) : "📊"}
-            개미들의 시선
+            눈치게임
           </span>
         </div>
         {voted && (
@@ -65,7 +64,7 @@ export function VoteCard({ catIcon }: VoteCardProps) {
         )}
       </div>
 
-      {/* 질문 (뉴스 카드의 헤드라인 스타일 완벽 이식) */}
+      {/* 질문 */}
       <h3 className="text-[15px] font-bold text-slate-900 leading-snug mb-3 whitespace-pre-wrap break-keep group-hover:text-purple-600 transition-colors">
         {q.question}
       </h3>
@@ -73,7 +72,6 @@ export function VoteCard({ catIcon }: VoteCardProps) {
       {/* 투표 전 */}
       {!voted && (
         <div className="grid grid-cols-2 gap-2 mb-1.5">
-          {/* 💡 버튼 디자인을 더 각지고 단정하게 변경 (rounded-xl) */}
           <button
             onClick={() => setVoted("O")}
             className="py-2.5 rounded-xl text-[13px] font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 active:scale-[0.98] transition-all duration-200"
@@ -92,7 +90,6 @@ export function VoteCard({ catIcon }: VoteCardProps) {
       {/* 투표 후 */}
       {voted && (
         <div className="space-y-3 animate-in fade-in slide-in-from-bottom-1 duration-300 ease-out mb-1.5">
-          {/* 💡 게이지 바 얇고 단정하게 축소 (h-2) */}
           <div className="flex h-2 rounded-full overflow-hidden gap-0.5 bg-slate-100 border border-slate-200/50">
             <div
               className="bg-rose-400 rounded-full transition-all duration-700 ease-out"
@@ -122,7 +119,7 @@ export function VoteCard({ catIcon }: VoteCardProps) {
         </div>
       )}
 
-      {/* 💡 하단 (뉴스 카드의 하단 인터랙션 바 영역과 디자인 일치) */}
+      {/* 하단 */}
       <div className="mt-auto pt-2.5 border-t border-slate-50/50">
         <p className="text-[11px] text-slate-400 font-medium text-center">
           총 {(total).toLocaleString()}명 참여
