@@ -25,10 +25,19 @@ interface LiveQuote {
   changePercent: number
 }
 
-// 지수·환율
+// Supabase 지수·환율
 const INDEX_SYMBOLS = ["^DJI", "^NDX", "^GSPC", "^RUT", "^KS11", "^KQ11", "KRW=X", "JPYKRW=X"]
 
-// 채권 — 미국 (야후 파이낸스)
+// Yahoo Finance 추가 지수 (SOX, VIX, 달러인덱스)
+const EXTRA_SYMBOLS = ["^SOX", "^VIX", "DX-Y.NYB"]
+
+const EXTRA_META: Record<string, { name: string; region: "kr" | "us" }> = {
+  "^SOX":     { name: "필라델피아 반도체", region: "us" },
+  "^VIX":     { name: "VIX 공포지수",     region: "us" },
+  "DX-Y.NYB": { name: "달러 인덱스",      region: "us" },
+}
+
+// 채권 — 미국
 const BOND_SYMBOLS_US = ["^IRX", "^FVX", "^TNX", "^TYX"]
 
 // 원자재
@@ -42,11 +51,11 @@ const BOND_META: Record<string, string> = {
 }
 
 const COMMODITY_META: Record<string, { name: string; unit: string }> = {
-  "GC=F": { name: "금",      unit: "달러/트로이온스" },
-  "SI=F": { name: "은",      unit: "달러/트로이온스" },
+  "GC=F": { name: "금",       unit: "달러/트로이온스" },
+  "SI=F": { name: "은",       unit: "달러/트로이온스" },
   "CL=F": { name: "WTI 원유", unit: "달러/배럴" },
   "NG=F": { name: "천연가스", unit: "달러/MMBtu" },
-  "HG=F": { name: "구리",    unit: "달러/파운드" },
+  "HG=F": { name: "구리",     unit: "달러/파운드" },
 }
 
 const SYMBOL_REGION: Record<string, "kr" | "us"> = {
@@ -55,7 +64,7 @@ const SYMBOL_REGION: Record<string, "kr" | "us"> = {
 }
 
 function fmtPrice(sym: string, price: number): string {
-  if (sym.includes("=X") && !sym.includes("YT=")) {
+  if (sym.includes("=X")) {
     const val = sym === "JPYKRW=X" ? price * 100 : price
     return `${val.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`
   }
@@ -92,13 +101,13 @@ function SkeletonRows() {
   return (
     <div className="space-y-4 pt-2">
       {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />
+        <div key={i} className="h-14 bg-emerald-50 rounded-xl animate-pulse" />
       ))}
     </div>
   )
 }
 
-const REFRESH_INTERVAL = 30_000 // 30초
+const REFRESH_INTERVAL = 30_000
 
 export default function MarketPage() {
   const [mainTab, setMainTab]     = useState<MainTab>("indices")
@@ -115,7 +124,6 @@ export default function MarketPage() {
   const [refreshing, setRefreshing]                 = useState(false)
   const [fetchedAt, setFetchedAt]                   = useState<Date | null>(null)
 
-  // 로드 완료 여부 추적 (30초 자동 갱신 대상 결정용)
   const bondsLoaded       = useRef(false)
   const commoditiesLoaded = useRef(false)
   const intervalRef       = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -123,10 +131,13 @@ export default function MarketPage() {
   const loadIndices = useCallback(async (silent = false) => {
     if (!silent) setIndicesLoading(true)
     try {
-      const res = await fetch("/api/market/indices")
-      if (!res.ok) return
-      const data = await res.json()
-      const mapped: LiveIndex[] = (data.indices ?? []).map((q: any) => ({
+      const [mainRes, extraRes] = await Promise.all([
+        fetch("/api/market/indices"),
+        fetch(`/api/market/quotes?tickers=${EXTRA_SYMBOLS.join(",")}`),
+      ])
+
+      const mainData = mainRes.ok ? await mainRes.json() : { indices: [] }
+      const mapped: LiveIndex[] = (mainData.indices ?? []).map((q: any) => ({
         symbol:       q.symbol,
         name:         q.name,
         price:        q.price,
@@ -135,7 +146,23 @@ export default function MarketPage() {
         changeStatus: q.changeStatus,
         region:       SYMBOL_REGION[q.symbol] ?? "us",
       }))
-      setIndices(mapped)
+
+      if (extraRes.ok) {
+        const extraData: LiveQuote[] = await extraRes.json()
+        const extraMapped: LiveIndex[] = extraData.map((q) => ({
+          symbol:       q.ticker,
+          name:         EXTRA_META[q.ticker]?.name ?? q.name,
+          price:        q.currentPrice,
+          change:       q.change,
+          changeRate:   q.changePercent,
+          changeStatus: q.changePercent > 0 ? "up" : q.changePercent < 0 ? "down" : "same",
+          region:       EXTRA_META[q.ticker]?.region ?? "us",
+        }))
+        setIndices([...mapped, ...extraMapped])
+      } else {
+        setIndices(mapped)
+      }
+
       setFetchedAt(new Date())
     } finally {
       if (!silent) setIndicesLoading(false)
@@ -166,8 +193,7 @@ export default function MarketPage() {
     try {
       const res = await fetch(`/api/market/quotes?tickers=${COMMODITY_SYMBOLS.join(",")}`)
       if (!res.ok) return
-      const data = await res.json()
-      setCommodities(data)
+      setCommodities(await res.json())
       commoditiesLoaded.current = true
       setFetchedAt(new Date())
     } finally {
@@ -175,20 +201,17 @@ export default function MarketPage() {
     }
   }, [])
 
-  // 최초 로드
   useEffect(() => { loadIndices() }, [loadIndices])
 
-  // 탭 전환 시 최초 1회 lazy load
   useEffect(() => {
-    if (mainTab === "bonds" && !bondsLoaded.current) loadBonds()
+    if (mainTab === "bonds"       && !bondsLoaded.current)       loadBonds()
     if (mainTab === "commodities" && !commoditiesLoaded.current) loadCommodities()
   }, [mainTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 30초 자동 갱신
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       loadIndices(true)
-      if (bondsLoaded.current) loadBonds(true)
+      if (bondsLoaded.current)       loadBonds(true)
       if (commoditiesLoaded.current) loadCommodities(true)
     }, REFRESH_INTERVAL)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
@@ -196,13 +219,12 @@ export default function MarketPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    if (mainTab === "indices") await loadIndices()
-    else if (mainTab === "bonds") await loadBonds()
-    else await loadCommodities()
+    if (mainTab === "indices")     await loadIndices()
+    else if (mainTab === "bonds")  await loadBonds()
+    else                           await loadCommodities()
     setRefreshing(false)
   }
 
-  // ── 필터 적용 ──
   const filteredIndices = indices.filter((i) => regionTab === "all" || i.region === regionTab)
 
   const usBondRows = usBonds.map((q) => ({
@@ -241,6 +263,9 @@ export default function MarketPage() {
     mainTab === "bonds"       ? bondsLoading   :
     commoditiesLoading
 
+  // 지역 필터는 지수·환율, 채권 탭에서만 표시
+  const showRegionFilter = mainTab !== "commodities"
+
   return (
     <div className="min-h-dvh bg-white">
       <DetailHeader
@@ -249,7 +274,7 @@ export default function MarketPage() {
           <button
             onClick={handleRefresh}
             disabled={refreshing || isLoading}
-            className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-40"
+            className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-500 hover:text-emerald-600 transition-colors disabled:opacity-40"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
             {fetchedAt
@@ -269,7 +294,7 @@ export default function MarketPage() {
                 onClick={() => setMainTab(id)}
                 className={`flex-1 py-3 text-[13px] font-black transition-all ${
                   mainTab === id
-                    ? "text-slate-900 border-b-2 border-slate-900"
+                    ? "text-emerald-600 border-b-2 border-emerald-500"
                     : "text-slate-400 border-b-2 border-transparent"
                 }`}
               >
@@ -279,16 +304,16 @@ export default function MarketPage() {
           )}
         </div>
 
-        {/* 지역 필터 */}
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-50">
-          {([ ["all", "전체"], ["kr", "국내"], ["us", "해외"] ] as [RegionTab, string][]).map(
+        {/* 지역 필터 (원자재 탭 제외) */}
+        <div className={`flex items-center gap-2 px-5 py-3 border-b border-slate-50 transition-all ${showRegionFilter ? "" : "justify-end"}`}>
+          {showRegionFilter && ([ ["all", "전체"], ["kr", "국내"], ["us", "해외"] ] as [RegionTab, string][]).map(
             ([id, label]) => (
               <button
                 key={id}
                 onClick={() => setRegionTab(id)}
                 className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
                   regionTab === id
-                    ? "bg-slate-900 text-white"
+                    ? "bg-emerald-500 text-white"
                     : "bg-slate-100 text-slate-400"
                 }`}
               >
