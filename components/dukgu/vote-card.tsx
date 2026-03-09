@@ -53,8 +53,8 @@ export function VoteCard({ catIcon }: VoteCardProps) {
               <div className="relative h-3 w-3 rounded-full overflow-hidden shrink-0">
                 <Image src={catIcon} alt="Cat Icon" fill className="object-cover" />
               </div>
-            ) : "📊"}
-            눈치게임
+            ) : "⚖️"}
+            개미들의 시선
           </span>
         </div>
         {voted && (
