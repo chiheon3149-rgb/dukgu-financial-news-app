@@ -105,7 +105,8 @@ export function TickerSettingsSheet({
   const [saving,   setSaving]   = useState(false)
   const addInputRef = useRef<HTMLInputElement>(null)
 
-  // 시트 열릴 때 prop settings로 초기화 (DB 로드는 ticker-bar에서 처리)
+  // 시트가 열리는 순간(isOpen: false→true)에만 초기화
+  // settings를 의존성에 넣으면 DB 로드 완료 시 사용자 변경값이 덮어써짐
   useEffect(() => {
     if (!isOpen) return
     setCustomNames({ ...settings.customNames })
@@ -114,7 +115,7 @@ export function TickerSettingsSheet({
     setEditingSymbol(null)
     setAddInput("")
     setAddError("")
-  }, [isOpen, settings])
+  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getDisplayName = (sym: string) =>
     customNames[sym] ?? DEFAULT_TICKER_NAMES[sym] ?? sym
