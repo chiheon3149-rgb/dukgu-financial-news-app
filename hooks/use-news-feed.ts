@@ -4,15 +4,14 @@ import { useState, useCallback, useEffect } from "react"
 import type { NewsItem } from "@/types"
 import { supabase } from "@/lib/supabase"
 
-// 뉴스 섹션에서 사용하는 타입 정의
 type SortOption = "latest" | "views"
-// 💡 기간 필터 타입 추가 (UI 컴포넌트에서 가져다 씁니다)
 export type DateFilter = "today" | "week" | "month" | "all"
+export type MarketTab = "all" | "kr" | "us"
 
 const PAGE_SIZE = 10
 
 // =============================================================================
-// 💡 전역 캐시 (이 파일 안에서 데이터를 공유합니다)
+// 전역 캐시
 // =============================================================================
 let _cachedNews: NewsItem[] = []
 let _cachedLastValue: any = null 
@@ -34,6 +33,7 @@ function toNewsItem(row: any): NewsItem {
   return {
     id: row.id,
     category: row.category,
+    market: row.market, 
     tags: row.tags ?? [],
     headline: row.headline,
     summary: row.summary,
@@ -43,7 +43,7 @@ function toNewsItem(row: any): NewsItem {
     badCount: row.bad_count ?? 0,
     commentCount: row.comment_count ?? 0,
     source: row.source ?? null,
-    viewCount: row.view_count ?? 0,
+    viewCount: row.view_count ?? 0, // ✅ 중복 에러 수정 완료
   }
 }
 
@@ -58,7 +58,7 @@ function formatTime(dateStr: string): string {
 }
 
 // =============================================================================
-// 🚀 동기화 일꾼
+// 동기화 일꾼
 // =============================================================================
 
 export function updateCachedReactionInFeed(newsId: string, good: number, bad: number) {
@@ -78,17 +78,19 @@ export function updateCachedCommentCountInFeed(newsId: string, count: number) {
 }
 
 // =============================================================================
-// 📰 메인 훅
+// 메인 훅
 // =============================================================================
-// 💡 두 번째 인자로 dateFilter를 받도록 수정했습니다. 기본값은 "today"입니다.
-export function useNewsFeed(sortBy: SortOption = "latest", dateFilter: DateFilter = "all"): UseNewsFeedReturn {
+export function useNewsFeed(
+  sortBy: SortOption = "latest", 
+  dateFilter: DateFilter = "all",
+  marketTab: MarketTab = "all"
+): UseNewsFeedReturn {
   const [news, setNews] = useState<NewsItem[]>(_cachedNews)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(_cachedHasMore)
   const [lastValue, setLastValue] = useState<any>(_cachedLastValue)
 
-  // 💡 화면 동기화 리스너
   useEffect(() => {
     const handleCacheUpdate = () => {
       setNews([..._cachedNews])
@@ -97,7 +99,6 @@ export function useNewsFeed(sortBy: SortOption = "latest", dateFilter: DateFilte
     return () => window.removeEventListener(NEWS_CACHE_UPDATED_EVENT, handleCacheUpdate)
   }, [])
 
-  // 💡 정렬 기준(sortBy)이나 기간(dateFilter)이 변경될 때 데이터를 싹 비우고 초기화합니다.
   useEffect(() => {
     _cachedNews = []
     _cachedLastValue = null
@@ -107,32 +108,30 @@ export function useNewsFeed(sortBy: SortOption = "latest", dateFilter: DateFilte
     setLastValue(null)
     fetchInitialData()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, dateFilter])
+  }, [sortBy, dateFilter, marketTab])
 
-  // 💡 [핵심] 쿼리에 날짜 필터(gte)를 씌워주는 헬퍼 함수
   const applyDateFilter = (query: any) => {
-    // 조회순(views)이면서 전체(all)가 아닐 때만 날짜를 자릅니다.
     if (sortBy === "views" && dateFilter !== "all") {
       const targetDate = new Date()
-      if (dateFilter === "today") {
-        targetDate.setHours(0, 0, 0, 0) // 오늘 00:00:00
-      } else if (dateFilter === "week") {
-        targetDate.setDate(targetDate.getDate() - 7) // 7일 전
-      } else if (dateFilter === "month") {
-        targetDate.setMonth(targetDate.getMonth() - 1) // 1달 전
-      }
+      if (dateFilter === "today") targetDate.setHours(0, 0, 0, 0)
+      else if (dateFilter === "week") targetDate.setDate(targetDate.getDate() - 7)
+      else if (dateFilter === "month") targetDate.setMonth(targetDate.getMonth() - 1)
       return query.gte("created_at", targetDate.toISOString())
     }
     return query
+  }
+
+  const applyMarketFilter = (query: any) => {
+    if (marketTab === "all") return query
+    return query.or(`market.eq.common,market.eq.${marketTab}`)
   }
 
   const fetchInitialData = async () => {
     setIsLoading(true)
     try {
       let query = supabase.from("news").select("*").limit(PAGE_SIZE)
-
-      // 💡 쿼리 실행 전에 날짜 필터 먹이기!
       query = applyDateFilter(query)
+      query = applyMarketFilter(query)
 
       if (sortBy === "latest") {
         query = query.order("created_at", { ascending: false })
@@ -167,9 +166,8 @@ export function useNewsFeed(sortBy: SortOption = "latest", dateFilter: DateFilte
 
     try {
       let query = supabase.from("news").select("*").limit(PAGE_SIZE)
-
-      // 💡 스크롤을 내려서 다음 페이지를 가져올 때도 똑같이 날짜 필터 유지!
       query = applyDateFilter(query)
+      query = applyMarketFilter(query)
 
       if (sortBy === "latest") {
         query = query.order("created_at", { ascending: false }).lt("created_at", lastValue)
@@ -192,7 +190,7 @@ export function useNewsFeed(sortBy: SortOption = "latest", dateFilter: DateFilte
       setIsLoadingMore(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoadingMore, hasMore, lastValue, sortBy, dateFilter]) 
+  }, [isLoadingMore, hasMore, lastValue, sortBy, dateFilter, marketTab]) 
 
   const refresh = async () => {
     setIsLoading(true)

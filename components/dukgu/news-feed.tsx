@@ -5,39 +5,65 @@ import Link from "next/link"
 import { NewsCard } from "./news-card"
 import { Loader2 } from "lucide-react"
 import { AdBanner } from "./ad-banner"
-import { SortOption } from "./news-section"
+import type { SortOption } from "./news-section"
+import type { MarketTab } from "@/hooks/use-news-feed" // ✅ Import 경로 수정 완료
 
 const SCROLL_KEY = "newsListScrollY"
 
+// 한국 증시 관련 태그 키워드
+const KR_KEYWORDS = ["코스피", "코스닥", "삼성", "현대", "LG", "SK", "카카오", "네이버", "한국", "국내", "코스", "원화", "KRW"]
+// 미국 증시 관련 태그 키워드
+const US_KEYWORDS = ["나스닥", "S&P", "다우", "테슬라", "NVIDIA", "애플", "구글", "메타", "마이크로소프트", "미국", "월가", "연준", "Fed", "달러", "TSLA", "AAPL", "NVDA"]
+
+function matchesMarket(item: any, tab: MarketTab): boolean {
+  if (tab === "all") return true
+  // market 필드가 명시된 경우 우선 적용
+  const m = item.market as string | null | undefined
+  if (m === "common") return true
+  if (m === "kr") return tab === "kr"
+  if (m === "us") return tab === "us"
+  // market 필드 없는 구데이터: 키워드 기반 fallback
+  const keywords = tab === "kr" ? KR_KEYWORDS : US_KEYWORDS
+  const searchText = [
+    item.headline ?? "",
+    item.summary ?? "",
+    ...(item.tags ?? []),
+  ].join(" ").toLowerCase()
+  return keywords.some((kw) => searchText.includes(kw.toLowerCase()))
+}
+
 interface NewsFeedProps {
-  news: any[]          
-  isLoading: boolean   
+  news: any[]
+  isLoading: boolean
   isLoadingMore: boolean
   hasMore: boolean
   fetchNextPage: () => void
   searchKeyword?: string
-  sortBy: SortOption   
+  sortBy: SortOption
+  marketTab?: MarketTab
 }
 
-export function NewsFeed({ 
-  news, 
-  isLoading, 
-  isLoadingMore, 
-  hasMore, 
-  fetchNextPage, 
+export function NewsFeed({
+  news,
+  isLoading,
+  isLoadingMore,
+  hasMore,
+  fetchNextPage,
   searchKeyword = "",
-  sortBy               
+  sortBy,
+  marketTab = "all",
 }: NewsFeedProps) {
-  
+
   const keyword = searchKeyword.trim().toLowerCase()
-  const filteredNews = keyword
-    ? news.filter((item) => {
-        const inHeadline = item.headline.toLowerCase().includes(keyword)
-        const inSummary = item.summary.toLowerCase().includes(keyword)
-        const inTags = item.tags.some((tag: string) => tag.toLowerCase().includes(keyword))
-        return inHeadline || inSummary || inTags
-      })
-    : news
+  const filteredNews = news
+    .filter((item) => matchesMarket(item, marketTab))
+    .filter((item) => {
+      if (!keyword) return true
+      const inHeadline = item.headline.toLowerCase().includes(keyword)
+      const inSummary  = item.summary.toLowerCase().includes(keyword)
+      const inTags     = item.tags.some((tag: string) => tag.toLowerCase().includes(keyword))
+      return inHeadline || inSummary || inTags
+    })
 
   const observerTarget = useRef<HTMLDivElement>(null)
   const scrollRestored = useRef(false)
@@ -93,7 +119,7 @@ export function NewsFeed({
               <NewsCard {...item} />
             </Link>
 
-            {/* 💡 업그레이드된 수익형 광고 로직! 7개마다 띄우고, 데이터가 7개 미만이면 맨 마지막에 띄움 */}
+            {/* 업그레이드된 수익형 광고 로직! 7개마다 띄우고, 데이터가 7개 미만이면 맨 마지막에 띄움 */}
             {(() => {
               const isLastItem = index === filteredNews.length - 1;
               const isEverySeventh = (index + 1) % 7 === 0;

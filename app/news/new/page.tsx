@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { NewsCategory } from "@/types"
+import type { NewsCategory, NewsMarket } from "@/types"
 
 export default function NewNewsPage() {
   const router = useRouter()
@@ -22,6 +22,7 @@ export default function NewNewsPage() {
   const { profile, isLoading } = useUser()
 
   const [category, setCategory] = useState<NewsCategory>("경제")
+  const [market, setMarket] = useState<NewsMarket>("common")
   const [headline, setHeadline] = useState("")
   const [summary, setSummary] = useState("")
   const [aiSummary, setAiSummary] = useState("")
@@ -63,6 +64,7 @@ export default function NewNewsPage() {
     try {
       const newNews = await createNews({
         category,
+        market,
         headline: headline.trim(),
         summary: summary.trim(),
         ai_summary: aiSummary.trim() || null,
@@ -136,6 +138,34 @@ export default function NewNewsPage() {
             />
           </section>
         </div>
+
+        {/* 증시 분류 */}
+        <section className="bg-white rounded-[20px] border border-slate-200 p-4 shadow-sm">
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">증시 분류</p>
+          <div className="flex items-center bg-slate-50 p-0.5 rounded-xl border border-slate-200/50 gap-0.5">
+            {([
+              { id: "common", label: "🌐 공통", desc: "양쪽 탭 모두 노출" },
+              { id: "kr",     label: "🇰🇷 한국", desc: "한국 증시 탭만" },
+              { id: "us",     label: "🇺🇸 미국", desc: "미국 증시 탭만" },
+            ] as { id: NewsMarket; label: string; desc: string }[]).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setMarket(opt.id)}
+                className={`flex-1 flex flex-col items-center py-2 rounded-lg text-[11px] font-black transition-all active:scale-95 ${
+                  market === opt.id
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                <span>{opt.label}</span>
+                <span className={`text-[9px] font-medium mt-0.5 ${market === opt.id ? "text-indigo-400" : "text-slate-300"}`}>
+                  {opt.desc}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
 
         {/* 헤드라인 및 링크 */}
         <section className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-5 space-y-4">

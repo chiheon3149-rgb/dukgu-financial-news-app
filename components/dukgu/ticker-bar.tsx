@@ -176,7 +176,7 @@ export function TickerBar() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  // ── 커스텀 티커 fetch (설정 변경 시) ──
+  // ── 커스텀 티커 fetch (설정 변경 시 & 1분마다 새로고침) ──
   useEffect(() => {
     const tickers = settings.customTickers ?? []
     if (tickers.length === 0) { setCustomQuotes([]); return }
@@ -201,7 +201,15 @@ export function TickerBar() {
         setCustomQuotes(quotes)
       } catch { /* 조용히 실패 */ }
     }
+    
+    // 최초 1회 즉시 실행
     load()
+
+    // 30초(30,000ms)마다 백그라운드에서 주기적으로 데이터 갱신
+    const interval = setInterval(load, 30000)
+    
+    // 컴포넌트가 꺼지거나 설정이 바뀔 때 기존 타이머 정리 (메모리 누수 방지)
+    return () => clearInterval(interval)
   }, [settings.customTickers])
 
   // ── 자동 흐르기 ──

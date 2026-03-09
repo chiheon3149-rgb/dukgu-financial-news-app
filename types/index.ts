@@ -17,6 +17,9 @@ export type ChangeStatus = "up" | "down" | "same"
 /** 뉴스 카테고리 */
 export type NewsCategory = "정치" | "경제" | "사회" | "문화" | "IT"
 
+/** 뉴스 증시 분류 (공통은 한국·미국 탭 모두에 노출) */
+export type NewsMarket = "kr" | "us" | "common"
+
 /** 브리핑 종류 (조간 = 미국장 마감, 마감 = 한국장 마감) */
 export type BriefingType = "morning" | "afternoon"
 
@@ -71,6 +74,7 @@ export interface AssetHistoryItem {
 export interface NewsItem {
   id: string
   category: NewsCategory
+  market?: NewsMarket | null
   tags: string[]
   headline: string
   summary: string

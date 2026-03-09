@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { X, Plus, Sparkles, ShieldCheck, Loader2 } from "lucide-react"
+import { X, Plus, Sparkles, ShieldCheck, Loader2, Lightbulb } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { useNewsAdmin } from "@/hooks/use-news-admin"
@@ -15,11 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { NewsCategory } from "@/types"
+import type { NewsCategory, NewsMarket } from "@/types"
 
 export default function EditNewsPage() {
   const router = useRouter()
-  // 💡 주소창에서 뉴스 id를 뽑아옵니다.
   const params = useParams<{ id: string }>() 
   const newsId = params.id
 
@@ -29,8 +28,9 @@ export default function EditNewsPage() {
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // 입력 칸 상태들
+  // 기존 상태들
   const [category, setCategory] = useState<NewsCategory>("경제")
+  const [market, setMarket] = useState<NewsMarket>("common")
   const [headline, setHeadline] = useState("")
   const [summary, setSummary] = useState("")
   const [aiSummary, setAiSummary] = useState("")
@@ -40,7 +40,10 @@ export default function EditNewsPage() {
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
 
-  // 💡 1. [보안] 관리자가 아니면 쫓아냅니다.
+  // 💡 [기획 추가] 뱃지 커스텀을 위한 새로운 상태
+  const [impactType, setImpactType] = useState<"hot" | "cold" | "neutral" | "none">("none")
+  const [impactKeyword, setImpactKeyword] = useState("")
+
   useEffect(() => {
     if (!isUserLoading && (!profile || !profile.is_admin)) {
       toast.error("관리자(VIP) 전용 공간이다냥! 🐾 출입 금지!")
@@ -48,7 +51,6 @@ export default function EditNewsPage() {
     }
   }, [profile, isUserLoading, router])
 
-  // 💡 2. [핵심] 기존에 써둔 뉴스 데이터를 불러와서 빈칸을 채웁니다.
   useEffect(() => {
     if (!newsId) return
 
@@ -66,8 +68,8 @@ export default function EditNewsPage() {
           return
         }
 
-        // 가져온 데이터로 책상(입력칸)을 쫙 세팅해줍니다.
         setCategory(data.category as NewsCategory)
+        setMarket((data.market as NewsMarket) || "common")
         setHeadline(data.headline || "")
         setSummary(data.summary || "")
         setAiSummary(data.ai_summary || "")
@@ -75,6 +77,10 @@ export default function EditNewsPage() {
         setSource(data.source || "덕구")
         setOriginalUrl(data.original_url || "")
         setTags(data.tags || [])
+        
+        // 💡 기존에 설정해둔 뱃지 정보 불러오기
+        setImpactType(data.impact_type || "none")
+        setImpactKeyword(data.impact_keyword || "")
       } catch (e) {
         console.error("뉴스 로딩 에러:", e)
       } finally {
@@ -101,7 +107,6 @@ export default function EditNewsPage() {
     }
   }
 
-  // 💡 3. 수정한 내용을 다시 DB 창고에 넣습니다. (updateNews 사용)
   const handleSubmit = async () => {
     if (!headline.trim() || !content.trim() || isSubmitting) return
     setIsSubmitting(true)
@@ -109,6 +114,7 @@ export default function EditNewsPage() {
     try {
       await updateNews(newsId, {
         category,
+        market,
         headline: headline.trim(),
         summary: summary.trim(),
         ai_summary: aiSummary.trim() || null,
@@ -116,10 +122,13 @@ export default function EditNewsPage() {
         source: source.trim() || null,
         original_url: originalUrl.trim() || null,
         tags,
+        // 💡 [기획 추가] 뱃지 정보 DB 저장
+        impact_type: impactType === "none" ? null : impactType,
+        impact_keyword: impactType === "none" ? null : impactKeyword.trim(),
       })
 
       toast.success("뉴스가 성공적으로 수정되었다냥! 🛠️🐾")
-      router.replace(`/news/${newsId}`) // 수정 완료 후 상세 페이지로 귀환
+      router.replace(`/news/${newsId}`)
     } catch (error: any) {
       console.error("뉴스 수정 에러:", error.message || error)
       toast.error(`수정 실패: ${error.message || "오류가 발생했다냥"}`)
@@ -128,7 +137,6 @@ export default function EditNewsPage() {
     }
   }
 
-  // 로딩 중이거나 관리자가 아니면 빈 화면 (또는 로딩 스피너)
   if (isUserLoading || !profile?.is_admin || isLoadingData) {
     return (
       <div className="min-h-dvh bg-slate-50 flex flex-col items-center justify-center gap-3">
@@ -189,6 +197,34 @@ export default function EditNewsPage() {
           </section>
         </div>
 
+        {/* 증시 분류 */}
+        <section className="bg-white rounded-[20px] border border-slate-200 p-4 shadow-sm">
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">증시 분류</p>
+          <div className="flex items-center bg-slate-50 p-0.5 rounded-xl border border-slate-200/50 gap-0.5">
+            {([
+              { id: "common", label: "🌐 공통", desc: "양쪽 탭 모두 노출" },
+              { id: "kr",     label: "🇰🇷 한국", desc: "한국 증시 탭만" },
+              { id: "us",     label: "🇺🇸 미국", desc: "미국 증시 탭만" },
+            ] as { id: NewsMarket; label: string; desc: string }[]).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setMarket(opt.id)}
+                className={`flex-1 flex flex-col items-center py-2 rounded-lg text-[11px] font-black transition-all active:scale-95 ${
+                  market === opt.id
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                <span>{opt.label}</span>
+                <span className={`text-[9px] font-medium mt-0.5 ${market === opt.id ? "text-indigo-400" : "text-slate-300"}`}>
+                  {opt.desc}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+
         {/* 헤드라인 및 링크 */}
         <section className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-5 space-y-4">
           <div>
@@ -239,6 +275,49 @@ export default function EditNewsPage() {
               rows={8}
               className="w-full bg-slate-50 rounded-xl py-3 px-4 text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
             />
+          </div>
+        </section>
+
+        {/* 💡 [기획 추가] 수동 FOCUS 뱃지 설정 */}
+        <section className="bg-indigo-50/50 rounded-[24px] border border-indigo-100 shadow-sm p-5 space-y-4">
+          <div>
+            <p className="text-[11px] font-black text-indigo-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <Lightbulb className="w-3 h-3" /> 이슈 FOCUS 뱃지 설정
+            </p>
+            
+            <div className="flex bg-white p-1 rounded-xl border border-indigo-100 mb-3">
+              {[
+                { id: "none", label: "표시 안함" },
+                { id: "hot", label: "🔥 상승/호재" },
+                { id: "cold", label: "🧊 하락/악재" },
+                { id: "neutral", label: "💡 중립/이슈" }
+              ].map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => setImpactType(type.id as any)}
+                  className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                    impactType === type.id 
+                      ? "bg-indigo-500 text-white shadow-sm" 
+                      : "text-slate-400 hover:text-indigo-400"
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
+            </div>
+
+            {impactType !== "none" && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <p className="text-[10px] font-bold text-slate-400 mb-1.5 ml-1">주제어 입력 (예: 삼성전자, 국제유가)</p>
+                <input
+                  type="text"
+                  value={impactKeyword}
+                  onChange={(e) => setImpactKeyword(e.target.value)}
+                  placeholder="뱃지에 들어갈 단어를 입력하세요"
+                  className="w-full bg-white border border-indigo-100 rounded-xl py-2 px-3 text-[13px] font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all"
+                />
+              </div>
+            )}
           </div>
         </section>
 

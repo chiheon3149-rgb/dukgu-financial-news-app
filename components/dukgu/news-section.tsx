@@ -4,7 +4,7 @@ import { useState } from "react"
 import { SearchBar } from "./search-bar"
 import { NewsFeed } from "./news-feed"
 import { Clock, BarChart3, RefreshCw } from "lucide-react"
-import { useNewsFeed, type DateFilter } from "@/hooks/use-news-feed" 
+import { useNewsFeed, type DateFilter, type MarketTab } from "@/hooks/use-news-feed"
 
 export type SortOption = "latest" | "views"
 
@@ -15,33 +15,52 @@ const DATE_FILTERS: { id: DateFilter; label: string }[] = [
   { id: "all",   label: "전체" },
 ]
 
+const MARKET_TABS: { id: MarketTab; label: string; emoji?: string }[] = [
+  { id: "all", label: "전체" },
+  { id: "kr",  label: "한국 증시", emoji: "🇰🇷" },
+  { id: "us",  label: "미국 증시", emoji: "🇺🇸" },
+]
+
 export function NewsSection() {
   const [searchKeyword, setSearchKeyword] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>("latest")
-  
-  // 💡 [핵심 추가] 기간 필터 상태! 기본값은 전체(all)로 해서 빈 화면을 방지합니다.
   const [dateFilter, setDateFilter] = useState<DateFilter>("all")
-  
-  // 💡 훅에 sortBy와 dateFilter 두 개를 모두 넘겨줍니다!
-  const { 
-    news, 
-    refresh, 
-    isLoading, 
-    isLoadingMore, 
-    hasMore, 
-    fetchNextPage 
-  } = useNewsFeed(sortBy, dateFilter)
+  const [marketTab, setMarketTab] = useState<MarketTab>("all")
+
+  // 💡 세 번째 인자로 marketTab을 전달하여 탭 변경 시 데이터를 새로 호출하게 함
+  const { news, refresh, isLoading, isLoadingMore, hasMore, fetchNextPage } =
+    useNewsFeed(sortBy, dateFilter, marketTab)
 
   return (
     <div className="flex flex-col gap-3.5 pt-1">
       <SearchBar value={searchKeyword} onChange={setSearchKeyword} />
-      
+
       <div className="px-1">
+        {/* ── 한국/미국 증시 탭 ── */}
+        <div className="flex items-center bg-slate-100/80 p-0.5 rounded-xl border border-slate-200/50 mb-3">
+          {MARKET_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setMarketTab(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-black transition-all active:scale-95 ${
+                marketTab === tab.id
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              {tab.emoji && <span className="text-[13px]">{tab.emoji}</span>}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* ── 정렬 + 새로고침 ── */}
         <div className="flex items-end justify-between pb-1">
           <div className="flex items-center gap-1.5 pb-1">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
             <h2 className="text-[16px] font-bold tracking-tight text-slate-900">
               실시간 뉴스
@@ -54,7 +73,9 @@ export function NewsSection() {
                 type="button"
                 onClick={() => setSortBy("latest")}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all active:scale-95 ${
-                  sortBy === "latest" ? "bg-white text-emerald-600 shadow-sm font-bold" : "text-slate-400 font-medium"
+                  sortBy === "latest"
+                    ? "bg-white text-emerald-600 shadow-sm font-bold"
+                    : "text-slate-400 font-medium"
                 }`}
               >
                 <Clock className="w-3.5 h-3.5" />
@@ -64,7 +85,9 @@ export function NewsSection() {
                 type="button"
                 onClick={() => setSortBy("views")}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all active:scale-95 ${
-                  sortBy === "views" ? "bg-white text-emerald-600 shadow-sm font-bold" : "text-slate-400 font-medium"
+                  sortBy === "views"
+                    ? "bg-white text-emerald-600 shadow-sm font-bold"
+                    : "text-slate-400 font-medium"
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
@@ -78,12 +101,14 @@ export function NewsSection() {
               disabled={isLoading}
               className="p-2 bg-slate-100/80 rounded-lg border border-slate-200/50 text-slate-400 hover:text-emerald-500 transition-all active:rotate-180 duration-500 disabled:opacity-30"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin text-emerald-500" : ""}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${isLoading ? "animate-spin text-emerald-500" : ""}`}
+              />
             </button>
           </div>
         </div>
 
-        {/* 💡 [핵심 추가] 조회순을 눌렀을 때만 나타나는 기간 필터 UI */}
+        {/* 조회순 기간 필터 */}
         {sortBy === "views" && (
           <div className="flex justify-end pt-2 pb-1 animate-in slide-in-from-top-2 fade-in duration-300">
             <div className="flex items-center bg-slate-100/80 p-0.5 rounded-lg border border-slate-200/50">
@@ -105,14 +130,15 @@ export function NewsSection() {
         )}
       </div>
 
-      <NewsFeed 
-        news={news || []} 
-        isLoading={isLoading} 
+      <NewsFeed
+        news={news || []}
+        isLoading={isLoading}
         isLoadingMore={isLoadingMore}
         hasMore={hasMore}
         fetchNextPage={fetchNextPage}
-        searchKeyword={searchKeyword} 
-        sortBy={sortBy} 
+        searchKeyword={searchKeyword}
+        sortBy={sortBy}
+        marketTab={marketTab}
       />
     </div>
   )
