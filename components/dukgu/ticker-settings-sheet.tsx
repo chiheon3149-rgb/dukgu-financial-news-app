@@ -248,8 +248,11 @@ export function TickerSettingsSheet({
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-md mx-auto animate-in slide-in-from-bottom-4 duration-300 flex flex-col overflow-hidden"
-        style={{ maxHeight: "88dvh" }}
+        className="fixed left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-md mx-auto animate-in slide-in-from-bottom-4 duration-300 flex flex-col overflow-hidden"
+        style={{
+          bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))",
+          maxHeight: "calc(88dvh - 4rem - env(safe-area-inset-bottom, 0px))",
+        }}
       >
         {/* 핸들 + 헤더 */}
         <div className="px-5 pt-5 pb-4 border-b border-slate-100 shrink-0">

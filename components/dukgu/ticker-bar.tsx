@@ -273,7 +273,7 @@ export function TickerBar() {
     settings.customNames[symbol] ?? DEFAULT_TICKER_NAMES[symbol] ?? symbol
 
   const tickerItems = useMemo(
-    () => [...visibleIndices, ...visibleIndices],
+    () => visibleIndices.length > 1 ? [...visibleIndices, ...visibleIndices] : visibleIndices,
     [visibleIndices]
   )
 
