@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase"
 import {
   TickerSettingsSheet,
   loadTickerSettings,
+  loadTickerSettingsFromDb,
   type TickerSettings,
   TICKER_SETTINGS_CHANGED,
   DEFAULT_TICKER_NAMES,
@@ -128,9 +129,16 @@ export function TickerBar() {
   const [isInteracting, setIsInteracting] = useState(false)
   const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false })
 
-  // ── 설정 로드 ──
+  // ── 설정 로드 (localStorage 즉시 → DB 비동기 덮어쓰기) ──
   useEffect(() => {
     setSettings(loadTickerSettings())
+    loadTickerSettingsFromDb().then((dbSettings) => {
+      if (dbSettings) {
+        setSettings(dbSettings)
+        // DB 설정을 localStorage에도 동기화
+        localStorage.setItem("dukgu_ticker_v1", JSON.stringify(dbSettings))
+      }
+    })
     const handler = () => setSettings(loadTickerSettings())
     window.addEventListener(TICKER_SETTINGS_CHANGED, handler)
     return () => window.removeEventListener(TICKER_SETTINGS_CHANGED, handler)
