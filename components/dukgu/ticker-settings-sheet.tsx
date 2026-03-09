@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { X, RotateCcw, Pencil, Check, Trash2, Plus, Eye, EyeOff } from "lucide-react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { X, RotateCcw, Pencil, Check, Trash2, Plus, Eye, EyeOff, Search, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 // -------------------------------------------------------
@@ -100,10 +100,15 @@ export function TickerSettingsSheet({
   const [editingSymbol, setEditingSymbol] = useState<string | null>(null)
   const [editValue,     setEditValue]     = useState("")
 
-  const [addInput, setAddInput] = useState("")
-  const [addError, setAddError] = useState("")
-  const [saving,   setSaving]   = useState(false)
-  const addInputRef = useRef<HTMLInputElement>(null)
+  const [addInput,       setAddInput]       = useState("")
+  const [addError,       setAddError]       = useState("")
+  const [saving,         setSaving]         = useState(false)
+  const [searchResults,  setSearchResults]  = useState<Array<{ symbol: string; shortname: string; exchDisp: string; typeDisp: string }>>([])
+  const [isSearching,    setIsSearching]    = useState(false)
+  const [showDropdown,   setShowDropdown]   = useState(false)
+  const addInputRef    = useRef<HTMLInputElement>(null)
+  const dropdownRef    = useRef<HTMLDivElement>(null)
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 시트가 열리는 순간(isOpen: false→true)에만 초기화
   // settings를 의존성에 넣으면 DB 로드 완료 시 사용자 변경값이 덮어써짐
@@ -171,6 +176,37 @@ export function TickerSettingsSheet({
     setCustomNames(next)
   }
 
+  // ── 검색 자동완성 (디바운스 300ms) ──
+  useEffect(() => {
+    const q = addInput.trim()
+    if (!q) { setSearchResults([]); setShowDropdown(false); return }
+
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const res = await fetch(`/api/market/search?q=${encodeURIComponent(q)}`)
+        if (res.ok) {
+          const json = await res.json()
+          setSearchResults(json.quotes ?? [])
+          setShowDropdown(true)
+        }
+      } catch { /* ignore */ } finally {
+        setIsSearching(false)
+      }
+    }, 300)
+
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
+  }, [addInput])
+
+  const selectSuggestion = useCallback((sym: string, name: string) => {
+    setAddInput(sym)
+    setCustomNames((prev) => ({ ...prev, [sym]: name }))
+    setShowDropdown(false)
+    setSearchResults([])
+    addInputRef.current?.focus()
+  }, [])
+
   // ── 새 티커 추가 ──
   const handleAdd = () => {
     const sym = addInput.trim().toUpperCase()
@@ -186,6 +222,8 @@ export function TickerSettingsSheet({
     setCustomTickers((prev) => [...prev, sym])
     setAddInput("")
     setAddError("")
+    setShowDropdown(false)
+    setSearchResults([])
     addInputRef.current?.focus()
   }
 
@@ -411,30 +449,64 @@ export function TickerSettingsSheet({
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
               티커 추가
             </p>
-            <div className="flex items-center gap-2">
-              <input
-                ref={addInputRef}
-                value={addInput}
-                onChange={(e) => { setAddInput(e.target.value.toUpperCase()); setAddError("") }}
-                onKeyDown={(e) => { if (e.key === "Enter") handleAdd() }}
-                placeholder="예: TSLA, NVDA, 005930.KS"
-                maxLength={20}
-                className="flex-1 text-[13px] font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 placeholder:text-slate-300 placeholder:font-normal"
-              />
-              <button
-                onClick={handleAdd}
-                disabled={!addInput.trim()}
-                className="flex items-center justify-center gap-1 px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black text-[12px] rounded-2xl transition-all active:scale-95 shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                추가
-              </button>
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    ref={addInputRef}
+                    value={addInput}
+                    onChange={(e) => { setAddInput(e.target.value); setAddError("") }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAdd()
+                      if (e.key === "Escape") { setShowDropdown(false); setSearchResults([]) }
+                    }}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                    placeholder="예: TSLA, NVDA, 005930.KS"
+                    maxLength={20}
+                    className="w-full text-[13px] font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 pr-8 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 placeholder:text-slate-300 placeholder:font-normal"
+                  />
+                  {isSearching && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 animate-spin" />
+                  )}
+                </div>
+                <button
+                  onClick={handleAdd}
+                  disabled={!addInput.trim()}
+                  className="flex items-center justify-center gap-1 px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black text-[12px] rounded-2xl transition-all active:scale-95 shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  추가
+                </button>
+              </div>
+
+              {/* 자동완성 드롭다운 */}
+              {showDropdown && searchResults.length > 0 && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute left-0 right-12 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden max-h-52 overflow-y-auto"
+                >
+                  {searchResults.map((result) => (
+                    <button
+                      key={result.symbol}
+                      onMouseDown={(e) => { e.preventDefault(); selectSuggestion(result.symbol, result.shortname) }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-emerald-50 transition-colors text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold text-slate-900 truncate">{result.symbol}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{result.shortname}</p>
+                      </div>
+                      <span className="text-[9px] font-bold text-slate-300 shrink-0">{result.exchDisp}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
             {addError && (
               <p className="text-[11px] text-rose-500 font-bold mt-1.5 px-1">{addError}</p>
             )}
             <p className="text-[10px] text-slate-300 font-medium mt-2 px-1">
-              야후 파이낸스 심볼 기준 · 가격은 실시간으로 불러옵니다
+              종목명·심볼 입력 시 자동완성 · 야후 파이낸스 기준
             </p>
           </div>
 

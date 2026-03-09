@@ -129,16 +129,23 @@ export function TickerBar() {
   const [isInteracting, setIsInteracting] = useState(false)
   const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false })
 
-  // ── 설정 로드 (localStorage 즉시 → DB 비동기 덮어쓰기) ──
+  // ── 설정 로드 (localStorage 즉시 → DB는 localStorage가 비어있을 때만 덮어쓰기) ──
   useEffect(() => {
-    setSettings(loadTickerSettings())
-    loadTickerSettingsFromDb().then((dbSettings) => {
-      if (dbSettings) {
-        setSettings(dbSettings)
-        // DB 설정을 localStorage에도 동기화
-        localStorage.setItem("dukgu_ticker_v1", JSON.stringify(dbSettings))
-      }
-    })
+    const localSettings = loadTickerSettings()
+    setSettings(localSettings)
+    const localHasData =
+      localSettings.hiddenSymbols.length > 0 ||
+      localSettings.customTickers.length > 0 ||
+      Object.keys(localSettings.customNames).length > 0
+    if (!localHasData) {
+      // localStorage에 데이터 없음(새 기기) → DB에서 로드
+      loadTickerSettingsFromDb().then((dbSettings) => {
+        if (dbSettings) {
+          setSettings(dbSettings)
+          localStorage.setItem("dukgu_ticker_v1", JSON.stringify(dbSettings))
+        }
+      })
+    }
     const handler = () => setSettings(loadTickerSettings())
     window.addEventListener(TICKER_SETTINGS_CHANGED, handler)
     return () => window.removeEventListener(TICKER_SETTINGS_CHANGED, handler)
