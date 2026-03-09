@@ -105,23 +105,16 @@ export function TickerSettingsSheet({
   const [saving,   setSaving]   = useState(false)
   const addInputRef = useRef<HTMLInputElement>(null)
 
-  // 시트 열릴 때 DB 우선 로드, 없으면 prop settings 사용
+  // 시트 열릴 때 prop settings로 초기화 (DB 로드는 ticker-bar에서 처리)
   useEffect(() => {
     if (!isOpen) return
-
-    const load = async () => {
-      const dbSettings = await loadTickerSettingsFromDb()
-      const src = dbSettings ?? settings
-      setCustomNames({ ...src.customNames })
-      setHiddenSymbols([...src.hiddenSymbols])
-      setCustomTickers([...(src.customTickers ?? [])])
-    }
-    load()
-
+    setCustomNames({ ...settings.customNames })
+    setHiddenSymbols([...(settings.hiddenSymbols ?? [])])
+    setCustomTickers([...(settings.customTickers ?? [])])
     setEditingSymbol(null)
     setAddInput("")
     setAddError("")
-  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, settings])
 
   const getDisplayName = (sym: string) =>
     customNames[sym] ?? DEFAULT_TICKER_NAMES[sym] ?? sym
@@ -198,12 +191,17 @@ export function TickerSettingsSheet({
   // ── 저장: localStorage + DB ──
   const handleSave = async () => {
     setSaving(true)
-    const s: TickerSettings = { customNames, hiddenSymbols, customTickers }
-    onSave(s)
-    saveTickerSettings(s)           // localStorage + 이벤트 dispatch
-    await saveTickerSettingsToDb(s) // Supabase DB (로그인 시)
-    setSaving(false)
-    onClose()
+    try {
+      const s: TickerSettings = { customNames, hiddenSymbols, customTickers }
+      onSave(s)
+      saveTickerSettings(s)           // localStorage + 이벤트 dispatch
+      await saveTickerSettingsToDb(s) // Supabase DB (로그인 시)
+    } catch (err) {
+      console.error("[ticker-settings] 저장 오류:", err)
+    } finally {
+      setSaving(false)
+      onClose()
+    }
   }
 
   if (!isOpen) return null
