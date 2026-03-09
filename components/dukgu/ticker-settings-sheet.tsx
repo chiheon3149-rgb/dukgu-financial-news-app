@@ -511,16 +511,16 @@ export function TickerSettingsSheet({
           <p className="text-center text-[10px] text-slate-300 font-medium pb-1">
             로그인 시 기기간 설정 동기화됩니다
           </p>
-        </div>
 
-        {/* 저장 버튼 */}
-        <div className="px-5 py-4 border-t border-slate-100 shrink-0">
-          <button
-            onClick={handleSave}
-            className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-black text-[14px] rounded-2xl transition-all shadow-lg shadow-emerald-200"
-          >
-            저장하기
-          </button>
+          {/* 저장 버튼 - sticky로 항상 하단에 표시 */}
+          <div className="sticky bottom-0 -mx-4 px-4 pt-3 pb-4 bg-white border-t border-slate-100">
+            <button
+              onClick={handleSave}
+              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-black text-[14px] rounded-2xl transition-all shadow-lg shadow-emerald-200"
+            >
+              저장하기
+            </button>
+          </div>
         </div>
       </div>
     </>
