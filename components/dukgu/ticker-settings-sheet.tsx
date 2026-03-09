@@ -102,7 +102,6 @@ export function TickerSettingsSheet({
 
   const [addInput,       setAddInput]       = useState("")
   const [addError,       setAddError]       = useState("")
-  const [saving,         setSaving]         = useState(false)
   const [searchResults,  setSearchResults]  = useState<Array<{ symbol: string; shortname: string; exchDisp: string; typeDisp: string }>>([])
   const [isSearching,    setIsSearching]    = useState(false)
   const [showDropdown,   setShowDropdown]   = useState(false)
@@ -227,20 +226,19 @@ export function TickerSettingsSheet({
     addInputRef.current?.focus()
   }
 
-  // ── 저장: localStorage + DB ──
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      const s: TickerSettings = { customNames, hiddenSymbols, customTickers }
-      onSave(s)
-      saveTickerSettings(s)           // localStorage + 이벤트 dispatch
-      await saveTickerSettingsToDb(s) // Supabase DB (로그인 시)
-    } catch (err) {
-      console.error("[ticker-settings] 저장 오류:", err)
-    } finally {
-      setSaving(false)
-      onClose()
-    }
+  // ── 저장: localStorage 즉시 → UI 닫기 → DB는 백그라운드 ──
+  const handleSave = () => {
+    const s: TickerSettings = { customNames, hiddenSymbols, customTickers }
+    // 1. 티커바 즉시 반영
+    onSave(s)
+    // 2. localStorage 저장 (이벤트 발행 포함)
+    saveTickerSettings(s)
+    // 3. 시트 즉시 닫기 (DB 응답 기다리지 않음)
+    onClose()
+    // 4. DB 저장 (백그라운드, 로그인 시만)
+    saveTickerSettingsToDb(s).catch((err) =>
+      console.error("[ticker-settings] DB 저장 오류:", err)
+    )
   }
 
   if (!isOpen) return null
@@ -519,10 +517,9 @@ export function TickerSettingsSheet({
         <div className="px-5 py-4 border-t border-slate-100 shrink-0">
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] disabled:opacity-60 text-white font-black text-[14px] rounded-2xl transition-all shadow-lg shadow-emerald-200"
+            className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-black text-[14px] rounded-2xl transition-all shadow-lg shadow-emerald-200"
           >
-            {saving ? "저장 중..." : "저장하기"}
+            저장하기
           </button>
         </div>
       </div>
