@@ -19,13 +19,15 @@ interface BriefingRow {
 
 const THEME = {
   US: {
-    gradient:     "from-emerald-600 to-teal-800",
-    textColor:    "text-emerald-700",
+    accentColor:  "text-emerald-500",
+    badgeBg:      "bg-emerald-50",
+    badgeText:    "text-emerald-600",
     briefingType: "오전브리핑",
   },
   KR: {
-    gradient:     "from-rose-500 to-red-700",
-    textColor:    "text-rose-700",
+    accentColor:  "text-rose-500",
+    badgeBg:      "bg-rose-50",
+    badgeText:    "text-rose-600",
     briefingType: "오후브리핑",
   },
 }
@@ -38,16 +40,16 @@ function getDateLabel(dateStr?: string): string {
 
 function BriefingBannerSkeleton() {
   return (
-    <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 shadow-md p-4 space-y-3">
+    <div className="rounded-[24px] overflow-hidden bg-white shadow-sm border border-slate-100 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <Skeleton className="h-3 w-40 bg-slate-300/70 rounded-full" />
-        <Skeleton className="h-6 w-20 rounded-full bg-slate-300/70" />
+        <Skeleton className="h-3 w-40 bg-slate-100 rounded-full" />
+        <Skeleton className="h-6 w-20 rounded-full bg-slate-100" />
       </div>
-      <Skeleton className="h-4 w-full bg-slate-300/70 rounded-full" />
-      <Skeleton className="h-4 w-4/5 bg-slate-300/70 rounded-full" />
-      <Skeleton className="h-3 w-full bg-slate-300/70 rounded-full" />
+      <Skeleton className="h-4 w-full bg-slate-100 rounded-full" />
+      <Skeleton className="h-4 w-4/5 bg-slate-100 rounded-full" />
+      <Skeleton className="h-3 w-full bg-slate-100 rounded-full" />
       <div className="flex justify-end">
-        <Skeleton className="h-8 w-24 rounded-xl bg-slate-300/70" />
+        <Skeleton className="h-8 w-24 rounded-xl bg-slate-100" />
       </div>
     </div>
   )
@@ -88,24 +90,23 @@ export function BriefingBanner() {
   const theme = THEME[market]
 
   return (
-    <section
-      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${theme.gradient} shadow-md text-white transition-all duration-500`}
-    >
-      {/* 상단 광택 */}
-      <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+    <section className="rounded-[24px] bg-white shadow-sm border border-slate-100 transition-all duration-500 overflow-hidden">
+      <div className="flex flex-col gap-2 p-4">
 
-      <div className="relative z-10 flex flex-col gap-2 p-4">
         {/* 날짜 + 마켓 토글 */}
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold text-white/80 truncate mr-2">
-            {getDateLabel(briefing.date)} 오늘의 {theme.briefingType}
+          <span className="text-[10px] font-semibold text-slate-400 truncate mr-2">
+            {getDateLabel(briefing.date)}{" "}
+            <span className={theme.accentColor}>{theme.briefingType}</span>
           </span>
-          <div className="flex items-center bg-black/20 backdrop-blur-sm rounded-full p-0.5 shadow-inner shrink-0">
+          <div className="flex items-center bg-slate-100 rounded-full p-0.5 shrink-0">
             <button
               disabled={!morning}
               onClick={() => morning && setMarket("US")}
               className={`text-[10px] px-2.5 py-1 rounded-full font-bold transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed ${
-                market === "US" ? `bg-white ${theme.textColor} shadow-md` : "text-white/70 hover:text-white"
+                market === "US"
+                  ? `bg-white shadow-sm ${THEME.US.badgeText}`
+                  : "text-slate-400 hover:text-slate-600"
               }`}
             >
               미국
@@ -114,7 +115,9 @@ export function BriefingBanner() {
               disabled={!afternoon}
               onClick={() => afternoon && setMarket("KR")}
               className={`text-[10px] px-2.5 py-1 rounded-full font-bold transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed ${
-                market === "KR" ? `bg-white ${theme.textColor} shadow-md` : "text-white/70 hover:text-white"
+                market === "KR"
+                  ? `bg-white shadow-sm ${THEME.KR.badgeText}`
+                  : "text-slate-400 hover:text-slate-600"
               }`}
             >
               한국
@@ -124,18 +127,18 @@ export function BriefingBanner() {
 
         {/* 헤드라인 + 요약 + 더보기 */}
         <div className="flex flex-col gap-1">
-          <h2 className="text-[15px] font-black leading-tight text-white">
+          <h2 className="text-[16px] font-bold tracking-tight leading-snug text-slate-900">
             {briefing.headline}
           </h2>
           {briefing.content?.summary && (
-            <p className="text-[11px] text-slate-100/90 leading-relaxed line-clamp-1 font-medium">
+            <p className="text-[13px] text-slate-500 leading-relaxed line-clamp-1 font-medium">
               {briefing.content.summary}
             </p>
           )}
           <div className="flex justify-end mt-1">
             <Link
               href="/briefing"
-              className="group flex items-center gap-0.5 text-[10px] font-black text-white/70 hover:text-white transition-colors"
+              className={`group flex items-center gap-0.5 text-[11px] font-bold ${theme.accentColor} opacity-70 hover:opacity-100 transition-opacity`}
             >
               전체 읽기
               <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />

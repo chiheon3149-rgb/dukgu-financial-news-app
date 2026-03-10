@@ -99,16 +99,16 @@ export function NewsFeed({
   // 3. 로딩 처리
   if (isLoading && news.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 opacity-30">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-2" />
-        <p className="text-sm font-bold tracking-tighter text-slate-900">최신 정보를 가져오고 있다냥... 🐾</p>
+      <div className="flex flex-col items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-[#00C48C] mb-2.5 opacity-60" />
+        <p className="text-[13px] font-medium text-[#BBBBBB]">뉴스 불러오는 중...</p>
       </div>
     )
   }
 
   return (
-    <section className="px-0 pb-24 max-w-lg mx-auto">
-      <div className="flex flex-col gap-3">
+    <section className="pb-24 -mx-4 px-4 bg-[#F2F4F6] rounded-t-[24px] pt-3">
+      <div className="flex flex-col gap-[10px]">
         {filteredNews.map((item, index) => (
           <React.Fragment key={item.id}>
             <Link
@@ -147,14 +147,14 @@ export function NewsFeed({
       {/* 무한 스크롤 트리거 */}
       <div ref={observerTarget} className="w-full py-8 flex justify-center items-center">
         {isLoadingMore ? (
-          <div className="flex flex-col items-center gap-2 text-slate-400">
-            <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
-            <span className="text-[10px] font-bold">더 많은 뉴스 읽어오는 중...</span>
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-[#00C48C] opacity-50" />
+            <span className="text-[11px] font-medium text-[#CCCCCC]">더 불러오는 중...</span>
           </div>
         ) : hasMore ? (
           <div className="h-10 opacity-0" aria-hidden="true" />
         ) : (
-          <p className="text-[10px] font-bold text-slate-200 uppercase tracking-widest">End of Briefing</p>
+          <p className="text-[11px] font-medium text-[#DDDDDD] tracking-widest">— 이상 —</p>
         )}
       </div>
     </section>

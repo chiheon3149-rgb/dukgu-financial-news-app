@@ -1,28 +1,33 @@
 "use client"
 
 import { NewsInteractionBar } from "./news-interaction-bar"
+import type { NewsCategory } from "@/types"
 
-// -------------------------------------------------------
-// 카테고리 스타일
-// -------------------------------------------------------
-const categoryStyles = {
-  정치: "text-red-600 bg-red-50",
-  경제: "text-emerald-600 bg-emerald-50",
-  사회: "text-slate-600 bg-slate-50",
-  문화: "text-purple-600 bg-purple-50",
-  IT:   "text-indigo-600 bg-indigo-50",
+// ─── 카테고리별 뱃지 색상 맵 ─────────────────────────────────
+const CATEGORY_BADGE_STYLES: Record<string, string> = {
+  "경제":    "bg-[#E8F5E9] text-green-700",
+  "정치":    "bg-blue-50 text-blue-600",
+  "IT/기술": "bg-purple-50 text-purple-600",
+  "IT":      "bg-purple-50 text-purple-600",
+  "기술":    "bg-purple-50 text-purple-600",
+  "사회":    "bg-orange-50 text-orange-600",
+  "금융":    "bg-yellow-50 text-yellow-700",
+  "국제":    "bg-sky-50 text-sky-600",
+  "부동산":  "bg-rose-50 text-rose-600",
+  "증시":    "bg-emerald-50 text-emerald-700",
+  "코인":    "bg-indigo-50 text-indigo-600",
 }
 
-// -------------------------------------------------------
-// 💡 [개선] 중립적 오토 뱃지 로직 (이슈/변동성 감지)
-// -------------------------------------------------------
-// 호재/악재를 나누지 않고, 시장의 '변동성'이나 '주목도'를 나타내는 키워드를 통합합니다.
+function getCategoryBadgeStyle(category: string): string {
+  return CATEGORY_BADGE_STYLES[category] ?? "bg-gray-100 text-gray-600"
+}
+
+// ─── FOCUS chip 이슈 키워드 ──────────────────────────────────
 const ISSUE_KEYWORDS = [
-  "급등", "급락", "상승", "하락", "폭등", "폭락", "돌파", "붕괴", 
-  "최고", "최저", "쇼크", "위기", "우려", "호재", "악재", "발표", "타결"
+  "급등", "급락", "상승", "하락", "폭등", "폭락", "돌파", "붕괴",
+  "최고", "최저", "쇼크", "위기", "우려", "호재", "악재", "발표", "타결",
 ]
 
-// 종목처럼 보이는 태그 (짧고 명사형인 것)
 function isTickerLike(tag: string): boolean {
   const trimmed = tag.replace(/^#/, "")
   return trimmed.length >= 2 && trimmed.length <= 12
@@ -31,44 +36,26 @@ function isTickerLike(tag: string): boolean {
 interface AutoBadge {
   ticker: string
   icon: string
-  bg: string
-  text: string
   label: string
 }
 
 function getAutoBadge(tags: string[]): AutoBadge | null {
   if (!tags || tags.length === 0) return null
-
   const cleanedTags = tags.map((t) => t.replace(/^#/, ""))
-  
-  // 1. 이슈 키워드가 포함된 태그가 하나라도 있는지 스캔합니다.
   const hasIssue = cleanedTags.some((t) => ISSUE_KEYWORDS.some((k) => t.includes(k)))
-
   if (!hasIssue) return null
-
-  // 2. 이슈 키워드가 아닌, 가장 앞쪽에 있는 짧은 명사(종목명/테마명)를 주어로 뽑습니다.
   const ticker =
     cleanedTags.find((t) => isTickerLike(t) && !ISSUE_KEYWORDS.some((k) => t.includes(k))) ??
     cleanedTags[0]
-
-  // 3. 주관적인 판단 대신 중립적이고 전문적인 FOCUS 뱃지를 리턴합니다.
-  return { 
-    ticker, 
-    icon: "💡", 
-    bg: "bg-indigo-50 border border-indigo-100", 
-    text: "text-indigo-700",
-    label: "FOCUS"
-  }
+  return { ticker, icon: "💡", label: "FOCUS" }
 }
 
-// -------------------------------------------------------
-// Props
-// -------------------------------------------------------
+// ─── Props ──────────────────────────────────────────────────
 interface NewsCardProps {
   id?: string
-  category: keyof typeof categoryStyles
+  category: NewsCategory
   headline: string
-  summary: string
+  summary?: string
   timeAgo: string
   goodCount: number
   badCount: number
@@ -81,7 +68,6 @@ export function NewsCard({
   id,
   category,
   headline,
-  summary,
   timeAgo,
   goodCount,
   badCount,
@@ -90,72 +76,58 @@ export function NewsCard({
   source,
 }: NewsCardProps) {
   const isDukguPick = source === "덕구"
-  const autoBadge   = getAutoBadge(tags)
+  const autoBadge   = isDukguPick ? null : getAutoBadge(tags)
+  const uniqueTags  = Array.from(new Set(tags))
 
   return (
-    <article
-      className={`rounded-2xl p-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer flex flex-col h-full group ${
-        isDukguPick
-          ? "bg-emerald-50/60"
-          : "bg-white"
-      }`}
-    >
-      {/* 상단: 카테고리 + 덕구픽 + 시간 */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5">
-          <span
-            className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-tight ${
-              categoryStyles[category] ?? "bg-slate-50 text-slate-500"
-            }`}
-          >
+    <article className="bg-white rounded-[24px] px-4 py-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] active:scale-[0.985] transition-all cursor-pointer flex flex-col group">
+
+      {/* 상단: 카테고리 + FOCUS + 덕구픽 뱃지 + 시간 — 한 줄 */}
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* 카테고리 뱃지 */}
+          <span className={`${getCategoryBadgeStyle(category)} px-2 py-1 text-[12px] font-extrabold rounded-md`}>
             {category}
           </span>
+          {/* FOCUS 뱃지 — 카테고리 우측에 나란히 */}
+          {autoBadge && (
+            <span className="bg-red-50 text-[#FF3B30] font-bold text-[12px] px-2 py-0.5 rounded-md">
+              {autoBadge.ticker}
+            </span>
+          )}
+          {/* 덕구픽 뱃지 */}
           {isDukguPick && (
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-600 text-white tracking-tight">
-              덕구 픽
+            <span className="bg-green-500 text-white px-2 py-1 text-[11px] font-bold rounded-md shadow-sm">
+              덕구픽
             </span>
           )}
         </div>
-        <span className="text-[10px] font-medium text-slate-300">{timeAgo}</span>
+        <span className="text-[13px] font-medium text-gray-400 shrink-0 ml-2">{timeAgo}</span>
       </div>
 
       {/* 헤드라인 */}
-      <h3 className="text-[15px] font-black text-slate-900 leading-snug mb-1.5 group-hover:text-emerald-600 transition-colors line-clamp-2">
+      <h3 className="text-[16px] font-bold text-gray-900 tracking-tight leading-snug mb-2.5 group-hover:text-[#00C48C] transition-colors line-clamp-2 break-keep">
         {headline}
       </h3>
 
-      {/* 뱃지 + 태그 한 줄 통합 */}
-      {(autoBadge || tags.length > 0) && (
-        <div className="flex flex-wrap items-center gap-1.5 mb-2">
-          {autoBadge && (
-            <span
-              className={`inline-flex items-center gap-1 ${autoBadge.bg} ${autoBadge.text} rounded-full px-2 py-0.5 text-[10px] font-black`}
-            >
-              {autoBadge.icon} <span className="opacity-70">{autoBadge.label}:</span> {autoBadge.ticker}
-            </span>
-          )}
-          {tags.map((tag, idx) => (
-            <span key={idx} className="text-[9px] font-bold text-emerald-600/60 tracking-tight">
+      {/* 해시태그 */}
+      {uniqueTags.length > 0 && (
+        <div className="flex flex-wrap gap-x-1.5 gap-y-1 mb-3">
+          {uniqueTags.map((tag, idx) => (
+            <span key={idx} className="bg-blue-50/50 text-blue-500 text-[12px] font-medium px-1.5 py-0.5 rounded">
               {tag.startsWith("#") ? tag : `#${tag}`}
             </span>
           ))}
         </div>
       )}
 
-      {/* 요약 */}
-      <p className="text-[12px] font-medium text-slate-400 leading-relaxed mb-2.5 line-clamp-2 break-keep">
-        {summary}
-      </p>
-
-      <div className="mt-auto pt-2 border-t border-slate-50/50">
-        <NewsInteractionBar
-          newsId={id}
-          initialGood={goodCount}
-          initialBad={badCount}
-          commentCount={commentCount}
-          snapshot={id ? { headline, category, timeAgo, tags } : undefined}
-        />
-      </div>
+      <NewsInteractionBar
+        newsId={id}
+        initialGood={goodCount}
+        initialBad={badCount}
+        commentCount={commentCount}
+        snapshot={id ? { headline, category, timeAgo, tags } : undefined}
+      />
     </article>
   )
 }

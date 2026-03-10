@@ -6,14 +6,18 @@ import Image from "next/image"
 import { supabase } from "@/lib/supabase"
 
 // ─── 상수 ───────────────────────────────────────────────────
-const VOTE_USER_KEY_STORAGE = "dukgu_vote_user_key"
-const VOTE_VOTED_PREFIX     = "dukgu_vote_voted_"   // + question_id
+const VOTE_VOTED_PREFIX = "dukgu_vote_voted_"   // + question_id
 
-function getVoteUserKey(): string {
-  let key = localStorage.getItem(VOTE_USER_KEY_STORAGE)
+// 로그인 유저면 user.id, 비로그인이면 localStorage UUID 사용
+async function getVoteUserKey(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user?.id) return user.id
+
+  const GUEST_KEY = "dukgu_vote_guest_key"
+  let key = localStorage.getItem(GUEST_KEY)
   if (!key) {
     key = crypto.randomUUID()
-    localStorage.setItem(VOTE_USER_KEY_STORAGE, key)
+    localStorage.setItem(GUEST_KEY, key)
   }
   return key
 }
@@ -56,12 +60,30 @@ export function VoteCard({ catIcon }: VoteCardProps) {
       .select("*")
       .eq("active_date", today)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
           setQuestion(data as VoteQuestion)
-          // localStorage에서 이전 투표 확인
+
+          // 1) localStorage 먼저 확인
           const prev = localStorage.getItem(VOTE_VOTED_PREFIX + data.id)
-          if (prev === "O" || prev === "X") setVoted(prev)
+          if (prev === "O" || prev === "X") {
+            setVoted(prev)
+          } else {
+            // 2) 로그인 유저면 DB에서 이전 투표 확인 (다른 기기 접근 대응)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user?.id) {
+              const { data: resp } = await supabase
+                .from("vote_responses")
+                .select("choice")
+                .eq("question_id", data.id)
+                .eq("user_key", user.id)
+                .maybeSingle()
+              if (resp?.choice === "O" || resp?.choice === "X") {
+                setVoted(resp.choice)
+                localStorage.setItem(VOTE_VOTED_PREFIX + data.id, resp.choice)
+              }
+            }
+          }
         }
         setLoading(false)
       })
@@ -72,7 +94,7 @@ export function VoteCard({ catIcon }: VoteCardProps) {
     if (!question || voted || submitting) return
     setSubmitting(true)
 
-    const userKey = getVoteUserKey()
+    const userKey = await getVoteUserKey()
 
     const { data, error } = await supabase.rpc("cast_vote", {
       p_question_id: question.id,
@@ -86,11 +108,14 @@ export function VoteCard({ catIcon }: VoteCardProps) {
         ? { ...prev, o_count: data.o_count, x_count: data.x_count }
         : prev
       )
+      // already_voted: true면 실제 투표 선택지를 모르므로 choice 그대로 표시
+      // (DB가 중복 차단했지만 UX상 현재 클릭한 choice로 표시)
     }
 
-    // already_voted 여부와 무관하게 로컬 상태 + localStorage 저장
-    setVoted(choice)
-    localStorage.setItem(VOTE_VOTED_PREFIX + question.id, choice)
+    if (!error) {
+      setVoted(choice)
+      localStorage.setItem(VOTE_VOTED_PREFIX + question.id, choice)
+    }
     setSubmitting(false)
   }
 
@@ -122,7 +147,7 @@ export function VoteCard({ catIcon }: VoteCardProps) {
       </div>
 
       {/* 질문 */}
-      <h3 className={`text-[15px] font-bold text-slate-900 leading-snug whitespace-pre-wrap break-keep group-hover:text-purple-600 transition-colors ${voted ? "mb-2" : "mb-3"}`}>
+      <h3 className={`text-[16px] font-bold tracking-tight leading-snug text-slate-900 whitespace-pre-wrap break-keep group-hover:text-purple-600 transition-colors ${voted ? "mb-2" : "mb-3"}`}>
         {question.question}
       </h3>
 
@@ -132,14 +157,14 @@ export function VoteCard({ catIcon }: VoteCardProps) {
           <button
             onClick={() => handleVote("O")}
             disabled={submitting}
-            className="py-2.5 rounded-xl text-[13px] font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 active:scale-[0.98] disabled:opacity-50 transition-all duration-200"
+            className="py-2.5 rounded-xl text-[13px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 active:scale-[0.98] disabled:opacity-50 transition-all duration-200"
           >
             🔥 돌파한다 (O)
           </button>
           <button
             onClick={() => handleVote("X")}
             disabled={submitting}
-            className="py-2.5 rounded-xl text-[13px] font-bold text-sky-600 bg-sky-50 border border-sky-100 hover:bg-sky-100 active:scale-[0.98] disabled:opacity-50 transition-all duration-200"
+            className="py-2.5 rounded-xl text-[13px] font-bold text-sky-600 bg-sky-50 hover:bg-sky-100 active:scale-[0.98] disabled:opacity-50 transition-all duration-200"
           >
             🧊 안 한다 (X)
           </button>
@@ -149,12 +174,12 @@ export function VoteCard({ catIcon }: VoteCardProps) {
       {/* 투표 후 결과 바 */}
       {voted && (
         <div className="space-y-1.5 animate-in fade-in slide-in-from-bottom-1 duration-300 ease-out mb-1">
-          <div className="flex h-2 rounded-full overflow-hidden gap-0.5 bg-slate-100 border border-slate-200/50">
+          <div className="flex h-2 rounded-full overflow-hidden bg-slate-100">
             <div
-              className="bg-rose-400 rounded-full transition-all duration-700 ease-out"
+              className="bg-rose-300 transition-all duration-700 ease-out"
               style={{ width: `${oPercent}%` }}
             />
-            <div className="bg-sky-400 rounded-full flex-1 transition-all duration-700 ease-out" />
+            <div className="bg-sky-300 flex-1 transition-all duration-700 ease-out" />
           </div>
 
           <div className="flex items-center justify-between px-0.5">

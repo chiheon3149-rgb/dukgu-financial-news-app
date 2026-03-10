@@ -22,8 +22,8 @@ export function StickyHeader() {
   const colors = LEVEL_COLORS[currentLevel.level] ?? LEVEL_COLORS[1]
 
   return (
-    <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
-      <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
+    <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl">
+      <div className="flex items-center justify-between px-4 py-3 max-w-md mx-auto">
 
         <Link href="/">
           <h1 className="text-[17px] font-extrabold tracking-tight text-foreground cursor-pointer leading-tight">
