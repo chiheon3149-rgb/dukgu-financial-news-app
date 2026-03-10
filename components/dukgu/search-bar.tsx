@@ -46,9 +46,9 @@ export function SearchBar({
         className={`
           w-full text-[14px] font-medium text-slate-700 rounded-xl
           py-2.5 pl-11 pr-10 transition-all placeholder:text-slate-400
-          bg-slate-100 border-0
-          focus:outline-none focus:bg-slate-50
-          focus:ring-2 focus:ring-emerald-400/30
+          bg-white border border-slate-200 shadow-inner
+          focus:outline-none focus:border-emerald-400
+          focus:ring-2 focus:ring-emerald-400/20
         `}
       />
 
