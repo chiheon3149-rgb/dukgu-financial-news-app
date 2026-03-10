@@ -17,7 +17,7 @@ CREATE POLICY "admin insert questions"
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = true
+      WHERE id::uuid = auth.uid() AND is_admin = true
     )
   );
 
@@ -30,6 +30,6 @@ CREATE POLICY "admin delete questions"
   USING (
     EXISTS (
       SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = true
+      WHERE id::uuid = auth.uid() AND is_admin = true
     )
   );
