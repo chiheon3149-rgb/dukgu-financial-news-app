@@ -122,7 +122,7 @@ export function VoteCard({ catIcon }: VoteCardProps) {
       </div>
 
       {/* 질문 */}
-      <h3 className="text-[15px] font-bold text-slate-900 leading-snug mb-3 whitespace-pre-wrap break-keep group-hover:text-purple-600 transition-colors">
+      <h3 className={`text-[15px] font-bold text-slate-900 leading-snug whitespace-pre-wrap break-keep group-hover:text-purple-600 transition-colors ${voted ? "mb-2" : "mb-3"}`}>
         {question.question}
       </h3>
 
@@ -148,7 +148,7 @@ export function VoteCard({ catIcon }: VoteCardProps) {
 
       {/* 투표 후 결과 바 */}
       {voted && (
-        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-1 duration-300 ease-out mb-1.5">
+        <div className="space-y-1.5 animate-in fade-in slide-in-from-bottom-1 duration-300 ease-out mb-1">
           <div className="flex h-2 rounded-full overflow-hidden gap-0.5 bg-slate-100 border border-slate-200/50">
             <div
               className="bg-rose-400 rounded-full transition-all duration-700 ease-out"
@@ -179,7 +179,7 @@ export function VoteCard({ catIcon }: VoteCardProps) {
       )}
 
       {/* 하단: 총 참여자 수 */}
-      <div className="mt-auto pt-2.5 border-t border-slate-50/50">
+      <div className={`mt-auto border-t border-slate-50/50 ${voted ? "pt-1.5" : "pt-2.5"}`}>
         <p className="text-[11px] text-slate-400 font-medium text-center">
           총 {total.toLocaleString()}명 참여
         </p>

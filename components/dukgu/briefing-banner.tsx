@@ -19,16 +19,12 @@ interface BriefingRow {
 
 const THEME = {
   US: {
-    gradient:     "from-emerald-400 to-emerald-600",
-    shadow:       "shadow-emerald-500/30",
-    flag:         "🇺🇸",
+    gradient:     "from-emerald-600 to-teal-800",
     textColor:    "text-emerald-700",
     briefingType: "오전브리핑",
   },
   KR: {
-    gradient:     "from-rose-400 to-rose-600",
-    shadow:       "shadow-rose-500/30",
-    flag:         "🇰🇷",
+    gradient:     "from-rose-500 to-red-700",
     textColor:    "text-rose-700",
     briefingType: "오후브리핑",
   },
@@ -42,7 +38,7 @@ function getDateLabel(dateStr?: string): string {
 
 function BriefingBannerSkeleton() {
   return (
-    <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 shadow-xl p-5 space-y-3">
+    <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 shadow-md p-4 space-y-3">
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-40 bg-slate-300/70 rounded-full" />
         <Skeleton className="h-6 w-20 rounded-full bg-slate-300/70" />
@@ -93,19 +89,15 @@ export function BriefingBanner() {
 
   return (
     <section
-      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${theme.gradient} ${theme.shadow} shadow-xl text-white transition-all duration-500`}
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${theme.gradient} shadow-md text-white transition-all duration-500`}
     >
-      {/* 국기 워터마크 */}
-      <div className="absolute -bottom-6 -right-4 text-[130px] opacity-[0.13] pointer-events-none select-none rotate-12">
-        {theme.flag}
-      </div>
       {/* 상단 광택 */}
-      <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col gap-3 p-5">
+      <div className="relative z-10 flex flex-col gap-2 p-4">
         {/* 날짜 + 마켓 토글 */}
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold text-white/90 drop-shadow-sm truncate mr-2">
+          <span className="text-[10px] font-semibold text-white/80 truncate mr-2">
             {getDateLabel(briefing.date)} 오늘의 {theme.briefingType}
           </span>
           <div className="flex items-center bg-black/20 backdrop-blur-sm rounded-full p-0.5 shadow-inner shrink-0">
@@ -130,27 +122,25 @@ export function BriefingBanner() {
           </div>
         </div>
 
-        {/* 헤드라인 + 요약 */}
-        <div className="flex flex-col gap-1.5">
-          <h2 className="text-[16px] font-black leading-tight drop-shadow-md">
+        {/* 헤드라인 + 요약 + 더보기 */}
+        <div className="flex flex-col gap-1">
+          <h2 className="text-[15px] font-black leading-tight text-white">
             {briefing.headline}
           </h2>
           {briefing.content?.summary && (
-            <p className="text-[11px] text-white/85 leading-relaxed line-clamp-2 drop-shadow-sm font-medium">
+            <p className="text-[11px] text-slate-100/90 leading-relaxed line-clamp-1 font-medium">
               {briefing.content.summary}
             </p>
           )}
-        </div>
-
-        {/* CTA */}
-        <div className="flex justify-end">
-          <Link
-            href="/briefing"
-            className={`group flex items-center gap-1 text-[11px] font-black bg-white ${theme.textColor} px-3.5 py-2 rounded-xl hover:bg-gray-100 transition-all active:scale-95 shadow-lg`}
-          >
-            리포트읽기
-            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
+          <div className="flex justify-end mt-1">
+            <Link
+              href="/briefing"
+              className="group flex items-center gap-0.5 text-[10px] font-black text-white/70 hover:text-white transition-colors"
+            >
+              전체 읽기
+              <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+          </div>
         </div>
       </div>
     </section>

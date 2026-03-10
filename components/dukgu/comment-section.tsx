@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
-import { ThumbsUp, ThumbsDown, Send, Check, X, Flag, AlertTriangle } from "lucide-react"
+import { ThumbsUp, ThumbsDown, Send, Check, X, Flag, AlertTriangle, CornerDownRight } from "lucide-react"
 import type { CommunityComment, CommentReportReason } from "@/types"
 
 // =============================================================================
@@ -50,6 +50,7 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
   }, [initialComments])
 
   const [inputText, setInputText] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState("")
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -139,6 +140,24 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
     onReact(id, type, prev)
   }
 
+  const handleReply = (nickname: string) => {
+    const mention = `@${nickname} `
+    setInputText(mention)
+    setTimeout(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(mention.length, mention.length)
+    }, 50)
+  }
+
+  const renderContent = (text: string) => {
+    const parts = text.split(/(@\S+)/g)
+    return parts.map((part, i) =>
+      part.startsWith("@")
+        ? <span key={i} className="text-emerald-600 font-bold">{part}</span>
+        : part
+    )
+  }
+
   const handleReportSubmit = useCallback(async () => {
     if (!reportModal?.reason) return
     setIsSubmittingReport(true)
@@ -169,6 +188,7 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
         </div>
         <div className="flex-1 relative">
           <input
+            ref={inputRef}
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
@@ -284,7 +304,7 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
                       </div>
                     </div>
                   ) : (
-                    <p className="text-[13px] text-slate-600 leading-relaxed mb-2.5 font-medium">{comment.content}</p>
+                    <p className="text-[13px] text-slate-600 leading-relaxed mb-2.5 font-medium">{renderContent(comment.content)}</p>
                   )}
 
                   {/* 반응 버튼 */}
@@ -297,6 +317,15 @@ export function CommentSection({ postId, initialComments, currentUser, onReport,
                       <ThumbsDown className={`w-3 h-3 ${myReaction === "dislike" ? "fill-rose-500" : ""}`} />
                       {comment.dislikeCount}
                     </button>
+                    {!isWithdrawn && (
+                      <button
+                        onClick={() => handleReply(comment.authorNickname)}
+                        className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold text-slate-400 hover:bg-slate-50 transition-all active:scale-95"
+                      >
+                        <CornerDownRight className="w-3 h-3" />
+                        답글
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

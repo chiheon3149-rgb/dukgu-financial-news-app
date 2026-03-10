@@ -65,9 +65,49 @@ function calcExpectedInterest(row: any): number {
   return Math.round(Number(row.principal) * (Number(row.annual_rate) / 100) * (months / 12))
 }
 
+// ─── 스켈레톤 ────────────────────────────────────────────────
+function AssetsPageSkeleton() {
+  return (
+    <div className="max-w-md mx-auto px-5 py-6 space-y-5">
+      {/* 총자산 */}
+      <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 space-y-3">
+        <div className="h-2.5 w-24 bg-slate-100 rounded-full animate-pulse" />
+        <div className="h-7 w-52 bg-slate-100 rounded-full animate-pulse" />
+      </div>
+      {/* 차트 */}
+      <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6">
+        <div className="h-3.5 w-28 bg-slate-100 rounded-full animate-pulse mb-5" />
+        <div className="flex items-center justify-between">
+          <div className="w-[160px] h-[160px] rounded-full bg-slate-100 animate-pulse shrink-0" />
+          <div className="flex-1 pl-6 space-y-3.5">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="h-2.5 w-16 bg-slate-100 rounded-full animate-pulse" />
+                <div className="h-2.5 w-10 bg-slate-100 rounded-full animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* 카테고리 카드 */}
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="flex items-center gap-4 bg-white rounded-[28px] border border-slate-100 shadow-sm p-5">
+          <div className="w-11 h-11 rounded-2xl bg-slate-100 animate-pulse shrink-0" />
+          <div className="space-y-2.5 flex-1">
+            <div className="h-3 w-14 bg-slate-100 rounded-full animate-pulse" />
+            <div className="h-2.5 w-24 bg-slate-100 rounded-full animate-pulse" />
+          </div>
+          <div className="w-4 h-4 rounded-full bg-slate-100 animate-pulse" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function AssetsPage() {
   const { user, profile } = useUser()
   const [mounted, setMounted] = useState(false)
+  const [isDataLoading, setIsDataLoading] = useState(true)
   const usdToKrw = useExchangeRate()
   const { rows: stockRows } = useStockPortfolio(usdToKrw)
   const { rows: cryptoRows, totalValueUsd: cryptoTotalUsd } = useCryptoPortfolio()
@@ -113,29 +153,33 @@ export default function AssetsPage() {
   // 마운트 + 데이터 로드
   useEffect(() => {
     setMounted(true)
-    if (!user) return
+    if (!user) {
+      setIsDataLoading(false)
+      return
+    }
 
     const uid = user.id
 
-    // 부동산
-    supabase
-      .from("asset_realestate")
-      .select("current_estimated_price, acquisition_price")
-      .eq("user_id", uid)
-      .then(({ data }) => {
-        const rows = data ?? []
-        setRealEstateValue(rows.reduce((acc, r) => acc + Number(r.current_estimated_price || r.acquisition_price || 0), 0))
-        setRealEstateInvested(rows.reduce((acc, r) => acc + Number(r.acquisition_price || 0), 0))
-      })
+    // 모든 DB 쿼리를 Promise.all로 묶어 한 번에 setState → 숫자 변동 제거
+    const fetchAll = async () => {
+      const [reData, goldData, cashData, savingsData, bondsData, etcData] = await Promise.all([
+        supabase.from("asset_realestate").select("current_estimated_price, acquisition_price").eq("user_id", uid),
+        supabase.from("asset_gold").select("trade_date, price_per_gram, grams, trade_type").eq("user_id", uid),
+        supabase.from("asset_cash").select("currency, amount").eq("user_id", uid),
+        supabase.from("asset_savings").select("type, principal, annual_rate, start_date, end_date, monthly_amount").eq("user_id", uid),
+        supabase.from("asset_bonds").select("face_value, quantity, coupon_rate, purchase_price").eq("user_id", uid),
+        supabase.from("asset_etc").select("purchase_price, current_price").eq("user_id", uid),
+      ])
 
-    // 금: DB 보유량 → API 시세
-    supabase
-      .from("asset_gold")
-      .select("trade_date, price_per_gram, grams, trade_type")
-      .eq("user_id", uid)
-      .then(async ({ data }) => {
-        if (!data?.length) return
-        const sorted = [...data].sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
+      // 부동산
+      const reRows = reData.data ?? []
+      setRealEstateValue(reRows.reduce((acc, r) => acc + Number(r.current_estimated_price || r.acquisition_price || 0), 0))
+      setRealEstateInvested(reRows.reduce((acc, r) => acc + Number(r.acquisition_price || 0), 0))
+
+      // 금: DB 보유량 → API 시세
+      const goldRows = goldData.data ?? []
+      if (goldRows.length > 0) {
+        const sorted = [...goldRows].sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
         let totalGrams = 0, totalCost = 0
         for (const h of sorted) {
           if (h.trade_type === "buy") {
@@ -147,59 +191,40 @@ export default function AssetsPage() {
             totalGrams -= Number(h.grams)
           }
         }
-        if (totalGrams <= 0) return
-        setGoldInvested(totalCost)
-        try {
-          const res = await fetch("/api/market/gold")
-          if (res.ok) {
-            const { pricePerGramKrw } = await res.json()
-            setGoldValue(totalGrams * pricePerGramKrw)
-          }
-        } catch {}
-      })
+        if (totalGrams > 0) {
+          setGoldInvested(totalCost)
+          try {
+            const res = await fetch("/api/market/gold")
+            if (res.ok) {
+              const { pricePerGramKrw } = await res.json()
+              setGoldValue(totalGrams * pricePerGramKrw)
+            }
+          } catch {}
+        }
+      }
 
-    // 현금
-    supabase
-      .from("asset_cash")
-      .select("currency, amount")
-      .eq("user_id", uid)
-      .then(({ data }) => {
-        setCashItems((data ?? []).map(r => ({ currency: r.currency, amount: Number(r.amount) })))
-      })
+      // 현금
+      setCashItems((cashData.data ?? []).map(r => ({ currency: r.currency, amount: Number(r.amount) })))
 
-    // 예·적금
-    supabase
-      .from("asset_savings")
-      .select("type, principal, annual_rate, start_date, end_date, monthly_amount")
-      .eq("user_id", uid)
-      .then(({ data }) => {
-        const rows = data ?? []
-        setSavingsPrincipal(rows.reduce((acc, r) => acc + Number(r.principal), 0))
-        setSavingsInterest(rows.reduce((acc, r) => acc + calcExpectedInterest(r), 0))
-      })
+      // 예·적금
+      const savRows = savingsData.data ?? []
+      setSavingsPrincipal(savRows.reduce((acc, r) => acc + Number(r.principal), 0))
+      setSavingsInterest(savRows.reduce((acc, r) => acc + calcExpectedInterest(r), 0))
 
-    // 채권
-    supabase
-      .from("asset_bonds")
-      .select("face_value, quantity, coupon_rate, purchase_price")
-      .eq("user_id", uid)
-      .then(({ data }) => {
-        const rows = data ?? []
-        setBondsInvested(rows.reduce((acc, r) => acc + Number(r.purchase_price) * Number(r.quantity), 0))
-        setBondsCoupon(rows.reduce((acc, r) => acc + Number(r.face_value) * Number(r.quantity) * (Number(r.coupon_rate) / 100), 0))
-      })
+      // 채권
+      const bondsRows = bondsData.data ?? []
+      setBondsInvested(bondsRows.reduce((acc, r) => acc + Number(r.purchase_price) * Number(r.quantity), 0))
+      setBondsCoupon(bondsRows.reduce((acc, r) => acc + Number(r.face_value) * Number(r.quantity) * (Number(r.coupon_rate) / 100), 0))
 
-    // 기타
-    supabase
-      .from("asset_etc")
-      .select("purchase_price, current_price")
-      .eq("user_id", uid)
-      .then(({ data }) => {
-        const rows = data ?? []
-        setEtcValue(rows.reduce((acc, r) => acc + Number(r.current_price), 0))
-        setEtcInvested(rows.reduce((acc, r) => acc + Number(r.purchase_price), 0))
-      })
+      // 기타
+      const etcRows = etcData.data ?? []
+      setEtcValue(etcRows.reduce((acc, r) => acc + Number(r.current_price), 0))
+      setEtcInvested(etcRows.reduce((acc, r) => acc + Number(r.purchase_price), 0))
 
+      setIsDataLoading(false)
+    }
+
+    fetchAll()
   }, [user?.id])
 
   // 전체 자산 합산
@@ -275,7 +300,10 @@ export default function AssetsPage() {
         title={<div className="flex items-center gap-2"><Wallet className="w-5 h-5 text-emerald-500 fill-emerald-500" /><span className="text-lg font-black text-slate-900">내 자산</span></div>}
       />
 
-      <main className="max-w-md mx-auto px-5 py-6 space-y-5">
+      {/* 초기 로딩 중에는 스켈레톤만 표시 — 숫자 변동이 보이지 않음 */}
+      {(isDataLoading || !mounted) && <AssetsPageSkeleton />}
+
+      <main className={`max-w-md mx-auto px-5 py-6 space-y-5 ${isDataLoading || !mounted ? "hidden" : ""}`}>
 
         {/* 총자산 요약 */}
         <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6">

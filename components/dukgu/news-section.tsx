@@ -12,7 +12,7 @@ const DATE_FILTERS: { id: DateFilter; label: string }[] = [
   { id: "today", label: "오늘" },
   { id: "week",  label: "주간" },
   { id: "month", label: "월간" },
-  { id: "all",   label: "전체" },
+  { id: "all",   label: "전체기간" },
 ]
 
 const MARKET_TABS: { id: MarketTab; label: string; emoji?: string }[] = [
@@ -44,16 +44,16 @@ export function NewsSection() {
       </div>
 
       {/* ② 증시 탭 */}
-      <div className="flex items-center bg-slate-200/60 p-1 rounded-xl">
+      <div className="flex items-center gap-2">
         {MARKET_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setMarketTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-black transition-all active:scale-95 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-black transition-all active:scale-95 border ${
               marketTab === tab.id
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                : "bg-white text-slate-500 border-slate-200 hover:text-slate-700"
             }`}
           >
             {tab.emoji && <span className="text-[13px]">{tab.emoji}</span>}
@@ -63,7 +63,7 @@ export function NewsSection() {
       </div>
 
       {/* ③ 검색창 + 정렬/새로고침 */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         <SearchBar value={searchKeyword} onChange={setSearchKeyword} />
 
         <div className="flex items-center justify-end gap-1.5">
@@ -76,7 +76,7 @@ export function NewsSection() {
                   onClick={() => setDateFilter(filter.id)}
                   className={`px-3 py-1.5 text-[11px] font-bold rounded-md transition-all ${
                     dateFilter === filter.id
-                      ? "bg-slate-900 text-white shadow-sm"
+                      ? "bg-emerald-50 text-emerald-600 border border-emerald-300"
                       : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
@@ -92,7 +92,7 @@ export function NewsSection() {
               onClick={() => setSortBy("latest")}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all active:scale-95 ${
                 sortBy === "latest"
-                  ? "bg-slate-900 text-white shadow-sm font-bold"
+                  ? "bg-emerald-50 text-emerald-600 border border-emerald-300 font-bold"
                   : "text-slate-500 font-medium hover:text-slate-700"
               }`}
             >
@@ -104,7 +104,7 @@ export function NewsSection() {
               onClick={() => setSortBy("views")}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all active:scale-95 ${
                 sortBy === "views"
-                  ? "bg-slate-900 text-white shadow-sm font-bold"
+                  ? "bg-emerald-50 text-emerald-600 border border-emerald-300 font-bold"
                   : "text-slate-500 font-medium hover:text-slate-700"
               }`}
             >

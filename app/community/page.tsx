@@ -104,8 +104,30 @@ export default function CommunityPage() {
         {/* 3. 게시글 리스트 */}
         <div className="space-y-3">
           {isLoading && !isRefreshing && (
-            <div className="flex items-center justify-center py-16 text-slate-300">
-              <Loader2 className="w-6 h-6 animate-spin" />
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+                  {/* 작성자 */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse shrink-0" />
+                    <div className="space-y-1.5">
+                      <div className="h-2.5 w-20 bg-slate-100 rounded-full animate-pulse" />
+                      <div className="h-2 w-14 bg-slate-100 rounded-full animate-pulse" />
+                    </div>
+                  </div>
+                  {/* 본문 */}
+                  <div className="space-y-2">
+                    <div className="h-3.5 w-3/4 bg-slate-100 rounded-full animate-pulse" />
+                    <div className="h-3 w-full bg-slate-100 rounded-full animate-pulse" />
+                    <div className="h-3 w-2/3 bg-slate-100 rounded-full animate-pulse" />
+                  </div>
+                  {/* 반응 */}
+                  <div className="flex gap-4 pt-1">
+                    <div className="h-3 w-12 bg-slate-100 rounded-full animate-pulse" />
+                    <div className="h-3 w-12 bg-slate-100 rounded-full animate-pulse" />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 

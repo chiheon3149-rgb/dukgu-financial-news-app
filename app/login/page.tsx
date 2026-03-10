@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Mail, Lock } from "lucide-react"
-// 💡 [수정 1] Next.js의 이미지 최적화 도구를 불러옵니다.
 import Image from "next/image"
+import Link from "next/link"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -150,8 +150,27 @@ export default function LoginPage() {
       </div>
 
       <p className="mt-8 text-[11px] font-medium text-slate-400 text-center leading-relaxed">
-        로그인 시 덕구의 서비스 이용약관 및<br/>개인정보 처리방침에 동의하게 됩니다.
+        로그인 시 덕구의{" "}
+        <Link href="/terms" className="underline underline-offset-2 hover:text-slate-600 transition-colors">
+          서비스 이용약관
+        </Link>{" "}
+        및{" "}
+        <Link href="/privacy" className="underline underline-offset-2 hover:text-slate-600 transition-colors">
+          개인정보처리방침
+        </Link>
+        에 동의하게 됩니다.
       </p>
+
+      {/* 하단 고정 약관 링크 */}
+      <div className="fixed bottom-6 left-0 right-0 flex justify-center gap-4">
+        <Link href="/terms" className="text-[10px] font-medium text-slate-300 hover:text-slate-500 transition-colors">
+          이용약관
+        </Link>
+        <span className="text-[10px] text-slate-200">|</span>
+        <Link href="/privacy" className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
+          개인정보처리방침
+        </Link>
+      </div>
 
     </div>
   )
