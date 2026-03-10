@@ -15,7 +15,7 @@ export default function HomePage() {
   const isAdmin = profile?.is_admin === true
 
   return (
-    <div className="min-h-dvh bg-slate-50 pb-20 overflow-x-hidden relative">
+    <div className="min-h-dvh pb-20 overflow-x-hidden relative">
       <StickyHeader />
       <TickerBar />
 

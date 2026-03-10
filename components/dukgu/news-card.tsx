@@ -94,10 +94,10 @@ export function NewsCard({
 
   return (
     <article
-      className={`rounded-[24px] p-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer flex flex-col h-full group border ${
+      className={`rounded-2xl p-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer flex flex-col h-full group ${
         isDukguPick
-          ? "bg-emerald-50/50 border-emerald-100"
-          : "bg-white border-slate-100"
+          ? "bg-emerald-50/60"
+          : "bg-white"
       }`}
     >
       {/* 상단: 카테고리 + 덕구픽 + 시간 */}
@@ -116,11 +116,11 @@ export function NewsCard({
             </span>
           )}
         </div>
-        <span className="text-[10px] font-bold text-slate-400">{timeAgo}</span>
+        <span className="text-[10px] font-medium text-slate-300">{timeAgo}</span>
       </div>
 
       {/* 헤드라인 */}
-      <h3 className="text-[15px] font-bold text-slate-900 leading-snug mb-1.5 group-hover:text-emerald-600 transition-colors line-clamp-2">
+      <h3 className="text-[15px] font-black text-slate-900 leading-snug mb-1.5 group-hover:text-emerald-600 transition-colors line-clamp-2">
         {headline}
       </h3>
 
@@ -135,7 +135,7 @@ export function NewsCard({
             </span>
           )}
           {tags.map((tag, idx) => (
-            <span key={idx} className="text-[10px] font-bold text-emerald-600/70 tracking-tight">
+            <span key={idx} className="text-[9px] font-bold text-emerald-600/60 tracking-tight">
               {tag.startsWith("#") ? tag : `#${tag}`}
             </span>
           ))}
@@ -143,7 +143,7 @@ export function NewsCard({
       )}
 
       {/* 요약 */}
-      <p className="text-[12px] text-slate-500 leading-relaxed mb-2.5 line-clamp-2 break-keep opacity-90">
+      <p className="text-[12px] font-medium text-slate-400 leading-relaxed mb-2.5 line-clamp-2 break-keep">
         {summary}
       </p>
 
