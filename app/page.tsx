@@ -19,11 +19,11 @@ export default function HomePage() {
       <StickyHeader />
       <TickerBar />
 
-      <main className="w-full max-w-md mx-auto px-4 py-5 space-y-5">
+      <main className="w-full max-w-md mx-auto px-4 py-5 space-y-8">
         <NoticeBanner />
         <BriefingBanner />
         <VoteCard />
-        <div className="pt-1">
+        <div className="pt-2">
           <NewsSection />
         </div>
       </main>

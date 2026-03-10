@@ -32,12 +32,12 @@ export function NewsSection() {
     useNewsFeed(sortBy, dateFilter, marketTab)
 
   return (
-    <div className="flex flex-col gap-3.5 pt-1">
+    <div className="flex flex-col gap-5 pt-1">
       <SearchBar value={searchKeyword} onChange={setSearchKeyword} />
 
       <div className="px-1">
         {/* ── 한국/미국 증시 탭 ── */}
-        <div className="flex items-center bg-slate-100/80 p-0.5 rounded-xl border border-slate-200/50 mb-3">
+        <div className="flex items-center bg-slate-100/80 p-0.5 rounded-xl border border-slate-200/50 mb-4">
           {MARKET_TABS.map((tab) => (
             <button
               key={tab.id}

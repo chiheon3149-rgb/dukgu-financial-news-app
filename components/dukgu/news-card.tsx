@@ -124,23 +124,21 @@ export function NewsCard({
         {headline}
       </h3>
 
-      {/* 태그 */}
-      <div className="flex flex-wrap gap-1.5 mb-2">
-        {tags.map((tag, idx) => (
-          <span key={idx} className="text-[11px] font-bold text-emerald-600/70 tracking-tight">
-            {tag.startsWith("#") ? tag : `#${tag}`}
-          </span>
-        ))}
-      </div>
-
-      {/* 💡 중립적 오토 뱃지 (FOCUS) */}
-      {autoBadge && (
-        <div className="mb-2">
-          <span
-            className={`inline-flex items-center gap-1 ${autoBadge.bg} ${autoBadge.text} rounded-full px-2.5 py-1 text-[11px] font-black shadow-sm`}
-          >
-            {autoBadge.icon} <span className="opacity-70">{autoBadge.label}:</span> {autoBadge.ticker}
-          </span>
+      {/* 뱃지 + 태그 한 줄 통합 */}
+      {(autoBadge || tags.length > 0) && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          {autoBadge && (
+            <span
+              className={`inline-flex items-center gap-1 ${autoBadge.bg} ${autoBadge.text} rounded-full px-2 py-0.5 text-[10px] font-black`}
+            >
+              {autoBadge.icon} <span className="opacity-70">{autoBadge.label}:</span> {autoBadge.ticker}
+            </span>
+          )}
+          {tags.map((tag, idx) => (
+            <span key={idx} className="text-[10px] font-bold text-emerald-600/70 tracking-tight">
+              {tag.startsWith("#") ? tag : `#${tag}`}
+            </span>
+          ))}
         </div>
       )}
 
