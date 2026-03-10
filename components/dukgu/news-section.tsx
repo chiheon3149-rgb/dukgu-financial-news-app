@@ -63,7 +63,7 @@ export function NewsSection() {
       </div>
 
       {/* ③ 검색창 + 정렬/새로고침 */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <SearchBar value={searchKeyword} onChange={setSearchKeyword} />
 
         <div className="flex items-center justify-end gap-1.5">

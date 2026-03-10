@@ -44,13 +44,11 @@ export function SearchBar({
         suppressHydrationWarning 
         autoComplete="off" 
         className={`
-          w-full text-[14px] font-medium text-slate-800 rounded-xl 
+          w-full text-[14px] font-medium text-slate-700 rounded-xl
           py-2.5 pl-11 pr-10 transition-all placeholder:text-slate-400
-          bg-slate-100/80 border border-slate-200 
-          focus:outline-none focus:bg-white 
-          focus:ring-4 focus:ring-emerald-500/10 
-          focus:border-emerald-400
-          hover:border-slate-300
+          bg-slate-100 border-0
+          focus:outline-none focus:bg-slate-50
+          focus:ring-2 focus:ring-emerald-400/30
         `}
       />
 
