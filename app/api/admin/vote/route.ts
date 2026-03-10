@@ -22,11 +22,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "질문과 날짜를 입력해주세요." }, { status: 400 })
     }
 
-    // service role 없이 RLS를 우회하기 위해 rpc 사용
-    const { data, error } = await supabase.rpc("admin_insert_vote_question", {
-      p_question:    question.trim(),
-      p_active_date: active_date,
-    })
+    const { data, error } = await supabase
+      .from("vote_questions")
+      .insert({ question: question.trim(), active_date, o_count: 0, x_count: 0 })
+      .select()
+      .single()
 
     if (error) {
       if (error.code === "23505") {
@@ -52,7 +52,7 @@ export async function DELETE(req: NextRequest) {
     const { id } = await req.json()
     if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 })
 
-    const { error } = await supabase.rpc("admin_delete_vote_question", { p_id: id })
+    const { error } = await supabase.from("vote_questions").delete().eq("id", id)
     if (error) throw error
 
     return NextResponse.json({ success: true })
