@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, Save, ShieldCheck, Loader2, Info } from "lucide-react"
+import { ArrowLeft, Save, ShieldCheck, Loader2, Info, History } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
@@ -99,13 +100,21 @@ export default function AdminQuizManagePage() {
             <ShieldCheck className="w-5 h-5 text-blue-500" /> 퀴즈 출제 센터
           </span>
         </div>
-        <button 
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl text-[13px] font-black active:scale-95 disabled:bg-slate-300"
-        >
-          {isSubmitting ? "배포 중..." : "퀴즈 배포하기"}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/mypage/quiz/admin/history"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-600 rounded-2xl text-[12px] font-black hover:bg-slate-200 transition-all"
+          >
+            <History className="w-3.5 h-3.5" /> 퀴즈 이력
+          </Link>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl text-[13px] font-black active:scale-95 disabled:bg-slate-300"
+          >
+            {isSubmitting ? "배포 중..." : "퀴즈 배포하기"}
+          </button>
+        </div>
       </div>
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-8">

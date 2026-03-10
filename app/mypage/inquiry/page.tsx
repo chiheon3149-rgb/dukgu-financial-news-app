@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, Send, CheckCircle, MessageSquare, Loader2, ShieldAlert, Trophy } from "lucide-react"
+import { ArrowLeft, Send, CheckCircle, MessageSquare, Loader2, ShieldAlert, Trophy, BarChart2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import type { InquiryCategory, InquiryMessage } from "@/types"
@@ -131,13 +131,20 @@ export default function InquiryPage() {
             </span>
           </div>
 
-          {/* 💡 [여기가 중요!] 링크가 /mypage/quiz/admin으로 정확히 걸려있는지 확인하세요! */}
-          <Link 
-            href="/mypage/quiz/admin" 
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-[11px] font-black hover:bg-blue-100 border border-blue-100 transition-all"
-          >
-            <Trophy className="w-3.5 h-3.5" /> 퀴즈 관리
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/mypage/vote/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-600 rounded-xl text-[11px] font-black hover:bg-purple-100 border border-purple-100 transition-all"
+            >
+              <BarChart2 className="w-3.5 h-3.5" /> 투표 관리
+            </Link>
+            <Link
+              href="/mypage/quiz/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-[11px] font-black hover:bg-blue-100 border border-blue-100 transition-all"
+            >
+              <Trophy className="w-3.5 h-3.5" /> 퀴즈 관리
+            </Link>
+          </div>
         </div>
 
         <main className="max-w-md mx-auto px-5 py-5 space-y-4">
