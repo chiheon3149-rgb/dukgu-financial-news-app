@@ -94,15 +94,8 @@ export function VoteCard({ catIcon }: VoteCardProps) {
     setSubmitting(false)
   }
 
-  // ── 로딩 스켈레톤 ──
-  if (loading) {
-    return (
-      <div className="rounded-[24px] bg-white p-4 shadow-sm border border-slate-100 h-[152px] animate-pulse" />
-    )
-  }
-
-  // 오늘 질문 없으면 렌더 생략
-  if (!question) return null
+  // 로딩 중이거나 오늘 질문 없으면 렌더 생략 (공간 차지 없음)
+  if (loading || !question) return null
 
   const total    = question.o_count + question.x_count
   const oPercent = total === 0 ? 50 : Math.round((question.o_count / total) * 100)

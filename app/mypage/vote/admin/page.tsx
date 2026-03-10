@@ -63,15 +63,14 @@ export default function VoteAdminPage() {
     if (!activeDate) { toast.error("날짜를 선택해주세요."); return }
     setIsSubmitting(true)
     try {
-      const { error } = await supabase.from("vote_questions").insert({
-        question: question.trim(),
-        active_date: activeDate,
-        o_count: 0,
-        x_count: 0,
+      const res = await fetch("/api/admin/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: question.trim(), active_date: activeDate }),
       })
-      if (error) {
-        if (error.code === "23505") toast.error("해당 날짜에 이미 투표가 등록되어 있습니다.")
-        else throw error
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json.error ?? "등록 중 오류가 발생했습니다.")
         return
       }
       toast.success("투표가 등록되었습니다! 🗳️")
@@ -88,8 +87,12 @@ export default function VoteAdminPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("이 투표를 삭제하시겠습니까?")) return
-    const { error } = await supabase.from("vote_questions").delete().eq("id", id)
-    if (error) { toast.error("삭제 실패"); return }
+    const res = await fetch("/api/admin/vote", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    })
+    if (!res.ok) { toast.error("삭제 실패"); return }
     toast.success("삭제되었습니다.")
     setVoteList(prev => prev.filter(v => v.id !== id))
   }
