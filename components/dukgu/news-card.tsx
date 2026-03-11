@@ -3,7 +3,7 @@
 import { NewsInteractionBar } from "./news-interaction-bar"
 import type { NewsCategory } from "@/types"
 
-// ─── 카테고리별 뱃지 색상 맵 ─────────────────────────────────
+// ─── 카테고리별 칩 색상 ────────────────────────────────────────
 const CATEGORY_BADGE_STYLES: Record<string, string> = {
   "경제":    "bg-[#ECFDF5] text-emerald-700",
   "정치":    "bg-blue-50 text-blue-600",
@@ -22,7 +22,6 @@ function getCategoryBadgeStyle(category: string): string {
   return CATEGORY_BADGE_STYLES[category] ?? "bg-slate-100 text-slate-500"
 }
 
-// ─── Props ──────────────────────────────────────────────────
 interface NewsCardProps {
   id?: string
   category: NewsCategory
@@ -40,6 +39,7 @@ export function NewsCard({
   id,
   category,
   headline,
+  summary,
   timeAgo,
   goodCount,
   badCount,
@@ -51,46 +51,58 @@ export function NewsCard({
   const uniqueTags  = Array.from(new Set(tags))
 
   return (
-    <article className={`p-[14px] border-b border-[#F1F5F9] cursor-pointer flex flex-col gap-2 group ${isDukguPick ? "border-l-2 border-l-emerald-400 pl-3" : ""}`}>
+    <article className="rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2.5 cursor-pointer hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-200">
 
-      {/* 카테고리 태그 */}
+      {/* 카테고리 칩 */}
       <div className="flex items-center gap-1.5">
-        <span className={`${getCategoryBadgeStyle(category)} px-2 py-0.5 text-[11px] font-medium rounded-md`}>
+        <span className={`${getCategoryBadgeStyle(category)} px-2.5 py-[3px] text-[11px] font-semibold rounded-full`}>
           {category}
         </span>
         {isDukguPick && (
-          <span className="bg-emerald-500 text-white px-2 py-0.5 text-[11px] font-medium rounded-md">
+          <span className="bg-emerald-500 text-white px-2.5 py-[3px] text-[11px] font-semibold rounded-full">
             덕구픽
           </span>
         )}
       </div>
 
-      {/* 헤드라인 */}
-      <h3 className="text-[15px] font-semibold text-slate-900 leading-[1.4] line-clamp-2 break-keep group-hover:text-emerald-600 transition-colors">
+      {/* 뉴스 제목 */}
+      <h3 className="text-[15px] font-bold text-[#111827] leading-[1.45] line-clamp-2 break-keep">
         {headline}
       </h3>
 
-      {/* 해시태그 — 최대 2개 */}
+      {/* 뉴스 요약 2줄 */}
+      {summary && (
+        <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-2 break-keep">
+          {summary}
+        </p>
+      )}
+
+      {/* 해시태그 */}
       {uniqueTags.length > 0 && (
-        <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+        <div className="flex flex-wrap gap-x-2.5 gap-y-0.5">
           {uniqueTags.slice(0, 2).map((tag, idx) => (
-            <span key={idx} className="text-gray-500 text-[11px]">
+            <span key={idx} className="text-[11px] text-gray-400">
               {tag.startsWith("#") ? tag : `#${tag}`}
             </span>
           ))}
         </div>
       )}
 
-      {/* 메타 행: 시간(좌) + 인터랙션(우) */}
-      <NewsInteractionBar
-        newsId={id}
-        initialGood={goodCount}
-        initialBad={badCount}
-        commentCount={commentCount}
-        timeAgo={timeAgo}
-        showDislike={false}
-        snapshot={id ? { headline, category, timeAgo, tags } : undefined}
-      />
+      {/* 시간 */}
+      <span className="text-[11px] text-gray-400">{timeAgo}</span>
+
+      {/* 하단 액션 — 구분선 */}
+      <div className="border-t border-[#F1F5F9] pt-2.5">
+        <NewsInteractionBar
+          newsId={id}
+          initialGood={goodCount}
+          initialBad={badCount}
+          commentCount={commentCount}
+          showDislike={false}
+          showEmojiActions
+          snapshot={id ? { headline, category, timeAgo, tags } : undefined}
+        />
+      </div>
     </article>
   )
 }

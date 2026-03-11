@@ -15,6 +15,7 @@ interface InteractionBarProps {
   commentCount: number
   timeAgo?: string
   showDislike?: boolean
+  showEmojiActions?: boolean
   snapshot?: {
     headline: string
     category: NewsCategory
@@ -30,6 +31,7 @@ export function NewsInteractionBar({
   commentCount,
   timeAgo,
   showDislike = true,
+  showEmojiActions = false,
   snapshot,
 }: InteractionBarProps) {
   const router = useRouter()
@@ -77,6 +79,40 @@ export function NewsInteractionBar({
     if (!newsId || !snapshot) return
     toggleSave(newsId, snapshot)
     if (!saved) toast.success("간식 창고(북마크)에 저장했다냥! 🐾")
+  }
+
+  // ── 카드 하단 이모지 액션 바 ──────────────────────────────
+  if (showEmojiActions) {
+    return (
+      <div className="flex items-center gap-5">
+        <button
+          onClick={handleLike}
+          className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
+        >
+          <span className="text-[15px] leading-none">{userReaction === "good" ? "👍" : "👍"}</span>
+          <span className={`text-[12px] font-medium transition-colors ${userReaction === "good" ? "text-emerald-600" : "text-gray-400"}`}>
+            좋아요{good > 0 ? ` ${good}` : ""}
+          </span>
+        </button>
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-[15px] leading-none">💬</span>
+          <span className="text-[12px] font-medium text-gray-400">
+            댓글{commentCount > 0 ? ` ${commentCount}` : ""}
+          </span>
+        </div>
+
+        <button
+          onClick={handleBookmark}
+          className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
+        >
+          <span className="text-[15px] leading-none">🔖</span>
+          <span className={`text-[12px] font-medium transition-colors ${saved ? "text-emerald-600" : "text-gray-400"}`}>
+            북마크
+          </span>
+        </button>
+      </div>
+    )
   }
 
   return (
