@@ -72,7 +72,7 @@ export function NewsCard({
   const points = explanationText ? parsePoints(explanationText) : []
 
   return (
-    <article className="rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2.5 cursor-pointer hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-200">
+    <article className="rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2.5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
 
       {/* 카테고리 칩 */}
       <div className="flex items-center gap-1.5">

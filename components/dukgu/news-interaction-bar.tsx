@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ThumbsUp, ThumbsDown, MessageCircle, Bookmark } from "lucide-react"
 import { toast } from "sonner"
@@ -34,6 +35,8 @@ export function NewsInteractionBar({
   showEmojiActions = false,
   snapshot,
 }: InteractionBarProps) {
+  const [popLike, setPopLike]           = useState(false)
+  const [popBookmark, setPopBookmark]   = useState(false)
   const router = useRouter()
   const { profile } = useUser()
   const { good, bad, userReaction, react } = useNewsReaction(
@@ -63,6 +66,10 @@ export function NewsInteractionBar({
     e.stopPropagation()
     if (!checkLogin("좋아요를 누르려면 덕구네 식구가 되어 달라냥.")) return
     react("good", snapshot)
+    if (userReaction !== "good") {
+      setPopLike(true)
+      setTimeout(() => setPopLike(false), 450)
+    }
   }
 
   const handleDislike = (e: React.MouseEvent) => {
@@ -78,7 +85,11 @@ export function NewsInteractionBar({
     if (!checkLogin("기사를 저장하려면 덕구네 식구가 되어 달라냥.")) return
     if (!newsId || !snapshot) return
     toggleSave(newsId, snapshot)
-    if (!saved) toast.success("간식 창고(북마크)에 저장했다냥! 🐾")
+    if (!saved) {
+      toast.success("간식 창고(북마크)에 저장했다냥! 🐾")
+      setPopBookmark(true)
+      setTimeout(() => setPopBookmark(false), 450)
+    }
   }
 
   // ── 카드 하단 이모지 액션 바 ──────────────────────────────
@@ -89,7 +100,9 @@ export function NewsInteractionBar({
           onClick={handleLike}
           className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
         >
-          <span className="text-[15px] leading-none">{userReaction === "good" ? "👍" : "👍"}</span>
+          <span className={`text-[15px] leading-none inline-block ${popLike ? "animate-pop" : ""}`}>
+            👍
+          </span>
           <span className={`text-[12px] font-medium transition-colors ${userReaction === "good" ? "text-emerald-600" : "text-gray-400"}`}>
             좋아요{good > 0 ? ` ${good}` : ""}
           </span>
@@ -106,8 +119,10 @@ export function NewsInteractionBar({
           onClick={handleBookmark}
           className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
         >
-          <span className="text-[15px] leading-none">🔖</span>
-          <span className={`text-[12px] font-medium transition-colors ${saved ? "text-emerald-600" : "text-gray-400"}`}>
+          <span className={`text-[15px] leading-none inline-block transition-colors duration-300 ${popBookmark ? "animate-pop" : ""}`}>
+            🔖
+          </span>
+          <span className={`text-[12px] font-semibold transition-colors duration-300 ${saved ? "text-emerald-500" : "text-gray-400"}`}>
             북마크
           </span>
         </button>
