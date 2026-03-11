@@ -16,7 +16,7 @@ const LEVEL_COLORS: Record<number, {
 }
 
 export function StickyHeader() {
-  const { currentLevel, isLoading } = useUser()
+  const { profile, currentLevel, isLoading } = useUser()
   const colors = LEVEL_COLORS[currentLevel.level] ?? LEVEL_COLORS[1]
 
   return (
@@ -33,15 +33,15 @@ export function StickyHeader() {
           <NoticeDropdown />
 
           {isLoading ? (
-            <div className="w-16 h-6 rounded-full bg-slate-100 animate-pulse" />
+            <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse" />
           ) : (
             <Link
               href="/mypage"
-              className="flex items-center hover:opacity-80 active:scale-95 transition-all"
+              className="hover:opacity-80 active:scale-95 transition-all"
             >
-              <span className={`text-xs font-bold ${colors.badgeText} ${colors.badgeBg} px-2.5 py-1 rounded-full border ${colors.badgeBorder}`}>
-                {currentLevel.icon} Lv.{currentLevel.level}
-              </span>
+              <div className={`w-8 h-8 rounded-full ${colors.badgeBg} border-2 ${colors.badgeBorder} flex items-center justify-center text-lg`}>
+                {profile?.avatarEmoji ?? "🐱"}
+              </div>
             </Link>
           )}
         </div>
