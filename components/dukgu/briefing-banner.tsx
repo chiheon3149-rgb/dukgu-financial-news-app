@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { supabase } from "@/lib/supabase"
 import type { IndexSummary } from "@/types"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -75,7 +76,7 @@ export function BriefingBanner() {
   const briefing = market === "US" ? morning : afternoon
   if (!briefing) return null
 
-  const briefLabel = briefing.type === "morning" ? "Morning Brief" : "Closing Brief"
+  const briefLabel = briefing.type === "morning" ? "Morning Brief" : "Afternoon Brief"
 
   return (
     <section className="mt-3 rounded-[24px] bg-white p-5 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
@@ -117,13 +118,17 @@ export function BriefingBanner() {
         </div>
       </div>
 
-      {/* 메인: 덕구 아이콘 + 콘텐츠 */}
-      <div className="flex items-start gap-3">
+        {/* 메인: 덕구 아이콘 + 콘텐츠 */}
+        <div className="flex items-start gap-3">
 
-        {/* 덕구 캐릭터 */}
-        <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-[26px] shrink-0 select-none">
-          🐱
-        </div>
+          {/* 덕구 캐릭터 */}
+          <div className="w-12 h-12 flex items-center justify-center shrink-0 select-none">
+            <img 
+              src="/icon.svg" 
+              alt="덕구 아이콘" 
+              className="w-10 h-10 object-contain"
+            />
+          </div>
 
         {/* 콘텐츠 */}
         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
