@@ -90,7 +90,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${notoSansKR.className} antialiased bg-[#F2F4F6] selection:bg-blue-100 selection:text-blue-900`}
+        className={`${notoSansKR.className} antialiased bg-[#F9FAFB] selection:bg-emerald-100 selection:text-emerald-900`}
         suppressHydrationWarning
       >
         {/* 구글 태그 매니저 noscript */}
@@ -103,7 +103,7 @@ export default function RootLayout({
           />
         </noscript>
         <UserProvider>
-          <main className="min-h-screen pb-20 bg-[#F2F4F6]">
+          <main className="min-h-screen pb-20 bg-[#F9FAFB]">
             {children}
           </main>
           

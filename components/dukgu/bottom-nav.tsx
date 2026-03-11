@@ -20,7 +20,7 @@ export function BottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-white border-t border-[#EEEEEE] z-50 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-[#E5E7EB] z-50 pb-safe">
       <div className="flex justify-around items-center h-[60px] px-1">
         {navItems.map((item) => {
           const isActive =
@@ -33,7 +33,7 @@ export function BottomNav() {
               key={item.name}
               href={item.path}
               className={`relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-all duration-200 active:scale-95 ${
-                isActive ? "text-emerald-600" : "text-slate-400"
+                isActive ? "text-emerald-600" : "text-[#6B7280]"
               }`}
             >
               {isActive && (
@@ -42,7 +42,7 @@ export function BottomNav() {
               <div className={`p-1.5 rounded-xl transition-colors ${isActive ? "bg-emerald-50" : ""}`}>
                 <Icon className={`w-[20px] h-[20px] ${isActive ? "stroke-emerald-600" : ""}`} />
               </div>
-              <span className={`text-[10px] font-bold ${isActive ? "text-emerald-600" : "text-slate-400"}`}>
+              <span className={`text-[10px] font-semibold ${isActive ? "text-emerald-600" : "text-[#6B7280]"}`}>
                 {item.name}
               </span>
             </Link>

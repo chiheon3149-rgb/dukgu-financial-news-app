@@ -48,12 +48,15 @@ export function NewsSection() {
     <div className="flex flex-col gap-3">
 
       {/* ① 타이틀 */}
-      <div className="flex items-center gap-2 px-1 mt-5 mb-3">
-        <span className="relative flex h-[7px] w-[7px]">
-          <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-[#00C48C] opacity-60" />
-          <span className="relative inline-flex rounded-full h-[7px] w-[7px] bg-[#00C48C]" />
-        </span>
-        <h2 className="text-[16px] font-semibold text-slate-900">실시간 뉴스</h2>
+      <div className="px-1 mt-5 mb-3">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="relative flex h-[7px] w-[7px]">
+            <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
+            <span className="relative inline-flex rounded-full h-[7px] w-[7px] bg-emerald-500" />
+          </span>
+          <h2 className="text-[16px] font-semibold text-[#111827]">실시간 뉴스</h2>
+        </div>
+        <p className="text-[12px] text-[#6B7280] pl-[15px]">경제 초보도 쉽게 읽는 오늘의 이슈 🐾</p>
       </div>
 
       {/* ② 검색창 */}

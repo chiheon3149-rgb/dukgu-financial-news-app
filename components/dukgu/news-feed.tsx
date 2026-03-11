@@ -124,15 +124,15 @@ export function NewsFeed({
   // 초기 로딩 — 스켈레톤 카드
   if (isLoading && news.length === 0) {
     return (
-      <section className="pb-24 -mx-4 px-4 bg-white rounded-t-[16px] pt-1">
+      <section className="pb-24 -mx-4 bg-white rounded-t-2xl shadow-[0_-2px_12px_rgba(0,0,0,0.04)] pt-2">
         <NewsSkeletonList count={5} />
       </section>
     )
   }
 
   return (
-    <section className="pb-24 -mx-4 px-4 bg-white rounded-t-[16px] pt-1">
-      <div className="flex flex-col">
+    <section className="pb-24 -mx-4 bg-white rounded-t-2xl shadow-[0_-2px_12px_rgba(0,0,0,0.04)] pt-2">
+      <div className="flex flex-col px-4">
         {filteredNews.map((item, index) => (
           <React.Fragment key={item.id}>
             <Link
@@ -164,7 +164,7 @@ export function NewsFeed({
       </div>
 
       {/* 무한 스크롤 트리거 */}
-      <div ref={observerTarget} className="w-full">
+      <div ref={observerTarget} className="w-full px-4">
         {isLoadingMore ? (
           <NewsSkeletonList count={3} />
         ) : hasMore ? (
