@@ -74,34 +74,25 @@ function IndexChip({ index, fresh, displayName, onClick, isDragging }: IndexChip
     onClick(index.symbol)
   }
 
+  const changeColor = isUp ? "text-red-500" : isDown ? "text-blue-500" : "text-slate-400"
+
   return (
     <button
       onClick={handleClick}
-      className="inline-flex items-center gap-2 px-4 whitespace-nowrap border-r border-slate-200 h-9 shrink-0 select-none cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors"
+      className="inline-flex flex-col justify-center gap-0.5 px-5 whitespace-nowrap border-r border-slate-200/60 h-12 shrink-0 select-none cursor-pointer hover:bg-white/70 active:bg-white transition-colors"
     >
-      <span className="text-[11px] font-medium text-slate-500">{displayName}</span>
+      <span className="text-[12px] font-medium text-gray-400 leading-none">{displayName}</span>
       <span
-        className={`text-[12px] font-bold transition-all duration-500 ${
-          fresh
-            ? isUp
-              ? "text-emerald-400 scale-110"
-              : isDown
-              ? "text-rose-400 scale-110"
-              : "text-blue-400"
-            : "text-slate-800"
+        className={`text-[15px] font-semibold leading-none transition-all duration-500 ${
+          fresh ? (isUp ? "text-red-500 scale-105" : isDown ? "text-blue-500 scale-105" : "text-slate-800") : "text-slate-900"
         }`}
       >
         {index.symbol.includes("=X")
           ? `${displayPrice.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`
           : displayPrice.toLocaleString("en-US", { maximumFractionDigits: 2 })}
       </span>
-      <span
-        className={`text-[11px] font-semibold ${
-          isUp ? "text-emerald-500" : isDown ? "text-rose-500" : "text-slate-400"
-        }`}
-      >
-        {isUp ? "▲" : isDown ? "▼" : ""}
-        {index.changeRate.toFixed(2)}%
+      <span className={`text-[12px] font-medium leading-none ${changeColor}`}>
+        {isUp ? "+" : ""}{index.changeRate.toFixed(2)}%
       </span>
     </button>
   )
@@ -287,11 +278,11 @@ export function TickerBar() {
 
   if (failed) return null
   if (!hasData || dbIndices.length === 0)
-    return <div className="h-9 bg-white border-b border-slate-200 w-full" />
+    return <div className="h-12 bg-[#F9FAFB] border-b border-slate-200 w-full" />
 
   return (
     <>
-      <div className="bg-white border-b border-slate-200 h-9 flex items-center relative w-full overflow-hidden">
+      <div className="bg-[#F9FAFB] border-b border-slate-200 h-12 flex items-center relative w-full overflow-hidden">
         
         {/* 'On' 레이블 및 아이콘 삭제됨 -> 바로 스크롤 영역 시작 */}
         
