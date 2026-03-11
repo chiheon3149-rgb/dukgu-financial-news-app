@@ -127,11 +127,11 @@ export function BriefingBanner() {
 
         {/* 헤드라인 + 요약 + 더보기 */}
         <div className="flex flex-col gap-1">
-          <h2 className="text-[16px] font-bold tracking-tight leading-snug text-slate-900">
+          <h2 className="text-[16px] font-extrabold tracking-tight leading-snug text-slate-900">
             {briefing.headline}
           </h2>
           {briefing.content?.summary && (
-            <p className="text-[13px] text-slate-500 leading-relaxed line-clamp-1 font-medium">
+            <p className="text-[12px] text-slate-400 leading-relaxed line-clamp-1 font-medium">
               {briefing.content.summary}
             </p>
           )}

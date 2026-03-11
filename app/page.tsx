@@ -3,7 +3,6 @@
 import { StickyHeader } from "@/components/dukgu/sticky-header"
 import { TickerBar } from "@/components/dukgu/ticker-bar"
 import { BriefingBanner } from "@/components/dukgu/briefing-banner"
-import { VoteCard } from "@/components/dukgu/vote-card"
 import { NewsSection } from "@/components/dukgu/news-section"
 import { useUser } from "@/context/user-context"
 import Link from "next/link"
@@ -20,7 +19,6 @@ export default function HomePage() {
 
       <main className="w-full max-w-md mx-auto px-4 py-5 space-y-6">
         <BriefingBanner />
-        <VoteCard />
         <div>
           <NewsSection />
         </div>

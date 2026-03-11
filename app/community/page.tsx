@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { PenSquare, Users, Loader2, RefreshCw } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { CommunityPostCard } from "@/components/dukgu/community-post-card"
-import { SearchBar } from "@/components/dukgu/search-bar" 
-import { AdBanner } from "@/components/dukgu/ad-banner" 
+import { SearchBar } from "@/components/dukgu/search-bar"
+import { AdBanner } from "@/components/dukgu/ad-banner"
+import { VoteCard } from "@/components/dukgu/vote-card"
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
 import type { CommunityPost, CommunityCategory } from "@/types"
@@ -63,6 +64,9 @@ export default function CommunityPage() {
       />
 
       <main className="max-w-md mx-auto px-5 py-5 space-y-5">
+        {/* 0. 눈치게임 투표 */}
+        <VoteCard />
+
         {/* 1. 카테고리 탭 메뉴 */}
         <div className="flex gap-2">
           {TABS.map((tab) => (

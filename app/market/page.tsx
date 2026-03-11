@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { RefreshCw } from "lucide-react"
 import { DetailHeader } from "@/components/dukgu/detail-header"
+import { FilterTabs } from "@/components/dukgu/filter-tabs"
 
 type MainTab = "indices" | "bonds" | "commodities"
 type RegionTab = "all" | "kr" | "us"
@@ -101,7 +102,7 @@ function SkeletonRows() {
   return (
     <div className="space-y-4 pt-2">
       {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="h-14 bg-emerald-50 rounded-xl animate-pulse" />
+        <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />
       ))}
     </div>
   )
@@ -305,30 +306,27 @@ export default function MarketPage() {
         </div>
 
         {/* 지역 필터 (원자재 탭 제외) */}
-        <div className={`flex items-center gap-2 px-5 py-3 border-b border-slate-50 transition-all ${showRegionFilter ? "" : "justify-end"}`}>
-          {showRegionFilter && ([ ["all", "전체"], ["kr", "국내"], ["us", "해외"] ] as [RegionTab, string][]).map(
-            ([id, label]) => (
-              <button
-                key={id}
-                onClick={() => setRegionTab(id)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
-                  regionTab === id
-                    ? "bg-emerald-500 text-white"
-                    : "bg-slate-100 text-slate-400"
-                }`}
-              >
-                {label}
-              </button>
-            )
+        <div className="px-5 py-3 border-b border-slate-50 space-y-2">
+          {showRegionFilter && (
+            <FilterTabs
+              tabs={[
+                { id: "all", label: "전체" },
+                { id: "kr",  label: "국내" },
+                { id: "us",  label: "해외" },
+              ]}
+              value={regionTab}
+              onChange={(id) => setRegionTab(id as RegionTab)}
+            />
           )}
-          {/* 30초 갱신 인디케이터 */}
-          <span className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-slate-300">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+          <div className="flex justify-end">
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-300">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+              </span>
+              30초 갱신
             </span>
-            30초 갱신
-          </span>
+          </div>
         </div>
 
         {/* 데이터 영역 */}

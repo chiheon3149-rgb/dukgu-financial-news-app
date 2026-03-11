@@ -32,12 +32,19 @@ export function BottomNav() {
             <Link
               key={item.name}
               href={item.path}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all duration-200 active:scale-95 ${
-                isActive ? "text-[#00B887]" : "text-[#BBBBBB]"
+              className={`relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-all duration-200 active:scale-95 ${
+                isActive ? "text-emerald-600" : "text-slate-400"
               }`}
             >
-              <Icon className={`w-[22px] h-[22px] ${isActive ? "fill-[#E8F7F2]" : ""}`} />
-              <span className="text-[11px] font-bold">{item.name}</span>
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2.5px] rounded-full bg-emerald-500" />
+              )}
+              <div className={`p-1.5 rounded-xl transition-colors ${isActive ? "bg-emerald-50" : ""}`}>
+                <Icon className={`w-[20px] h-[20px] ${isActive ? "stroke-emerald-600" : ""}`} />
+              </div>
+              <span className={`text-[10px] font-bold ${isActive ? "text-emerald-600" : "text-slate-400"}`}>
+                {item.name}
+              </span>
             </Link>
           )
         })}

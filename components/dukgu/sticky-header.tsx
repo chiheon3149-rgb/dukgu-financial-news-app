@@ -18,7 +18,7 @@ const LEVEL_COLORS: Record<number, {
 }
 
 export function StickyHeader() {
-  const { profile, currentLevel } = useUser()
+  const { profile, currentLevel, isLoading } = useUser()
   const colors = LEVEL_COLORS[currentLevel.level] ?? LEVEL_COLORS[1]
 
   return (
@@ -34,17 +34,24 @@ export function StickyHeader() {
         <div className="flex items-center gap-3">
           <NoticeDropdown />
 
-          <Link
-            href="/mypage"
-            className="flex items-center gap-2 hover:opacity-80 active:scale-95 transition-all"
-          >
-            <div className={`w-8 h-8 rounded-full ${colors.avatarBg} border-2 ${colors.avatarBorder} flex items-center justify-center text-lg ring-2 ${colors.avatarRing}`}>
-              {profile?.avatarEmoji ?? "🐱"}
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse" />
+              <div className="w-14 h-5 rounded-full bg-slate-100 animate-pulse" />
             </div>
-            <span className={`text-xs font-black ${colors.badgeText} ${colors.badgeBg} px-2 py-0.5 rounded-full border ${colors.badgeBorder}`}>
-              {currentLevel.icon} Lv.{currentLevel.level}
-            </span>
-          </Link>
+          ) : (
+            <Link
+              href="/mypage"
+              className="flex items-center gap-2 hover:opacity-80 active:scale-95 transition-all"
+            >
+              <div className={`w-8 h-8 rounded-full ${colors.avatarBg} border-2 ${colors.avatarBorder} flex items-center justify-center text-lg ring-2 ${colors.avatarRing}`}>
+                {profile?.avatarEmoji ?? "🐱"}
+              </div>
+              <span className={`text-xs font-black ${colors.badgeText} ${colors.badgeBg} px-2 py-0.5 rounded-full border ${colors.badgeBorder}`}>
+                {currentLevel.icon} Lv.{currentLevel.level}
+              </span>
+            </Link>
+          )}
         </div>
 
       </div>

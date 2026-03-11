@@ -77,46 +77,45 @@ export function NewsInteractionBar({
   }
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between pt-0.5">
 
-      {/* 👍 좋아요 & 싫어요 pill */}
-      <div className="flex items-center bg-[#F4F4F4] rounded-full px-3 py-[6px] gap-[10px]">
+      {/* 👍 좋아요 & 싫어요 — 미니멀 인라인 */}
+      <div className="flex items-center gap-3">
         <button
           onClick={handleLike}
-          className="flex items-center gap-1 transition-all duration-200 active:scale-90"
+          className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
         >
-          <ThumbsUp className={`w-3.5 h-3.5 ${userReaction === "good" ? "fill-[#00C48C] text-[#00C48C]" : "text-gray-400 hover:text-gray-700"}`} />
-          <span className={`text-[12px] font-extrabold tabular-nums ${good > 0 ? "text-[#00C48C]" : "text-gray-400"}`}>{good}</span>
+          <ThumbsUp className={`w-3.5 h-3.5 transition-colors ${userReaction === "good" ? "fill-emerald-500 text-emerald-500" : "text-slate-300"}`} />
+          <span className={`text-[12px] font-bold tabular-nums transition-colors ${userReaction === "good" ? "text-emerald-600" : good > 0 ? "text-slate-500" : "text-slate-300"}`}>
+            {good}
+          </span>
         </button>
 
         <button
           onClick={handleDislike}
-          className="flex items-center gap-1 transition-all duration-200 active:scale-90"
+          className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
         >
-          <ThumbsDown className={`w-3.5 h-3.5 ${userReaction === "bad" ? "fill-[#FF6B6B] text-[#FF6B6B]" : "text-gray-400 hover:text-gray-700"}`} />
-          <span className={`text-[12px] font-extrabold tabular-nums ${bad > 0 ? "text-[#FF6B6B]" : "text-gray-400"}`}>{bad}</span>
+          <ThumbsDown className={`w-3.5 h-3.5 transition-colors ${userReaction === "bad" ? "fill-rose-400 text-rose-400" : "text-slate-300"}`} />
+          <span className={`text-[12px] font-bold tabular-nums transition-colors ${userReaction === "bad" ? "text-rose-500" : bad > 0 ? "text-slate-500" : "text-slate-300"}`}>
+            {bad}
+          </span>
         </button>
-      </div>
 
-      {/* 💬 댓글 카운트 & 북마크 버튼 */}
-      <div className="flex items-center gap-1">
-        <div className="flex items-center gap-1.5 px-3 py-2 text-gray-400 hover:text-gray-700 transition-colors">
-          <MessageCircle className="w-4 h-4" />
+        <div className="flex items-center gap-1.5 text-slate-300">
+          <MessageCircle className="w-3.5 h-3.5" />
           <span className="text-[12px] font-bold tabular-nums">{commentCount}</span>
         </div>
-
-        <button
-          onClick={handleBookmark}
-          className={`
-            p-2.5 rounded-full transition-all duration-200 active:scale-90
-            ${saved
-              ? "text-[#00C48C] bg-[#F0FBF7]"
-              : "text-gray-400 hover:text-gray-700 hover:bg-[#F4F4F4]"}
-          `}
-        >
-          <Bookmark className={`w-5 h-5 ${saved ? "fill-current" : ""}`} />
-        </button>
       </div>
+
+      {/* 북마크 */}
+      <button
+        onClick={handleBookmark}
+        className={`p-1.5 rounded-lg transition-all duration-200 active:scale-90 ${
+          saved ? "text-emerald-500 bg-emerald-50" : "text-slate-300 hover:text-slate-500 hover:bg-slate-50"
+        }`}
+      >
+        <Bookmark className={`w-4 h-4 ${saved ? "fill-current" : ""}`} />
+      </button>
     </div>
   )
 }

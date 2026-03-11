@@ -119,8 +119,26 @@ export function VoteCard({ catIcon }: VoteCardProps) {
     setSubmitting(false)
   }
 
-  // 로딩 중이거나 오늘 질문 없으면 렌더 생략 (공간 차지 없음)
-  if (loading || !question) return null
+  // 로딩 중 — 스켈레톤 표시
+  if (loading) return (
+    <div className="rounded-[24px] bg-white p-4 shadow-sm border border-slate-100 w-full space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="h-4 w-24 bg-slate-100 rounded-md animate-pulse" />
+      </div>
+      <div className="space-y-1.5">
+        <div className="h-4 w-full bg-slate-100 rounded-full animate-pulse" />
+        <div className="h-4 w-3/4 bg-slate-100 rounded-full animate-pulse" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="h-10 bg-slate-100 rounded-xl animate-pulse" />
+        <div className="h-10 bg-slate-100 rounded-xl animate-pulse" />
+      </div>
+      <div className="h-3 w-28 bg-slate-100 rounded-full animate-pulse mx-auto" />
+    </div>
+  )
+
+  // 오늘 질문 없으면 렌더 생략
+  if (!question) return null
 
   const total    = question.o_count + question.x_count
   const oPercent = total === 0 ? 50 : Math.round((question.o_count / total) * 100)

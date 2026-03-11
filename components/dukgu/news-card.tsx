@@ -5,13 +5,13 @@ import type { NewsCategory } from "@/types"
 
 // ─── 카테고리별 뱃지 색상 맵 ─────────────────────────────────
 const CATEGORY_BADGE_STYLES: Record<string, string> = {
-  "경제":    "bg-[#E8F5E9] text-green-700",
+  "경제":    "bg-emerald-50 text-emerald-700",
   "정치":    "bg-blue-50 text-blue-600",
-  "IT/기술": "bg-purple-50 text-purple-600",
-  "IT":      "bg-purple-50 text-purple-600",
-  "기술":    "bg-purple-50 text-purple-600",
+  "IT/기술": "bg-violet-50 text-violet-600",
+  "IT":      "bg-violet-50 text-violet-600",
+  "기술":    "bg-violet-50 text-violet-600",
   "사회":    "bg-orange-50 text-orange-600",
-  "금융":    "bg-yellow-50 text-yellow-700",
+  "금융":    "bg-amber-50 text-amber-700",
   "국제":    "bg-sky-50 text-sky-600",
   "부동산":  "bg-rose-50 text-rose-600",
   "증시":    "bg-emerald-50 text-emerald-700",
@@ -19,7 +19,7 @@ const CATEGORY_BADGE_STYLES: Record<string, string> = {
 }
 
 function getCategoryBadgeStyle(category: string): string {
-  return CATEGORY_BADGE_STYLES[category] ?? "bg-gray-100 text-gray-600"
+  return CATEGORY_BADGE_STYLES[category] ?? "bg-slate-100 text-slate-500"
 }
 
 // ─── FOCUS chip 이슈 키워드 ──────────────────────────────────
@@ -80,41 +80,38 @@ export function NewsCard({
   const uniqueTags  = Array.from(new Set(tags))
 
   return (
-    <article className="bg-white rounded-[24px] px-4 py-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] active:scale-[0.985] transition-all cursor-pointer flex flex-col group">
+    <article className={`bg-white rounded-2xl px-4 pt-3.5 pb-3 border shadow-sm active:scale-[0.988] transition-transform cursor-pointer flex flex-col group ${isDukguPick ? "border-l-[3px] border-l-emerald-400 border-t-slate-100 border-r-slate-100 border-b-slate-100" : "border-slate-100"}`}>
 
-      {/* 상단: 카테고리 + FOCUS + 덕구픽 뱃지 + 시간 — 한 줄 */}
-      <div className="flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {/* 카테고리 뱃지 */}
-          <span className={`${getCategoryBadgeStyle(category)} px-2 py-1 text-[12px] font-extrabold rounded-md`}>
+      {/* 상단: 카테고리 + FOCUS + 덕구픽 + 시간 */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <span className={`${getCategoryBadgeStyle(category)} px-2 py-0.5 text-[11px] font-bold rounded-md`}>
             {category}
           </span>
-          {/* FOCUS 뱃지 — 카테고리 우측에 나란히 */}
           {autoBadge && (
-            <span className="bg-red-50 text-[#FF3B30] font-bold text-[12px] px-2 py-0.5 rounded-md">
+            <span className="bg-red-50 text-red-500 font-bold text-[11px] px-2 py-0.5 rounded-md">
               {autoBadge.ticker}
             </span>
           )}
-          {/* 덕구픽 뱃지 */}
           {isDukguPick && (
-            <span className="bg-green-500 text-white px-2 py-1 text-[11px] font-bold rounded-md shadow-sm">
+            <span className="bg-emerald-500 text-white px-2 py-0.5 text-[11px] font-bold rounded-md">
               덕구픽
             </span>
           )}
         </div>
-        <span className="text-[13px] font-medium text-gray-400 shrink-0 ml-2">{timeAgo}</span>
+        <span className="text-[11px] font-medium text-slate-400 shrink-0 ml-2">{timeAgo}</span>
       </div>
 
       {/* 헤드라인 */}
-      <h3 className="text-[16px] font-bold text-gray-900 tracking-tight leading-snug mb-2.5 group-hover:text-[#00C48C] transition-colors line-clamp-2 break-keep">
+      <h3 className="text-[15px] font-extrabold text-slate-900 tracking-tight leading-snug mb-2.5 group-hover:text-emerald-600 transition-colors line-clamp-2 break-keep">
         {headline}
       </h3>
 
-      {/* 해시태그 */}
+      {/* 해시태그 — 심플 인라인 텍스트 */}
       {uniqueTags.length > 0 && (
-        <div className="flex flex-wrap gap-x-1.5 gap-y-1 mb-3">
-          {uniqueTags.map((tag, idx) => (
-            <span key={idx} className="bg-blue-50/50 text-blue-500 text-[12px] font-medium px-1.5 py-0.5 rounded">
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5 mb-2.5">
+          {uniqueTags.slice(0, 4).map((tag, idx) => (
+            <span key={idx} className="text-slate-400 text-[11px] font-medium">
               {tag.startsWith("#") ? tag : `#${tag}`}
             </span>
           ))}

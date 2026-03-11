@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { SearchBar } from "./search-bar"
 import { NewsFeed } from "./news-feed"
+import { FilterTabs } from "./filter-tabs"
 import { Clock, BarChart3 } from "lucide-react"
 import { useNewsFeed, type DateFilter, type MarketTab } from "@/hooks/use-news-feed"
 
@@ -47,23 +48,12 @@ export function NewsSection() {
         <h2 className="text-[17px] font-extrabold tracking-[-0.4px] text-[#111111]">실시간 뉴스</h2>
       </div>
 
-      {/* ② 증시 탭 — 풀 그리드 3등분 */}
-      <div className="w-full grid grid-cols-3 gap-2">
-        {MARKET_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setMarketTab(tab.id)}
-            className={`flex items-center justify-center h-[34px] rounded-full text-[12px] transition-all active:scale-95 ${
-              marketTab === tab.id
-                ? "bg-[#00C48C] text-white font-bold"
-                : "bg-slate-100 text-slate-500 font-medium border border-slate-200"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* ② 증시 탭 */}
+      <FilterTabs
+        tabs={MARKET_TABS}
+        value={marketTab}
+        onChange={(id) => setMarketTab(id as MarketTab)}
+      />
 
       {/* ③ 검색창 (새로고침 버튼 내장) */}
       <SearchBar
@@ -73,44 +63,21 @@ export function NewsSection() {
         isRefreshing={isLoading}
       />
 
-      {/* ④ 정렬 필터 — 풀 그리드 2등분 */}
+      {/* ④ 정렬 필터 */}
       <div className="flex flex-col gap-2 w-full">
-        <div className="w-full grid grid-cols-2 gap-2">
-          {SORT_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setSortBy(tab.id)}
-              className={`flex items-center justify-center gap-1.5 h-[34px] rounded-full text-[12px] transition-all active:scale-95 ${
-                sortBy === tab.id
-                  ? "bg-[#00C48C] text-white font-bold"
-                  : "bg-slate-100 text-slate-500 font-medium border border-slate-200"
-              }`}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
+        <FilterTabs
+          tabs={SORT_TABS}
+          value={sortBy}
+          onChange={(id) => setSortBy(id as SortOption)}
+        />
 
-        {/* 기간 필터 — 인기순일 때만 표시, 풀 그리드 4등분 */}
+        {/* 기간 필터 — 인기순일 때만 표시 */}
         {sortBy === "views" && (
-          <div className="w-full grid grid-cols-4 gap-2">
-            {DATE_FILTERS.map((filter) => (
-              <button
-                key={filter.id}
-                type="button"
-                onClick={() => setDateFilter(filter.id)}
-                className={`flex items-center justify-center h-[34px] rounded-full text-[12px] transition-all active:scale-95 ${
-                  dateFilter === filter.id
-                    ? "bg-[#00C48C] text-white font-bold"
-                    : "bg-slate-100 text-slate-500 font-medium border border-slate-200"
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
+          <FilterTabs
+            tabs={DATE_FILTERS}
+            value={dateFilter}
+            onChange={(id) => setDateFilter(id as DateFilter)}
+          />
         )}
       </div>
 

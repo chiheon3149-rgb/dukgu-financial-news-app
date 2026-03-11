@@ -25,9 +25,9 @@ export function SearchBar({
   }, [])
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full shadow-sm rounded-2xl">
       {/* 돋보기 아이콘 */}
-      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center text-gray-400 pointer-events-none">
+      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center text-gray-500 pointer-events-none">
         <Search className="w-5 h-5" />
       </div>
 
@@ -39,7 +39,7 @@ export function SearchBar({
         placeholder={placeholder}
         suppressHydrationWarning
         autoComplete="off"
-        className="w-full bg-slate-50 border-none rounded-2xl py-3.5 pl-10 pr-10 text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400/50 focus:bg-white focus:shadow-sm transition-all duration-200"
+        className="w-full bg-white border border-gray-300 rounded-2xl py-3.5 pl-10 pr-10 text-[15px] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400/50 focus:border-green-300 focus:shadow-sm transition-all duration-200"
       />
 
       {/* 우측: 삭제 버튼 or 새로고침 버튼 */}
