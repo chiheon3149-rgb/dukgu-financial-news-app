@@ -28,13 +28,13 @@ export function BriefingLogCard({
   const isMorning = type === "morning";
   
   return (
-    <button 
+    <button
       onClick={onClick}
-      className="flex flex-col p-5 bg-white hover:bg-emerald-50 rounded-[20px] transition-all group w-full text-left border border-slate-100 hover:border-emerald-100 shadow-sm hover:shadow-md mb-1"
+      className="flex flex-col p-5 bg-white rounded-[18px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 w-full text-left"
     >
       {/* 1. 상단: 배지 & 시간 */}
       <div className="flex items-center gap-2 mb-3">
-        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
+        <span className={`text-[11px] font-semibold px-2.5 py-[3px] rounded-full ${
           isMorning ? "bg-blue-50 text-blue-500" : "bg-red-50 text-red-500"
         }`}>
           {isMorning ? "Morning" : "Afternoon"}

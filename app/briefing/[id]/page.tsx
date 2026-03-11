@@ -92,7 +92,7 @@ export default function BriefingDetailPage({ params }: { params: Promise<{ id: s
 
   if (isLoading) {
     return (
-      <div className="min-h-dvh bg-slate-50">
+      <div className="min-h-dvh bg-[#F9FAFB]">
         <DetailHeader title="브리핑" />
         <div className="flex items-center justify-center h-60 text-slate-400 text-sm animate-pulse">
           브리핑 불러오는 중...
@@ -102,37 +102,35 @@ export default function BriefingDetailPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="min-h-dvh bg-slate-50 pb-20">
-      {/* 💡 상단 헤더 영역 교체: 관리자일 때만 수정/삭제 버튼 노출 */}
-      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 pr-2">
-        <DetailHeader 
-          title={marketMode === "US" ? "Global Briefing" : "K-Market Report"} 
-          rightElement={
-            <div className="flex items-center gap-2">
-              {isAdmin && (
-                <div className="flex items-center gap-1 border-r border-slate-200 pr-2 mr-1">
-                  <button 
-                    onClick={() => router.push(`/briefing/${dateStr}/edit?type=${currentType}`)} 
-                    className="p-1.5 hover:bg-amber-50 rounded-full transition-colors group"
-                  >
-                    <Edit2 className="w-4 h-4 text-slate-400 group-hover:text-amber-600" />
-                  </button>
-                  <button 
-                    onClick={handleDelete}
-                    className="p-1.5 hover:bg-red-50 rounded-full transition-colors group"
-                  >
-                    <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-500" />
-                  </button>
-                </div>
-              )}
-              <ShareButton 
-                title={`[덕구의 뉴스 곳간] ${current?.headline}`} 
-                text="오늘의 금융 뉴스 브리핑을 확인해보세요! 🐾" 
-              />
-            </div>
-          }
-        />
-      </div>
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
+      <DetailHeader
+        title={marketMode === "US" ? "Global Briefing" : "K-Market Report"}
+        rightElement={
+          <div className="flex items-center gap-1">
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => router.push(`/briefing/${dateStr}/edit?type=${currentType}`)}
+                  className="p-1.5 hover:bg-amber-50 rounded-full transition-colors group"
+                >
+                  <Edit2 className="w-4 h-4 text-slate-400 group-hover:text-amber-600" />
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="p-1.5 hover:bg-red-50 rounded-full transition-colors group"
+                >
+                  <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-500" />
+                </button>
+                <div className="w-px h-4 bg-slate-200 mx-1" />
+              </>
+            )}
+            <ShareButton
+              title={`[덕구의 뉴스 곳간] ${current?.headline}`}
+              text="오늘의 금융 뉴스 브리핑을 확인해보세요! 🐾"
+            />
+          </div>
+        }
+      />
 
       <main className="container max-w-md mx-auto px-4 py-6 space-y-8">
         <MarketSwitcher mode={marketMode} setMode={setMarketMode} isKrAvailable={!!afternoon} />

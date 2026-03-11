@@ -63,10 +63,10 @@ export function BriefingNews({ mode, items }: BriefingNewsProps) {
               <div className="flex gap-1 text-amber-400 text-[10px] items-center">
                 {starsStr(news.stars)}
                 {news.cat && (
-                  <span className={`ml-1.5 px-1.5 py-0.5 rounded-md font-bold text-[9px] uppercase 
-                    ${news.color === 'blue' ? 'bg-blue-100 text-blue-600' : 
-                      news.color === 'emerald' ? 'bg-emerald-100 text-emerald-600' : 
-                      'bg-slate-200 text-slate-600'}`}>
+                  <span className={`ml-1.5 px-2 py-0.5 rounded-full font-semibold text-[11px] ${
+                    news.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                    news.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
+                    'bg-slate-100 text-slate-600'}`}>
                     {news.cat}
                   </span>
                 )}
