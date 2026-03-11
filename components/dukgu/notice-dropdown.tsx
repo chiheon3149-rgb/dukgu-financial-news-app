@@ -77,10 +77,10 @@ export function NoticeDropdown() {
       {/* 벨 버튼 */}
       <button
         onClick={handleOpen}
-        className="relative p-2 rounded-full hover:bg-secondary transition-colors cursor-pointer"
+        className="relative p-2 rounded-full hover:bg-emerald-50 transition-colors cursor-pointer group"
         aria-label="알림"
       >
-        <Bell className="w-5 h-5 text-muted-foreground" />
+        <Bell className="w-5 h-5 text-gray-400 group-hover:text-emerald-500 transition-colors" />
         {hasUnread && (
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
         )}
