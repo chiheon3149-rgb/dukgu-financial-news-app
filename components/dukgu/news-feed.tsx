@@ -9,18 +9,26 @@ import type { MarketTab } from "@/hooks/use-news-feed"
 
 const SCROLL_KEY = "newsListScrollY"
 
-const KR_KEYWORDS = ["코스피", "코스닥", "삼성", "현대", "LG", "SK", "카카오", "네이버", "한국", "국내", "코스", "원화", "KRW"]
-const US_KEYWORDS = ["나스닥", "S&P", "다우", "테슬라", "NVIDIA", "애플", "구글", "메타", "마이크로소프트", "미국", "월가", "연준", "Fed", "달러", "TSLA", "AAPL", "NVDA"]
+const KR_KEYWORDS      = ["코스피", "코스닥", "삼성", "현대", "LG", "SK", "카카오", "네이버", "한국", "국내", "코스", "원화", "KRW"]
+const US_KEYWORDS      = ["나스닥", "S&P", "다우", "테슬라", "NVIDIA", "애플", "구글", "메타", "마이크로소프트", "미국", "월가", "연준", "Fed", "달러", "TSLA", "AAPL", "NVDA"]
+const ETF_KEYWORDS     = ["ETF", "etf", "상장지수펀드", "인덱스펀드", "QQQ", "SPY", "TIGER", "KODEX", "KINDEX", "ARIRANG"]
+const ECONOMY_KEYWORDS = ["금리", "기준금리", "인플레이션", "물가", "GDP", "경기", "경제", "재정", "부채", "환율", "무역", "수출", "수입", "중앙은행", "한국은행", "연준", "FOMC", "CPI", "PPI"]
 
 function matchesMarket(item: any, tab: MarketTab): boolean {
   if (tab === "all") return true
   const m = item.market as string | null | undefined
+  const searchText = [item.headline ?? "", item.summary ?? "", item.category ?? "", ...(item.tags ?? [])].join(" ")
+  if (tab === "etf") {
+    return ETF_KEYWORDS.some((kw) => searchText.toLowerCase().includes(kw.toLowerCase()))
+  }
+  if (tab === "economy") {
+    return ECONOMY_KEYWORDS.some((kw) => searchText.includes(kw))
+  }
   if (m === "common") return true
   if (m === "kr") return tab === "kr"
   if (m === "us") return tab === "us"
   const keywords = tab === "kr" ? KR_KEYWORDS : US_KEYWORDS
-  const searchText = [item.headline ?? "", item.summary ?? "", ...(item.tags ?? [])].join(" ").toLowerCase()
-  return keywords.some((kw) => searchText.includes(kw.toLowerCase()))
+  return keywords.some((kw) => searchText.toLowerCase().includes(kw.toLowerCase()))
 }
 
 // ─── 스켈레톤 카드 ───────────────────────────────────────────

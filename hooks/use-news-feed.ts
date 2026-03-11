@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 
 type SortOption = "latest" | "views" | "comments"
 export type DateFilter = "today" | "week" | "month" | "all"
-export type MarketTab = "all" | "kr" | "us"
+export type MarketTab = "all" | "kr" | "us" | "etf" | "economy"
 
 const PAGE_SIZE = 10
 
@@ -122,7 +122,7 @@ export function useNewsFeed(
   }
 
   const applyMarketFilter = (query: any) => {
-    if (marketTab === "all") return query
+    if (marketTab === "all" || marketTab === "etf" || marketTab === "economy") return query
     return query.or(`market.eq.common,market.eq.${marketTab}`)
   }
 

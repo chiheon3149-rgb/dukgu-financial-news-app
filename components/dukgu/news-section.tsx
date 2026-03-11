@@ -9,9 +9,11 @@ import { useNewsFeed, type DateFilter, type MarketTab } from "@/hooks/use-news-f
 export type SortOption = "latest" | "views" | "comments"
 
 const MARKET_TABS: { id: MarketTab; label: string }[] = [
-  { id: "all", label: "전체" },
-  { id: "kr",  label: "한국" },
-  { id: "us",  label: "미국" },
+  { id: "all",     label: "전체" },
+  { id: "kr",      label: "한국" },
+  { id: "us",      label: "미국" },
+  { id: "etf",     label: "ETF" },
+  { id: "economy", label: "경제" },
 ]
 
 const SORT_OPTIONS: { id: SortOption; label: string }[] = [
@@ -60,20 +62,21 @@ export function NewsSection() {
         isRefreshing={isLoading}
       />
 
-      {/* ③ 마켓 필터 칩 + 정렬 드롭다운 */}
+      {/* ③ 필터 칩 + 정렬 드롭다운 */}
       <div className="flex items-center justify-between gap-2">
 
-        {/* 마켓 칩 */}
-        <div className="flex items-center gap-1.5">
+        {/* 칩 필터 — 가로 스크롤 */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
           {MARKET_TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setMarketTab(tab.id)}
-              className={`h-[30px] px-3 rounded-full text-[13px] font-medium transition-all active:scale-95 ${
+              style={{ transition: "background 0.2s, color 0.2s" }}
+              className={`shrink-0 py-[6px] px-[14px] rounded-[999px] text-[13px] font-medium active:scale-95 ${
                 marketTab === tab.id
-                  ? "bg-emerald-500 text-white"
-                  : "bg-[#F3F4F6] text-gray-700"
+                  ? "bg-[#10B981] text-white"
+                  : "bg-[#F1F5F9] text-gray-700"
               }`}
             >
               {tab.label}
@@ -82,11 +85,12 @@ export function NewsSection() {
         </div>
 
         {/* 정렬 드롭다운 */}
-        <div className="relative" ref={sortRef}>
+        <div className="relative shrink-0" ref={sortRef}>
           <button
             type="button"
             onClick={() => setSortOpen((v) => !v)}
-            className="flex items-center gap-1 h-[30px] px-3 rounded-full bg-[#F3F4F6] text-[13px] font-medium text-gray-700 transition-all active:scale-95"
+            className="flex items-center gap-1 py-[6px] px-[14px] rounded-[999px] bg-[#F1F5F9] text-[13px] font-medium text-gray-700 active:scale-95"
+            style={{ transition: "background 0.2s" }}
           >
             {currentSort.label}
             <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`} />
