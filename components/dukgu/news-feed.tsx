@@ -34,28 +34,17 @@ function matchesMarket(item: any, tab: MarketTab): boolean {
 // ─── 스켈레톤 카드 ───────────────────────────────────────────
 function NewsCardSkeleton() {
   return (
-    <div className="rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2.5">
-      <div className="h-5 w-14 rounded-full bg-gray-100 shimmer" />
-      <div className="flex flex-col gap-1.5">
-        <div className="h-4 w-full rounded-md bg-gray-100 shimmer" />
-        <div className="h-4 w-4/5 rounded-md bg-gray-100 shimmer" />
+    <div className="h-[80px] rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] px-4 flex flex-col justify-center gap-2 animate-pulse">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-10 rounded-full bg-gray-100" />
+        <div className="h-4 w-3/5 rounded-md bg-gray-100" />
       </div>
-      <div className="flex flex-col gap-1">
-        <div className="h-3 w-full rounded-md bg-gray-100 shimmer" />
-        <div className="h-3 w-2/3 rounded-md bg-gray-100 shimmer" />
-      </div>
-      <div className="h-3 w-28 rounded-md bg-gray-100 shimmer" />
-      <div className="h-3 w-12 rounded-md bg-gray-100 shimmer" />
-      <div className="border-t border-[#F1F5F9] pt-2.5 flex gap-5">
-        <div className="h-4 w-16 rounded-md bg-gray-100 shimmer" />
-        <div className="h-4 w-14 rounded-md bg-gray-100 shimmer" />
-        <div className="h-4 w-16 rounded-md bg-gray-100 shimmer" />
-      </div>
+      <div className="h-3 w-2/5 rounded-md bg-gray-100" />
     </div>
   )
 }
 
-function NewsSkeletonList({ count = 5 }: { count?: number }) {
+function NewsSkeletonList({ count = 3 }: { count?: number }) {
   return (
     <div className="flex flex-col gap-3">
       {Array.from({ length: count }).map((_, i) => (
@@ -131,7 +120,7 @@ export function NewsFeed({
   if (isLoading && news.length === 0) {
     return (
       <section className="pb-24">
-        <NewsSkeletonList count={5} />
+        <NewsSkeletonList count={3} />
       </section>
     )
   }
