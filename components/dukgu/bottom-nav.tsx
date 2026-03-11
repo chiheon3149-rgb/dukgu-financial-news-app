@@ -20,7 +20,7 @@ export function BottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-[#E5E7EB] z-50 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 w-full max-w-[420px] mx-auto bg-white/95 backdrop-blur-md border-t border-[#E5E7EB] z-50 pb-safe">
       <div className="flex justify-around items-center h-[60px] px-1">
         {navItems.map((item) => {
           const isActive =

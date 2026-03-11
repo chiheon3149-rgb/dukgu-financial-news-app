@@ -103,8 +103,10 @@ export default function RootLayout({
           />
         </noscript>
         <UserProvider>
-          <main className="min-h-screen pb-20 bg-[#F9FAFB]">
-            {children}
+          <main className="min-h-screen bg-[#F9FAFB]">
+            <div className="max-w-[420px] mx-auto min-h-screen relative bg-[#F9FAFB] pb-20">
+              {children}
+            </div>
           </main>
           
           <BottomNav />

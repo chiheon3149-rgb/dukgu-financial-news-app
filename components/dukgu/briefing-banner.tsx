@@ -41,7 +41,7 @@ function getDateLabel(dateStr?: string): string {
 
 function BriefingBannerSkeleton() {
   return (
-    <div className="mt-3 rounded-[14px] bg-[#F8FAFC] border border-[#E5E7EB] p-4 space-y-3">
+    <div className="mt-3 rounded-[20px] bg-white border border-[#E5E7EB] p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
       <div className="flex items-center gap-2">
         <Skeleton className="h-3 w-36 bg-slate-200 rounded-full" />
         <Skeleton className="h-5 w-10 rounded-md bg-slate-200" />
@@ -90,7 +90,7 @@ export function BriefingBanner() {
   const theme = THEME[market]
 
   return (
-    <section className="mt-3 rounded-[14px] bg-[#F8FAFC] border border-[#E5E7EB] p-4 transition-all duration-300">
+    <section className="mt-3 rounded-[20px] bg-white border border-[#E5E7EB] p-4 transition-all duration-300 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
 
       {/* 상단: 날짜 + 마켓 태그 + 토글 */}
       <div className="flex items-center justify-between mb-3">

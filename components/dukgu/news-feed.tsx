@@ -124,14 +124,14 @@ export function NewsFeed({
   // 초기 로딩 — 스켈레톤 카드
   if (isLoading && news.length === 0) {
     return (
-      <section className="pb-24 -mx-4 bg-white rounded-t-2xl shadow-[0_-2px_12px_rgba(0,0,0,0.04)] pt-2">
+      <section className="pb-24 -mx-4 bg-white rounded-[20px] shadow-[0_6px_20px_rgba(0,0,0,0.05)] pt-2">
         <NewsSkeletonList count={5} />
       </section>
     )
   }
 
   return (
-    <section className="pb-24 -mx-4 bg-white rounded-t-2xl shadow-[0_-2px_12px_rgba(0,0,0,0.04)] pt-2">
+    <section className="pb-24 -mx-4 bg-white rounded-[20px] shadow-[0_6px_20px_rgba(0,0,0,0.05)] pt-2">
       <div className="flex flex-col px-4">
         {filteredNews.map((item, index) => (
           <React.Fragment key={item.id}>

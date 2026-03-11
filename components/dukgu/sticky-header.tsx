@@ -21,7 +21,7 @@ export function StickyHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-[#E5E7EB]">
-      <div className="flex items-center justify-between px-4 max-w-md mx-auto h-14">
+      <div className="flex items-center justify-between px-4 max-w-[420px] mx-auto h-14">
 
         <Link href="/">
           <span className="text-[16px] font-semibold text-slate-900 tracking-tight">
