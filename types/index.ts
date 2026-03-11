@@ -78,6 +78,7 @@ export interface NewsItem {
   tags: string[]
   headline: string
   summary: string
+  aiSummary?: string | null
   /** "10분 전", "2시간 전" 등 상대적 시간 표시 */
   timeAgo: string
   publishedAt: string

@@ -33,17 +33,18 @@ function toNewsItem(row: any): NewsItem {
   return {
     id: row.id,
     category: row.category,
-    market: row.market, 
+    market: row.market,
     tags: row.tags ?? [],
     headline: row.headline,
     summary: row.summary,
+    aiSummary: row.ai_summary ?? null,
     timeAgo: formatTime(row.created_at),
     publishedAt: row.created_at,
     goodCount: row.good_count ?? 0,
     badCount: row.bad_count ?? 0,
     commentCount: row.comment_count ?? 0,
     source: row.source ?? null,
-    viewCount: row.view_count ?? 0, // ✅ 중복 에러 수정 완료
+    viewCount: row.view_count ?? 0,
   }
 }
 
