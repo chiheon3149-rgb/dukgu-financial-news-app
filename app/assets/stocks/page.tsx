@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import { TrendingUp, TrendingDown, Plus, Trash2, Briefcase, ChevronRight, Loader2 } from "lucide-react"
+import { TrendingUp, TrendingDown, Plus, Trash2, Briefcase, ChevronRight, Loader2, Pencil, Check, X } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { supabase } from "@/lib/supabase"
@@ -23,6 +23,8 @@ export default function StocksAccountPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [accountName, setAccountName] = useState("")
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true)
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState("")
 
   // 💡 전체 주식 데이터를 합산하기 위해 훅 호출 (accountId를 안 넘기면 전체를 가져옵니다!)
   const usdToKrw = useExchangeRate()
@@ -96,7 +98,25 @@ export default function StocksAccountPage() {
     }
   }
 
-  // 3️⃣ DB에서 계좌 삭제하기
+  // 3️⃣ DB에서 계좌 이름 수정
+  const handleRenameAccount = async (id: string) => {
+    const trimmed = editingName.trim()
+    if (!trimmed) { toast.error("계좌 이름을 입력해주세요."); return }
+    try {
+      const { error } = await supabase
+        .from("asset_stock_accounts")
+        .update({ name: trimmed })
+        .eq("id", id)
+      if (error) throw error
+      setAccounts(accounts.map((a) => a.id === id ? { ...a, name: trimmed } : a))
+      setEditingAccountId(null)
+      toast.success("계좌 이름이 변경되었습니다.")
+    } catch {
+      toast.error("이름 변경에 실패했습니다.")
+    }
+  }
+
+  // 4️⃣ DB에서 계좌 삭제하기
   const handleRemoveAccount = (id: string, name: string) => {
     toast(`'${name}' 계좌를 삭제하시겠습니까?`, {
       description: "계좌 안의 모든 종목 기록도 함께 삭제됩니다.",
@@ -221,34 +241,73 @@ export default function StocksAccountPage() {
           ) : (
             <div className="grid gap-3">
               {accounts.map((acc) => (
-                <div key={acc.id} className="relative group">
-                  <Link
-                    href={`/assets/stocks/${acc.id}`}
-                    // 💡 버튼을 위해 우측 여백(pr-14) 유지
-                    className="flex items-center justify-between p-5 bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] hover:shadow-md transition-all active:scale-[0.98] pr-14"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors">
-                        <Briefcase className="w-5 h-5" />
+                <div key={acc.id} className="space-y-0">
+                  <div className="relative group">
+                    <Link
+                      href={`/assets/stocks/${acc.id}`}
+                      className="flex items-center justify-between p-5 bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] hover:shadow-md transition-all active:scale-[0.98] pr-24"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors">
+                          <Briefcase className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-[15px] font-black text-slate-800">{acc.name}</h3>
+                          <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                            {new Date(acc.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-[15px] font-black text-slate-800">{acc.name}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 mt-0.5">
-                          {new Date(acc.created_at).toLocaleDateString()}
-                        </p>
+                      <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                    </Link>
+
+                    {/* 수정 버튼 */}
+                    <button
+                      onClick={() => { setEditingAccountId(acc.id); setEditingName(acc.name) }}
+                      className="absolute right-14 top-1/2 -translate-y-1/2 p-2.5 rounded-xl text-slate-300 hover:bg-emerald-50 hover:text-emerald-500 transition-all z-10"
+                      aria-label={`${acc.name} 계좌 이름 수정`}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+
+                    {/* 삭제 버튼 */}
+                    <button
+                      onClick={() => handleRemoveAccount(acc.id, acc.name)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all z-10"
+                      aria-label={`${acc.name} 계좌 삭제`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* 인라인 이름 수정 폼 */}
+                  {editingAccountId === acc.id && (
+                    <div className="bg-white rounded-[20px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] px-5 py-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">새 계좌 별명</label>
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleRenameAccount(acc.id); if (e.key === "Escape") setEditingAccountId(null) }}
+                        className="w-full px-4 py-3 bg-slate-50 rounded-xl text-[13px] font-bold text-slate-800 border border-slate-100 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 transition-all"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleRenameAccount(acc.id)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[14px] text-[13px] font-black transition-all active:scale-[0.98]"
+                        >
+                          <Check className="w-3.5 h-3.5" /> 저장
+                        </button>
+                        <button
+                          onClick={() => setEditingAccountId(null)}
+                          className="flex items-center justify-center px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-[14px] text-[13px] font-black transition-all active:scale-[0.98]"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-colors" />
-                  </Link>
-
-                  {/* 💡 [수정] 모바일에서 항상 보이도록 투명도 설정 제거, 연한 빨간색으로 포인트 */}
-                  <button
-                    onClick={() => handleRemoveAccount(acc.id, acc.name)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all z-10"
-                    aria-label={`${acc.name} 계좌 삭제`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  )}
                 </div>
               ))}
             </div>
