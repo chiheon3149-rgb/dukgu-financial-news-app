@@ -1,11 +1,11 @@
 "use client"
 
-import { useRouter } from "next/navigation" // 💡 [추가] 페이지 이동 도구
+import { useRouter } from "next/navigation"
 import { ThumbsUp, ThumbsDown, MessageCircle, Bookmark } from "lucide-react"
-import { toast } from "sonner" // 💡 [추가] 통일된 알림 도구
+import { toast } from "sonner"
 import { useNewsReaction } from "@/hooks/use-news-reaction"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
-import { useUser } from "@/context/user-context" // 💡 [추가] 유저 정보 확인 도구
+import { useUser } from "@/context/user-context"
 import type { NewsCategory } from "@/types"
 
 interface InteractionBarProps {
@@ -13,6 +13,8 @@ interface InteractionBarProps {
   initialGood: number
   initialBad: number
   commentCount: number
+  timeAgo?: string
+  showDislike?: boolean
   snapshot?: {
     headline: string
     category: NewsCategory
@@ -26,6 +28,8 @@ export function NewsInteractionBar({
   initialGood,
   initialBad,
   commentCount,
+  timeAgo,
+  showDislike = true,
   snapshot,
 }: InteractionBarProps) {
   const router = useRouter()
@@ -38,7 +42,6 @@ export function NewsInteractionBar({
   const { isSaved, toggleSave } = useSavedArticles()
   const saved = newsId ? isSaved(newsId) : false
 
-  // 💡 [공용 로직] 비회원용 문지기 함수
   const checkLogin = (message: string) => {
     if (!profile) {
       toast("로그인이 필요한 기능이다냥! 🐾", {
@@ -77,45 +80,80 @@ export function NewsInteractionBar({
   }
 
   return (
-    <div className="flex items-center justify-between pt-0.5">
+    <div className="flex items-center justify-between">
 
-      {/* 👍 좋아요 & 싫어요 — 미니멀 인라인 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleLike}
-          className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
-        >
-          <ThumbsUp className={`w-3.5 h-3.5 transition-colors ${userReaction === "good" ? "fill-emerald-500 text-emerald-500" : "text-slate-300"}`} />
-          <span className={`text-[12px] font-bold tabular-nums transition-colors ${userReaction === "good" ? "text-emerald-600" : good > 0 ? "text-slate-500" : "text-slate-300"}`}>
-            {good}
-          </span>
-        </button>
+      {/* 왼쪽: 시간 (카드 뷰) 또는 좋아요+싫어요+댓글 (상세 뷰) */}
+      {timeAgo ? (
+        <span className="text-[12px] text-gray-400">{timeAgo}</span>
+      ) : (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLike}
+            className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
+          >
+            <ThumbsUp className={`w-4 h-4 transition-colors ${userReaction === "good" ? "fill-emerald-500 text-emerald-500" : "text-slate-300"}`} />
+            <span className={`text-[12px] font-semibold tabular-nums transition-colors ${userReaction === "good" ? "text-emerald-600" : good > 0 ? "text-slate-500" : "text-slate-300"}`}>
+              {good}
+            </span>
+          </button>
 
-        <button
-          onClick={handleDislike}
-          className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
-        >
-          <ThumbsDown className={`w-3.5 h-3.5 transition-colors ${userReaction === "bad" ? "fill-rose-400 text-rose-400" : "text-slate-300"}`} />
-          <span className={`text-[12px] font-bold tabular-nums transition-colors ${userReaction === "bad" ? "text-rose-500" : bad > 0 ? "text-slate-500" : "text-slate-300"}`}>
-            {bad}
-          </span>
-        </button>
+          {showDislike && (
+            <button
+              onClick={handleDislike}
+              className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
+            >
+              <ThumbsDown className={`w-4 h-4 transition-colors ${userReaction === "bad" ? "fill-rose-400 text-rose-400" : "text-slate-300"}`} />
+              <span className={`text-[12px] font-semibold tabular-nums transition-colors ${userReaction === "bad" ? "text-rose-500" : bad > 0 ? "text-slate-500" : "text-slate-300"}`}>
+                {bad}
+              </span>
+            </button>
+          )}
 
-        <div className="flex items-center gap-1.5 text-slate-300">
-          <MessageCircle className="w-3.5 h-3.5" />
-          <span className="text-[12px] font-bold tabular-nums">{commentCount}</span>
+          <div className="flex items-center gap-1.5 text-slate-300">
+            <MessageCircle className="w-4 h-4" />
+            <span className="text-[12px] font-semibold tabular-nums">{commentCount}</span>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 북마크 */}
-      <button
-        onClick={handleBookmark}
-        className={`p-1.5 rounded-lg transition-all duration-200 active:scale-90 ${
-          saved ? "text-emerald-500 bg-emerald-50" : "text-slate-300 hover:text-slate-500 hover:bg-slate-50"
-        }`}
-      >
-        <Bookmark className={`w-4 h-4 ${saved ? "fill-current" : ""}`} />
-      </button>
+      {/* 오른쪽: 카드 뷰 — 좋아요+댓글+북마크 */}
+      {timeAgo ? (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLike}
+            className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
+          >
+            <ThumbsUp className={`w-4 h-4 transition-colors ${userReaction === "good" ? "fill-emerald-500 text-emerald-500" : "text-gray-300"}`} />
+            <span className={`text-[12px] font-medium tabular-nums transition-colors ${userReaction === "good" ? "text-emerald-600" : "text-gray-400"}`}>
+              {good}
+            </span>
+          </button>
+
+          <div className="flex items-center gap-1.5 text-gray-300">
+            <MessageCircle className="w-4 h-4" />
+            <span className="text-[12px] font-medium tabular-nums text-gray-400">{commentCount}</span>
+          </div>
+
+          <button
+            onClick={handleBookmark}
+            className={`transition-all duration-200 active:scale-90 ${
+              saved ? "text-emerald-500" : "text-gray-300 hover:text-gray-500"
+            }`}
+          >
+            <Bookmark className={`w-4 h-4 ${saved ? "fill-current" : ""}`} />
+          </button>
+        </div>
+      ) : (
+        /* 상세 뷰 — 북마크만 우측 */
+        <button
+          onClick={handleBookmark}
+          className={`p-1.5 rounded-lg transition-all duration-200 active:scale-90 ${
+            saved ? "text-emerald-500 bg-emerald-50" : "text-slate-300 hover:text-slate-500 hover:bg-slate-50"
+          }`}
+        >
+          <Bookmark className={`w-4 h-4 ${saved ? "fill-current" : ""}`} />
+        </button>
+      )}
     </div>
   )
 }
