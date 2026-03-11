@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { Settings } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
@@ -52,75 +52,67 @@ function sortByOrder(items: IndexQuote[], orderList: string[]): IndexQuote[] {
   })
 }
 
-// -------------------------------------------------------
-// 단일 칩
-// -------------------------------------------------------
-interface IndexChipProps {
+// ── 카드 컴포넌트 ──────────────────────────────────────────
+interface IndexCardProps {
   index: IndexQuote
   fresh: boolean
   displayName: string
   onClick: (symbol: string) => void
-  isDragging: boolean
 }
 
-function IndexChip({ index, fresh, displayName, onClick, isDragging }: IndexChipProps) {
+function IndexCard({ index, fresh, displayName, onClick }: IndexCardProps) {
   const isUp   = index.changeStatus === "up"
   const isDown = index.changeStatus === "down"
-  const displayPrice =
-    index.symbol === "JPYKRW=X" ? index.price * 100 : index.price
+  const displayPrice = index.symbol === "JPYKRW=X" ? index.price * 100 : index.price
 
-  const handleClick = () => {
-    if (isDragging) return
-    onClick(index.symbol)
-  }
-
-  const changeColor = isUp ? "text-red-500" : isDown ? "text-blue-500" : "text-slate-400"
+  const changeColor = isUp ? "text-[#10B981]" : isDown ? "text-[#EF4444]" : "text-gray-400"
+  const valueFreshColor = fresh
+    ? (isUp ? "text-[#10B981]" : isDown ? "text-[#EF4444]" : "text-[#111827]")
+    : "text-[#111827]"
 
   return (
     <button
-      onClick={handleClick}
-      className="inline-flex flex-col justify-center gap-0.5 px-5 whitespace-nowrap border-r border-slate-200/60 h-12 shrink-0 select-none cursor-pointer hover:bg-white/70 active:bg-white transition-colors"
+      onClick={() => onClick(index.symbol)}
+      className="w-[120px] h-[72px] rounded-2xl bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex flex-col justify-center px-3 gap-0.5 shrink-0 select-none cursor-pointer hover:scale-[1.03] active:scale-[0.98] transition-transform duration-200"
     >
-      <span className="text-[12px] font-medium text-gray-400 leading-none">{displayName}</span>
-      <span
-        className={`text-[15px] font-semibold leading-none transition-all duration-500 ${
-          fresh ? (isUp ? "text-red-500 scale-105" : isDown ? "text-blue-500 scale-105" : "text-slate-800") : "text-slate-900"
-        }`}
-      >
+      <span className="text-[11px] font-medium text-[#6B7280] leading-none truncate">{displayName}</span>
+      <span className={`text-[14px] font-semibold leading-none transition-colors duration-300 ${valueFreshColor}`}>
         {index.symbol.includes("=X")
           ? `${displayPrice.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`
           : displayPrice.toLocaleString("en-US", { maximumFractionDigits: 2 })}
       </span>
       <span className={`text-[12px] font-medium leading-none ${changeColor}`}>
-        {isUp ? "+" : ""}{index.changeRate.toFixed(2)}%
+        {isUp ? "▲ +" : isDown ? "▼ " : ""}{index.changeRate.toFixed(2)}%
       </span>
     </button>
   )
 }
 
-// -------------------------------------------------------
-// 메인 컴포넌트
-// -------------------------------------------------------
-export function TickerBar() {
-  const [dbIndices, setDbIndices]     = useState<IndexQuote[]>([])
-  const [customQuotes, setCustomQuotes] = useState<IndexQuote[]>([])
-  const [hasData, setHasData]         = useState(false)
-  const [failed, setFailed]           = useState(false)
-  const [fresh, setFresh]             = useState(false)
+// ── 스켈레톤 카드 ──────────────────────────────────────────
+function IndexCardSkeleton() {
+  return (
+    <div className="w-[120px] h-[72px] rounded-2xl bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex flex-col justify-center px-3 gap-1.5 shrink-0">
+      <div className="h-2.5 w-14 rounded bg-gray-100 shimmer" />
+      <div className="h-4 w-16 rounded bg-gray-100 shimmer" />
+      <div className="h-2.5 w-10 rounded bg-gray-100 shimmer" />
+    </div>
+  )
+}
 
-  const [settings, setSettings]       = useState<TickerSettings>({
+// ── 메인 컴포넌트 ──────────────────────────────────────────
+export function TickerBar() {
+  const [dbIndices, setDbIndices]       = useState<IndexQuote[]>([])
+  const [customQuotes, setCustomQuotes] = useState<IndexQuote[]>([])
+  const [hasData, setHasData]           = useState(false)
+  const [failed, setFailed]             = useState(false)
+  const [fresh, setFresh]               = useState(false)
+  const [settings, setSettings]         = useState<TickerSettings>({
     customNames: {}, hiddenSymbols: [], customTickers: [],
   })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const router = useRouter()
 
-  const scrollRef    = useRef<HTMLDivElement>(null)
-  const animationRef = useRef<number | null>(null)
-  const scrollPosRef = useRef(0)
-  const [isInteracting, setIsInteracting] = useState(false)
-  const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false })
-
-  // ── 설정 로드 (localStorage 즉시 → DB는 localStorage가 비어있을 때만 덮어쓰기) ──
+  // ── 설정 로드 ──
   useEffect(() => {
     const localSettings = loadTickerSettings()
     setSettings(localSettings)
@@ -129,7 +121,6 @@ export function TickerBar() {
       localSettings.customTickers.length > 0 ||
       Object.keys(localSettings.customNames).length > 0
     if (!localHasData) {
-      // localStorage에 데이터 없음(새 기기) → DB에서 로드
       loadTickerSettingsFromDb().then((dbSettings) => {
         if (dbSettings) {
           setSettings(dbSettings)
@@ -167,7 +158,7 @@ export function TickerBar() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  // ── 커스텀 티커 fetch (설정 변경 시 & 1분마다 새로고침) ──
+  // ── 커스텀 티커 fetch ──
   useEffect(() => {
     const tickers = settings.customTickers ?? []
     if (tickers.length === 0) { setCustomQuotes([]); return }
@@ -180,7 +171,6 @@ export function TickerBar() {
           ticker: string; name?: string; currentPrice: number
           change?: number; changePercent: number
         }> = await res.json()
-
         const quotes: IndexQuote[] = data.map((q) => ({
           symbol:       q.ticker,
           name:         q.name ?? q.ticker,
@@ -192,72 +182,15 @@ export function TickerBar() {
         setCustomQuotes(quotes)
       } catch { /* 조용히 실패 */ }
     }
-    
-    // 최초 1회 즉시 실행
     load()
-
-    // 30초(30,000ms)마다 백그라운드에서 주기적으로 데이터 갱신
     const interval = setInterval(load, 30000)
-    
-    // 컴포넌트가 꺼지거나 설정이 바뀔 때 기존 타이머 정리 (메모리 누수 방지)
     return () => clearInterval(interval)
   }, [settings.customTickers])
 
-  // ── 자동 흐르기 ──
-  useEffect(() => {
-    if (!hasData || isInteracting) return
-    const scroll = () => {
-      if (scrollRef.current) {
-        scrollPosRef.current += 0.8
-        scrollRef.current.scrollLeft = scrollPosRef.current
-        if (scrollPosRef.current >= scrollRef.current.scrollWidth / 2) {
-          scrollPosRef.current = 0
-          scrollRef.current.scrollLeft = 0
-        }
-      }
-      animationRef.current = requestAnimationFrame(scroll)
-    }
-    animationRef.current = requestAnimationFrame(scroll)
-    return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current) }
-  }, [hasData, isInteracting, dbIndices, customQuotes])
-
-  // ── 드래그 핸들러 ──
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setIsInteracting(true)
-    dragState.current = { isDragging: true, startX: e.pageX, scrollLeft: scrollRef.current?.scrollLeft ?? 0, moved: false }
-  }
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragState.current.isDragging || !scrollRef.current) return
-    if (e.cancelable) e.preventDefault()
-    const dx = Math.abs(e.pageX - dragState.current.startX)
-    if (dx > 5) dragState.current.moved = true
-
-    const walk      = (dragState.current.startX - e.pageX) * 1.5
-    let nextScroll  = dragState.current.scrollLeft + walk
-    const halfWidth = scrollRef.current.scrollWidth / 2
-
-    if (nextScroll >= halfWidth) {
-      nextScroll -= halfWidth; dragState.current.startX = e.pageX; dragState.current.scrollLeft = nextScroll
-    } else if (nextScroll <= 0) {
-      nextScroll += halfWidth; dragState.current.startX = e.pageX; dragState.current.scrollLeft = nextScroll
-    }
-    scrollRef.current.scrollLeft = nextScroll
-    scrollPosRef.current = nextScroll
-  }
-
-  const handlePointerUpOrLeave = () => {
-    setIsInteracting(false)
-    dragState.current.isDragging = false
-  }
-
-  // ── 칩 클릭 → 주요 지수 페이지 이동 ──
-  const handleChipClick = useCallback((symbol: string) => {
-    if (dragState.current.moved) return
+  const handleCardClick = useCallback(() => {
     router.push("/market")
   }, [router])
 
-  // ── 렌더 데이터 (DB + 커스텀, 숨김 필터 적용) ──
   const allIndices = useMemo(
     () => [...dbIndices, ...customQuotes],
     [dbIndices, customQuotes]
@@ -271,55 +204,37 @@ export function TickerBar() {
   const getDisplayName = (symbol: string) =>
     settings.customNames[symbol] ?? DEFAULT_TICKER_NAMES[symbol] ?? symbol
 
-  const tickerItems = useMemo(
-    () => visibleIndices.length > 1 ? [...visibleIndices, ...visibleIndices] : visibleIndices,
-    [visibleIndices]
-  )
-
   if (failed) return null
-  if (!hasData || dbIndices.length === 0)
-    return <div className="h-12 bg-[#F9FAFB] border-b border-slate-200 w-full" />
 
   return (
     <>
-      <div className="bg-[#F9FAFB] border-b border-slate-200 h-12 flex items-center relative w-full overflow-hidden">
-        
-        {/* 'On' 레이블 및 아이콘 삭제됨 -> 바로 스크롤 영역 시작 */}
-        
-        {/* 스크롤 영역 */}
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-x-hidden h-full flex items-center scrollbar-hide"
-          style={{ scrollBehavior: "auto", cursor: isInteracting ? "grabbing" : "grab", touchAction: "none" }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUpOrLeave}
-          onPointerLeave={handlePointerUpOrLeave}
-          onPointerCancel={handlePointerUpOrLeave}
-        >
-          <div className="flex items-center">
-            {tickerItems.map((idx, i) => (
-              <IndexChip
-                key={`${idx.symbol}-${i}`}
+      <div className="w-full bg-[#F9FAFB] py-3 relative">
+        <div className="flex items-center gap-3 px-4 overflow-x-auto scrollbar-hide">
+
+          {/* 카드 목록 */}
+          {!hasData ? (
+            Array.from({ length: 4 }).map((_, i) => <IndexCardSkeleton key={i} />)
+          ) : (
+            visibleIndices.map((idx) => (
+              <IndexCard
+                key={idx.symbol}
                 index={idx}
                 fresh={fresh}
                 displayName={getDisplayName(idx.symbol)}
-                onClick={handleChipClick}
-                isDragging={dragState.current.moved}
+                onClick={handleCardClick}
               />
-            ))}
-          </div>
-        </div>
+            ))
+          )}
 
-        {/* 설정 버튼 (우측 고정) */}
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="flex items-center justify-center w-9 h-9 bg-white z-20 border-l border-slate-200 shrink-0 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-          title="지수 설정"
-          aria-label="지수 설정"
-        >
-          <Settings className="w-3.5 h-3.5 text-slate-400" />
-        </button>
+          {/* 설정 버튼 */}
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="w-[44px] h-[72px] rounded-2xl bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-center shrink-0 hover:bg-gray-50 active:scale-95 transition-all"
+            aria-label="지수 설정"
+          >
+            <Settings className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
       </div>
 
       <TickerSettingsSheet
