@@ -20,11 +20,11 @@ export function StickyHeader() {
   const colors = LEVEL_COLORS[currentLevel.level] ?? LEVEL_COLORS[1]
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-[#E5E7EB]">
-      <div className="flex items-center justify-between px-4 max-w-[420px] mx-auto h-14">
+    <header className="sticky top-0 z-50 bg-white border-b border-[#F1F5F9]">
+      <div className="flex items-center justify-between px-4 max-w-[420px] mx-auto h-16">
 
         <Link href="/">
-          <span className="text-[16px] font-semibold text-slate-900 tracking-tight">
+          <span className="text-[18px] font-bold text-[#111827] tracking-tight">
             Dukgu News
           </span>
         </Link>
