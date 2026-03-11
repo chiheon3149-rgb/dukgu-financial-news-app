@@ -69,7 +69,7 @@ export default function AccountDetailPage({ params }: { params: Promise<{ accoun
   const isAccountDown = totalPnlKrw < 0
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
       <DetailHeader
         showBack
         title={

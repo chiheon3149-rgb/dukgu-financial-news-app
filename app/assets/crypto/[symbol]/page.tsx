@@ -61,7 +61,7 @@ export default function CryptoDetailPage({ params }: { params: Promise<{ symbol:
 
   if (!row) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-dvh bg-[#F9FAFB] flex items-center justify-center">
         <p className="text-sm font-bold text-slate-400">코인을 찾을 수 없습니다.</p>
       </div>
     )
@@ -108,7 +108,7 @@ export default function CryptoDetailPage({ params }: { params: Promise<{ symbol:
   const totalSellAmount = sellTrades.reduce((acc, t) => acc + t.price * t.quantity, 0)
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
       <DetailHeader
         showBack
         title={

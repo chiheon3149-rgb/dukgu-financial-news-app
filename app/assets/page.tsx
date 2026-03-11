@@ -294,7 +294,7 @@ export default function AssetsPage() {
   const fmtKrw = (n: number) => `${Math.round(Math.abs(n)).toLocaleString("ko-KR")}원`
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
       <DetailHeader
         showBack={false}
         title={<div className="flex items-center gap-2"><Wallet className="w-5 h-5 text-emerald-500 fill-emerald-500" /><span className="text-lg font-black text-slate-900">내 자산</span></div>}

@@ -292,10 +292,10 @@ function RealEstatePageInner() {
 
   const fmt = (n: number) => `${Math.round(n / 10000).toLocaleString("ko-KR")}만원`
 
-  if (isLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 className="animate-spin text-indigo-500 w-8 h-8" /></div>
+  if (isLoading) return <div className="min-h-dvh bg-[#F9FAFB] flex items-center justify-center"><Loader2 className="animate-spin text-indigo-500 w-8 h-8" /></div>
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
       <DetailHeader showBack title={<div className="flex items-center gap-2"><Landmark className="w-5 h-5 text-indigo-500" /><span className="text-lg font-black">부동산 자산 관리</span></div>} />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">

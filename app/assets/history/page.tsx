@@ -41,7 +41,7 @@ export default function AssetHistoryPage() {
   }, [filteredList, viewMode, dateRange])
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
       <DetailHeader title="자산 증감 기록" />
       {isPickerOpen && <div className="fixed inset-0 z-40 bg-black/[0.02]" onClick={() => setIsPickerOpen(false)} />}
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">

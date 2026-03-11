@@ -145,7 +145,7 @@ function GoldPageInner() {
   const fmtSigned = (n: number) => `${n >= 0 ? "+" : ""}${fmt(n)}`
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
       <DetailHeader showBack title={
         <div className="flex items-center gap-2">
           <span className="text-xl">🥇</span>

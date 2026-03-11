@@ -59,7 +59,7 @@ export function AddTradeSheet({ isOpen, currency, onClose, onSubmit }: AddTradeS
       />
 
       {/* 시트 본체 */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-md mx-auto px-6 pt-5 pb-10 animate-in slide-in-from-bottom-4 duration-300">
+      <div className="fixed bottom-[60px] left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-md mx-auto px-6 pt-5 pb-10 animate-in slide-in-from-bottom-4 duration-300">
 
         {/* 핸들 + 헤더 */}
         <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />

@@ -108,7 +108,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ accountI
 
   if (!holding && !isLoadingPrice) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-dvh bg-[#F9FAFB] flex items-center justify-center">
         <div className="text-center space-y-3">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mx-auto" />
           <p className="text-sm font-bold text-slate-400">데이터를 불러오는 중입니다...</p>
@@ -193,7 +193,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ accountI
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
       <DetailHeader
         showBack
         title={
