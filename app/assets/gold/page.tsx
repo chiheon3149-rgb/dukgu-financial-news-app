@@ -155,7 +155,7 @@ function GoldPageInner() {
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
         {/* 요약 카드 */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 space-y-4 relative overflow-hidden">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 space-y-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-28 h-28 bg-amber-50/60 rounded-full -mr-8 -mt-8 blur-2xl" />
           <div className="relative z-10">
             <div className="flex items-start justify-between">
@@ -259,7 +259,7 @@ function GoldPageInner() {
           ) : (
             <div className="grid gap-2.5">
               {visibleHoldings.map((h) => (
-                <div key={h.id} className="flex items-center justify-between px-4 py-3.5 bg-white rounded-[20px] border border-slate-100 shadow-sm">
+                <div key={h.id} className="flex items-center justify-between px-4 py-3.5 bg-white rounded-[20px] shadow-[0_2px_10px_rgba(0,0,0,0.07)]">
                   <div className="flex items-center gap-3">
                     <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${h.type === "buy" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
                       {h.type === "buy" ? "▲ 매수" : "▼ 매도"}

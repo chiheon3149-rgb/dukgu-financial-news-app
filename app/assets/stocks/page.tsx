@@ -137,7 +137,7 @@ export default function StocksAccountPage() {
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
         
         {/* 🚀 상단 요약 (전체 계좌 총합 데이터 연동 완료!) */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-50/50 rounded-full -mr-10 -mt-10 blur-2xl pointer-events-none" />
           <div className="relative z-10">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">주식 총 평가금액 (원화 환산)</p>
@@ -225,7 +225,7 @@ export default function StocksAccountPage() {
                   <Link
                     href={`/assets/stocks/${acc.id}`}
                     // 💡 버튼을 위해 우측 여백(pr-14) 유지
-                    className="flex items-center justify-between p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all active:scale-[0.98] pr-14"
+                    className="flex items-center justify-between p-5 bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] hover:shadow-md transition-all active:scale-[0.98] pr-14"
                   >
                     <div className="flex items-center gap-3.5">
                       <div className="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors">

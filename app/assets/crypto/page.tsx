@@ -31,7 +31,7 @@ export default function CryptoPage() {
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
         {/* 총 코인 자산 */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50/60 rounded-full -mr-8 -mt-8 blur-2xl" />
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">코인 총 평가금액</p>
           <p className="text-3xl font-black text-slate-900 tracking-tighter">
@@ -83,7 +83,7 @@ export default function CryptoPage() {
                 <Link
                   key={holding.symbol}
                   href={`/assets/crypto/${encodeURIComponent(holding.symbol)}`}
-                  className="relative flex items-center justify-between p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm hover:border-amber-200 hover:shadow-md transition-all group active:scale-[0.98]"
+                  className="relative flex items-center justify-between p-5 bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] hover:shadow-md transition-all group active:scale-[0.98]"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-black ${

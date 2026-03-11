@@ -111,7 +111,7 @@ function CashPageInner() {
       } />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50/60 rounded-full -mr-8 -mt-8 blur-2xl" />
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">현금 총 자산 (원화 환산)</p>
           <p className="text-3xl font-black text-slate-900 tracking-tighter">{fmt(totalKrw)}</p>
@@ -176,7 +176,7 @@ function CashPageInner() {
               {items.map((item) => {
                 const krw = Math.round(item.amount * (EXCHANGE_RATE[item.currency] ?? 1))
                 return (
-                  <div key={item.id} className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 flex items-center justify-between">
+                  <div key={item.id} className="bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-5 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-11 h-11 rounded-2xl bg-emerald-50 flex items-center justify-center">
                         <Banknote className="w-5 h-5 text-emerald-500" />

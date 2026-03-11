@@ -299,7 +299,7 @@ function RealEstatePageInner() {
       <DetailHeader showBack title={<div className="flex items-center gap-2"><Landmark className="w-5 h-5 text-indigo-500" /><span className="text-lg font-black">부동산 자산 관리</span></div>} />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
-        <section className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
+        <section className="bg-white rounded-[32px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 space-y-4">
           <div><p className="text-[10px] font-black text-slate-400 uppercase mb-1">내 부동산 순자산</p><p className="text-3xl font-black text-indigo-600 tracking-tighter">
             {fmt(holdings.reduce((acc, h) => acc + (Number(h.current_estimated_price || h.acquisition_price) - Number(h.loan_amount)), 0))}
           </p></div>

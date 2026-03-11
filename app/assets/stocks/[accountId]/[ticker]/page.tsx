@@ -206,7 +206,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ accountI
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
         {/* 🏆 요약 카드 */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 space-y-4 relative overflow-hidden">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 space-y-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-50/50 rounded-full -mr-10 -mt-10 blur-2xl pointer-events-none" />
           <div className="relative z-10">
             <div className="flex items-start justify-between mb-4">
@@ -236,7 +236,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ accountI
         </section>
 
         {/* 📈 차트 영역 */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-5 space-y-3">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-[14px] font-black text-slate-800 flex items-center gap-2"><span className="w-1.5 h-4 bg-emerald-500 rounded-full" />평단가 추이</h3>
             <div className="flex items-center gap-1 bg-slate-50 p-0.5 rounded-xl border border-slate-100 shrink-0">
@@ -277,7 +277,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ accountI
           {activeTab === "trades" && (
             <div className="grid gap-3">
               {sortedTrades.map((trade) => (
-                <div key={trade.id} className="relative p-4 bg-white rounded-[24px] border border-slate-100 shadow-sm flex flex-col gap-3">
+                <div key={trade.id} className="relative p-4 bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] flex flex-col gap-3">
 
                   {editingTradeId === trade.id ? (
                     /* ── 수정 폼 ── */
@@ -478,7 +478,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ accountI
 
               {/* 배당금 리스트 */}
               {sortedDividends.map((div) => (
-                <div key={div.id} className="p-4 bg-white rounded-[24px] border border-slate-100 shadow-sm flex flex-col gap-3">
+                <div key={div.id} className="p-4 bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] flex flex-col gap-3">
 
                   {editingDivId === div.id ? (
                     /* ── 배당 수정 폼 ── */

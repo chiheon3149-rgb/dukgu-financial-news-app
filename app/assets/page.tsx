@@ -70,12 +70,12 @@ function AssetsPageSkeleton() {
   return (
     <div className="max-w-md mx-auto px-5 py-6 space-y-5">
       {/* 총자산 */}
-      <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 space-y-3">
+      <div className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 space-y-3">
         <div className="h-2.5 w-24 bg-slate-100 rounded-full animate-pulse" />
         <div className="h-7 w-52 bg-slate-100 rounded-full animate-pulse" />
       </div>
       {/* 차트 */}
-      <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6">
+      <div className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6">
         <div className="h-3.5 w-28 bg-slate-100 rounded-full animate-pulse mb-5" />
         <div className="flex items-center justify-between">
           <div className="w-[160px] h-[160px] rounded-full bg-slate-100 animate-pulse shrink-0" />
@@ -91,7 +91,7 @@ function AssetsPageSkeleton() {
       </div>
       {/* 카테고리 카드 */}
       {[...Array(8)].map((_, i) => (
-        <div key={i} className="flex items-center gap-4 bg-white rounded-[28px] border border-slate-100 shadow-sm p-5">
+        <div key={i} className="flex items-center gap-4 bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-5">
           <div className="w-11 h-11 rounded-2xl bg-slate-100 animate-pulse shrink-0" />
           <div className="space-y-2.5 flex-1">
             <div className="h-3 w-14 bg-slate-100 rounded-full animate-pulse" />
@@ -306,7 +306,7 @@ export default function AssetsPage() {
       <main className={`max-w-md mx-auto px-5 py-6 space-y-5 ${isDataLoading || !mounted ? "hidden" : ""}`}>
 
         {/* 총자산 요약 */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Assets</p>
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-xl font-black text-slate-900 tracking-tighter truncate">
@@ -321,7 +321,7 @@ export default function AssetsPage() {
         </section>
 
         {/* 자산 구성 비중 */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6">
           <h3 className="text-[13px] font-black text-slate-800 flex items-center gap-2 mb-4">
             <span className="w-1.5 h-4 bg-emerald-500 rounded-full" />자산 구성 비중
           </h3>
@@ -378,7 +378,7 @@ export default function AssetsPage() {
               <Link
                 key={type.id}
                 href={type.href}
-                className={`flex items-center justify-between p-5 bg-white rounded-[28px] border border-slate-100 shadow-sm ${theme.hover} transition-all group active:scale-[0.98]`}
+                className={`flex items-center justify-between p-5 bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] ${theme.hover} transition-all group active:scale-[0.98]`}
               >
                 <div className="flex items-center gap-4">
                   <div className={`w-11 h-11 ${theme.bg} rounded-2xl flex items-center justify-center shrink-0`}>

@@ -116,7 +116,7 @@ function EtcPageInner() {
       } />
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-rose-50/60 rounded-full -mr-8 -mt-8 blur-2xl" />
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">기타 자산 총 추정가</p>
           <p className="text-3xl font-black text-slate-900 tracking-tighter">{fmt(totalValue)}</p>
@@ -199,7 +199,7 @@ function EtcPageInner() {
               {items.map((item) => {
                 const pnl = item.currentPrice - item.purchasePrice
                 return (
-                  <div key={item.id} className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
+                  <div key={item.id} className="bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-5">
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">

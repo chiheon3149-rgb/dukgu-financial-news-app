@@ -123,7 +123,7 @@ export default function CryptoDetailPage({ params }: { params: Promise<{ symbol:
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
 
         {/* ── 1. 요약 카드 ── */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 space-y-4 relative overflow-hidden">
+        <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 space-y-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-28 h-28 bg-amber-50/50 rounded-full -mr-10 -mt-10 blur-2xl" />
 
           <div className="relative z-10">
@@ -244,7 +244,7 @@ export default function CryptoDetailPage({ params }: { params: Promise<{ symbol:
           {activeTab === "trades" && (
             <div className="grid gap-2.5">
               {visibleTrades.map((trade) => (
-                <div key={trade.id} className="flex items-center justify-between px-4 py-3.5 bg-white rounded-[20px] border border-slate-100 shadow-sm group">
+                <div key={trade.id} className="flex items-center justify-between px-4 py-3.5 bg-white rounded-[20px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] group">
                   <div className="flex items-center gap-3">
                     <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${trade.type === "buy" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
                       {trade.type === "buy" ? "▲ 매수" : "▼ 매도"}
@@ -301,7 +301,7 @@ export default function CryptoDetailPage({ params }: { params: Promise<{ symbol:
                   <p className="text-[9px] font-bold text-rose-400 mt-0.5">{sellTrades.length}회 매도</p>
                 </div>
               </div>
-              <div className="bg-white rounded-[20px] p-4 border border-slate-100 shadow-sm space-y-3">
+              <div className="bg-white rounded-[20px] p-4 shadow-[0_2px_10px_rgba(0,0,0,0.07)] space-y-3">
                 {[
                   { label: "현재 평가금액", value: fmtUsd(currentPrice * stats.totalQuantity), color: "" },
                   { label: "평가손익", value: fmtSigned((currentPrice - stats.avgCostPrice) * stats.totalQuantity), color: isUp ? "text-rose-500" : isDown ? "text-blue-500" : "" },

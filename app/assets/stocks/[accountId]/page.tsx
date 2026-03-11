@@ -83,7 +83,7 @@ export default function AccountDetailPage({ params }: { params: Promise<{ accoun
       <main className="max-w-md mx-auto px-5 py-6 space-y-6">
         {/* 🏆 요약 카드 */}
         <div>
-          <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
+          <section className="bg-white rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50/60 rounded-full -mr-8 -mt-8 blur-2xl pointer-events-none" />
             
             <div className="flex justify-between items-start">
@@ -159,7 +159,7 @@ export default function AccountDetailPage({ params }: { params: Promise<{ accoun
               const isDown = returnRate < 0
 
               return (
-                <div key={holding.ticker} className="flex items-center p-4 bg-white rounded-[24px] border border-slate-100 shadow-sm min-w-0 group">
+                <div key={holding.ticker} className="flex items-center p-4 bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] min-w-0 group">
                   <Link
                     href={`/assets/stocks/${accountId}/${encodeURIComponent(holding.ticker)}`}
                     className="flex-1 flex items-center gap-3 min-w-0 pr-3"
