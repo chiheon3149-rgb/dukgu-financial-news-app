@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Home, ExternalLink, Clock, Globe, Bookmark, Share2, Loader2, Eye, Edit2, Trash2 } from "lucide-react"
+import { getCategoryBadgeStyle } from "@/lib/utils"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
 import { AiDisclaimer } from "@/components/dukgu/ai-disclaimer"
@@ -197,22 +198,20 @@ export function NewsDetailClient({ id }: { id: string }) {
       />
 
       <main className="max-w-md mx-auto px-5 py-6">
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tight">
+        <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+          <span className={`${getCategoryBadgeStyle(news.category)} px-2.5 py-[3px] text-[11px] font-semibold rounded-full`}>
             {news.category}
           </span>
           {isDukguPick && (
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-600 text-white tracking-tight">
-              덕구 픽
+            <span className="bg-emerald-500 text-white px-2.5 py-[3px] text-[11px] font-semibold rounded-full">
+              덕구픽
             </span>
           )}
-          <div className="flex items-center gap-1.5">
-            {tags.map((tag) => (
-              <span key={tag} className="text-[11px] font-bold text-emerald-500/80 tracking-tight">
-                {tag.startsWith("#") ? tag : `#${tag}`}
-              </span>
-            ))}
-          </div>
+          {tags.map((tag) => (
+            <span key={tag} className="text-[11px] font-medium text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">
+              {tag.startsWith("#") ? tag : `#${tag}`}
+            </span>
+          ))}
         </div>
 
         <div className="flex justify-between items-start gap-4 mb-3">

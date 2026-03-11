@@ -2,26 +2,8 @@
 
 import { useState } from "react"
 import { NewsInteractionBar } from "./news-interaction-bar"
+import { getCategoryBadgeStyle } from "@/lib/utils"
 import type { NewsCategory } from "@/types"
-
-// ─── 카테고리별 칩 색상 ────────────────────────────────────────
-const CATEGORY_BADGE_STYLES: Record<string, string> = {
-  "경제":    "bg-[#ECFDF5] text-emerald-700",
-  "정치":    "bg-blue-50 text-blue-600",
-  "IT/기술": "bg-violet-50 text-violet-600",
-  "IT":      "bg-violet-50 text-violet-600",
-  "기술":    "bg-violet-50 text-violet-600",
-  "사회":    "bg-orange-50 text-orange-600",
-  "금융":    "bg-amber-50 text-amber-700",
-  "국제":    "bg-sky-50 text-sky-600",
-  "부동산":  "bg-rose-50 text-rose-600",
-  "증시":    "bg-[#ECFDF5] text-emerald-700",
-  "코인":    "bg-indigo-50 text-indigo-600",
-}
-
-function getCategoryBadgeStyle(category: string): string {
-  return CATEGORY_BADGE_STYLES[category] ?? "bg-slate-100 text-slate-500"
-}
 
 /** ai_summary 텍스트를 번호 기반 bullet 배열로 파싱 */
 function parsePoints(text: string): string[] {
@@ -72,18 +54,21 @@ export function NewsCard({
   const points = explanationText ? parsePoints(explanationText) : []
 
   return (
-    <article className="rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2.5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
+    <article className="rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
 
-      {/* 카테고리 칩 */}
-      <div className="flex items-center gap-1.5">
-        <span className={`${getCategoryBadgeStyle(category)} px-2.5 py-[3px] text-[11px] font-semibold rounded-full`}>
-          {category}
-        </span>
-        {isDukguPick && (
-          <span className="bg-emerald-500 text-white px-2.5 py-[3px] text-[11px] font-semibold rounded-full">
-            덕구픽
+      {/* 카테고리 칩 + 시간 */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className={`${getCategoryBadgeStyle(category)} px-2.5 py-[3px] text-[11px] font-semibold rounded-full shrink-0`}>
+            {category}
           </span>
-        )}
+          {isDukguPick && (
+            <span className="bg-emerald-500 text-white px-2.5 py-[3px] text-[11px] font-semibold rounded-full shrink-0">
+              덕구픽
+            </span>
+          )}
+        </div>
+        <span className="text-[11px] text-gray-400 shrink-0 whitespace-nowrap">{timeAgo}</span>
       </div>
 
       {/* 뉴스 제목 */}
@@ -100,17 +85,14 @@ export function NewsCard({
 
       {/* 해시태그 */}
       {uniqueTags.length > 0 && (
-        <div className="flex flex-wrap gap-x-2.5 gap-y-0.5">
+        <div className="flex flex-wrap gap-1.5">
           {uniqueTags.slice(0, 2).map((tag, idx) => (
-            <span key={idx} className="text-[11px] text-gray-400">
+            <span key={idx} className="text-[11px] font-medium text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">
               {tag.startsWith("#") ? tag : `#${tag}`}
             </span>
           ))}
         </div>
       )}
-
-      {/* 시간 */}
-      <span className="text-[11px] text-gray-400">{timeAgo}</span>
 
       {/* 왜 중요해? 버튼 */}
       {points.length > 0 && (
