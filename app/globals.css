@@ -4,22 +4,24 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* 덕구 브랜드 컬러 토큰 */
-  --brand-primary: #00C48C;
-  --brand-primary-bg: #F0FBF7;
-  --brand-primary-border: #C8EDE3;
-  --brand-text-title: #111111;
-  --brand-text-body: #555555;
-  --brand-text-muted: #AAAAAA;
-  --brand-text-tag: #888888;
-  --brand-bg-page: #F4F4F4;
-  --brand-bg-card: #FFFFFF;
-  --brand-bg-badge: #EFEFEF;
-  --brand-border-card: #E5E5E5;
-  --brand-danger: #FF4B4B;
+  /* ── Design Token System ───────────────────────────── */
+  --ds-primary:        #10B981; /* Emerald 500 */
+  --ds-primary-light:  #ECFDF5; /* Emerald 50  */
+  --ds-primary-border: #A7F3D0; /* Emerald 200 */
 
-  --background: oklch(0.98 0.002 240);
-  --foreground: oklch(0.15 0.01 240);
+  --ds-bg:       #FFFFFF; /* Background   */
+  --ds-surface:  #F9FAFB; /* Surface      */
+  --ds-border:   #E5E7EB; /* Border       */
+
+  --ds-text-primary:   #111827; /* Gray 900 */
+  --ds-text-secondary: #6B7280; /* Gray 500 */
+
+  --ds-up:   #EF4444; /* Red 500  — 시장 상승 */
+  --ds-down: #3B82F6; /* Blue 500 — 시장 하락 */
+
+  /* ── Shadcn / Tailwind CSS vars ─────────────────────── */
+  --background: oklch(1 0 0);          /* #FFFFFF */
+  --foreground: oklch(0.129 0.013 259.6); /* #111827 */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.15 0.01 240);
   --popover: oklch(1 0 0);
@@ -140,11 +142,21 @@
 
 @layer base {
   body {
-    /* 한국어 가독성을 위해 자간만 살짝 조여줍니다 */
+    background-color: var(--ds-bg);
+    color: var(--ds-text-primary);
     letter-spacing: -0.03em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+}
+
+@layer utilities {
+  .bg-surface  { background-color: var(--ds-surface); }
+  .border-ds   { border-color: var(--ds-border); }
+  .text-ds-primary   { color: var(--ds-text-primary); }
+  .text-ds-secondary { color: var(--ds-text-secondary); }
+  .text-up   { color: var(--ds-up); }
+  .text-down { color: var(--ds-down); }
 }
 
 @layer utilities {
