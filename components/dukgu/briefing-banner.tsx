@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import type { IndexSummary } from "@/types"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -19,38 +18,39 @@ interface BriefingRow {
 
 const THEME = {
   US: {
-    accentColor:  "text-emerald-500",
-    badgeBg:      "bg-emerald-50",
-    badgeText:    "text-emerald-600",
-    briefingType: "오전브리핑",
+    tagBg:        "bg-emerald-50",
+    tagText:      "text-emerald-600",
+    tagLabel:     "미국",
+    ctaColor:     "text-emerald-600",
+    toggleActive: "text-emerald-600",
   },
   KR: {
-    accentColor:  "text-rose-500",
-    badgeBg:      "bg-rose-50",
-    badgeText:    "text-rose-600",
-    briefingType: "오후브리핑",
+    tagBg:        "bg-rose-50",
+    tagText:      "text-rose-600",
+    tagLabel:     "한국",
+    ctaColor:     "text-emerald-600",
+    toggleActive: "text-rose-600",
   },
 }
 
 function getDateLabel(dateStr?: string): string {
   const d = dateStr ? new Date(dateStr) : new Date()
   const days = ["일", "월", "화", "수", "목", "금", "토"]
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일(${days[d.getDay()]}요일)`
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`
 }
 
 function BriefingBannerSkeleton() {
   return (
-    <div className="rounded-[24px] overflow-hidden bg-white shadow-sm border border-slate-100 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-3 w-40 bg-slate-100 rounded-full" />
-        <Skeleton className="h-6 w-20 rounded-full bg-slate-100" />
+    <div className="mt-3 rounded-[14px] bg-[#F8FAFC] border border-[#E5E7EB] p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-3 w-36 bg-slate-200 rounded-full" />
+        <Skeleton className="h-5 w-10 rounded-md bg-slate-200" />
       </div>
-      <Skeleton className="h-4 w-full bg-slate-100 rounded-full" />
-      <Skeleton className="h-4 w-4/5 bg-slate-100 rounded-full" />
-      <Skeleton className="h-3 w-full bg-slate-100 rounded-full" />
-      <div className="flex justify-end">
-        <Skeleton className="h-8 w-24 rounded-xl bg-slate-100" />
-      </div>
+      <Skeleton className="h-5 w-full bg-slate-200 rounded-full" />
+      <Skeleton className="h-5 w-4/5 bg-slate-200 rounded-full" />
+      <Skeleton className="h-4 w-full bg-slate-200 rounded-full" />
+      <Skeleton className="h-4 w-2/3 bg-slate-200 rounded-full" />
+      <Skeleton className="h-4 w-28 bg-slate-200 rounded-full" />
     </div>
   )
 }
@@ -90,62 +90,61 @@ export function BriefingBanner() {
   const theme = THEME[market]
 
   return (
-    <section className="rounded-[24px] bg-white shadow-sm border border-slate-100 transition-all duration-500 overflow-hidden">
-      <div className="flex flex-col gap-2 p-4">
+    <section className="mt-3 rounded-[14px] bg-[#F8FAFC] border border-[#E5E7EB] p-4 transition-all duration-300">
 
-        {/* 날짜 + 마켓 토글 */}
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold text-slate-400 truncate mr-2">
-            {getDateLabel(briefing.date)}{" "}
-            <span className={theme.accentColor}>{theme.briefingType}</span>
+      {/* 상단: 날짜 + 마켓 태그 + 토글 */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-medium text-gray-500">
+            {getDateLabel(briefing.date)}
           </span>
-          <div className="flex items-center bg-slate-100 rounded-full p-0.5 shrink-0">
-            <button
-              disabled={!morning}
-              onClick={() => morning && setMarket("US")}
-              className={`text-[10px] px-2.5 py-1 rounded-full font-bold transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed ${
-                market === "US"
-                  ? `bg-white shadow-sm ${THEME.US.badgeText}`
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              미국
-            </button>
-            <button
-              disabled={!afternoon}
-              onClick={() => afternoon && setMarket("KR")}
-              className={`text-[10px] px-2.5 py-1 rounded-full font-bold transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed ${
-                market === "KR"
-                  ? `bg-white shadow-sm ${THEME.KR.badgeText}`
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              한국
-            </button>
-          </div>
+          <span className={`${theme.tagBg} ${theme.tagText} text-[11px] font-semibold px-2 py-0.5 rounded-md`}>
+            {theme.tagLabel}
+          </span>
         </div>
 
-        {/* 헤드라인 + 요약 + 더보기 */}
-        <div className="flex flex-col gap-1">
-          <h2 className="text-[16px] font-extrabold tracking-tight leading-snug text-slate-900">
-            {briefing.headline}
-          </h2>
-          {briefing.content?.summary && (
-            <p className="text-[12px] text-slate-400 leading-relaxed line-clamp-1 font-medium">
-              {briefing.content.summary}
-            </p>
-          )}
-          <div className="flex justify-end mt-1">
-            <Link
-              href="/briefing"
-              className={`group flex items-center gap-0.5 text-[11px] font-bold ${theme.accentColor} opacity-70 hover:opacity-100 transition-opacity`}
-            >
-              전체 읽기
-              <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
+        {/* 마켓 토글 */}
+        <div className="flex items-center bg-slate-100 rounded-full p-0.5 shrink-0">
+          <button
+            disabled={!morning}
+            onClick={() => morning && setMarket("US")}
+            className={`text-[10px] px-2.5 py-1 rounded-full font-bold transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed ${
+              market === "US" ? `bg-white shadow-sm ${THEME.US.toggleActive}` : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            미국
+          </button>
+          <button
+            disabled={!afternoon}
+            onClick={() => afternoon && setMarket("KR")}
+            className={`text-[10px] px-2.5 py-1 rounded-full font-bold transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed ${
+              market === "KR" ? `bg-white shadow-sm ${THEME.KR.toggleActive}` : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            한국
+          </button>
         </div>
       </div>
+
+      {/* 헤드라인 */}
+      <h2 className="text-[17px] font-bold text-slate-900 leading-[1.4] line-clamp-2 mb-2">
+        {briefing.headline}
+      </h2>
+
+      {/* 요약 */}
+      {briefing.content?.summary && (
+        <p className="text-[14px] text-gray-600 leading-relaxed line-clamp-2 mb-3">
+          {briefing.content.summary}
+        </p>
+      )}
+
+      {/* CTA */}
+      <Link
+        href="/briefing"
+        className={`text-[14px] font-medium ${theme.ctaColor} hover:opacity-80 transition-opacity`}
+      >
+        전체 브리핑 보기 →
+      </Link>
     </section>
   )
 }
