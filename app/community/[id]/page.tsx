@@ -126,7 +126,7 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
 
   if (isLoading) {
     return (
-      <div className="min-h-dvh bg-slate-50 pb-24">
+      <div className="min-h-dvh bg-[#F9FAFB] pb-20">
         <DetailHeader title="게시글" />
         <div className="flex items-center justify-center h-40 text-slate-400">
           <Loader2 className="w-5 h-5 animate-spin" />
@@ -137,7 +137,7 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
 
   if (!post) {
     return (
-      <div className="min-h-dvh bg-slate-50 pb-24">
+      <div className="min-h-dvh bg-[#F9FAFB] pb-20">
         <DetailHeader title="게시글" />
         <div className="flex items-center justify-center h-40 text-slate-400 text-sm font-bold">
           사라진 게시글이다냥! 🐾
@@ -151,7 +151,7 @@ export default function CommunityPostPage({ params }: { params: Promise<{ id: st
     : { id: "guest", nickname: "손님", emoji: "👤", level: 1 }
 
   return (
-    <div className="min-h-dvh bg-white pb-24" onClick={() => setMenuOpen(false)}>
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20" onClick={() => setMenuOpen(false)}>
       <DetailHeader
         title={CATEGORY_LABEL[post.category as CommunityCategory] + " 게시판"}
         rightElement={

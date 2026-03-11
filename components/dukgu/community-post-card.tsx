@@ -122,7 +122,7 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, init
 
   return (
     <article
-      className="bg-white rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-all group overflow-hidden"
+      className="bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] hover:scale-[1.01] active:scale-[0.99] transition-all group overflow-hidden"
       onClick={() => setMenuOpen(false)}
     >
       <div className="px-5 pt-4 pb-3 flex items-center justify-between">

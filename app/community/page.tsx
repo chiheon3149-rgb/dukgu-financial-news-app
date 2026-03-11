@@ -52,7 +52,7 @@ export default function CommunityPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-slate-50 pb-28">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
       <DetailHeader
         showBack={false}
         title={
@@ -110,7 +110,7 @@ export default function CommunityPage() {
           {isLoading && !isRefreshing && (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+                <div key={i} className="bg-white rounded-2xl p-4 shadow-[0_2px_10px_rgba(0,0,0,0.07)] space-y-3">
                   {/* 작성자 */}
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse shrink-0" />

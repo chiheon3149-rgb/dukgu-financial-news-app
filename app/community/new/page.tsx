@@ -99,7 +99,7 @@ export default function NewPostPage() {
   const isValid = title.trim().length > 0 && content.trim().length > 0
 
   return (
-    <div className="min-h-dvh bg-slate-50 pb-24">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
       <DetailHeader
         title="게시글 작성"
         rightElement={
@@ -119,7 +119,7 @@ export default function NewPostPage() {
 
       <main className="max-w-md mx-auto px-5 py-6 space-y-5">
         {/* 카테고리 선택 */}
-        <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
+        <section className="bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">카테고리</p>
           <div className="flex gap-2">
             {([["free", "자유"], ["economy", "경제"]] as [CommunityCategory, string][]).map(([id, label]) => (
@@ -139,7 +139,7 @@ export default function NewPostPage() {
         </section>
 
         {/* 태그 입력 */}
-        <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
+        <section className="bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-5">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">
             태그 ({tags.length}/5)
           </p>
@@ -188,7 +188,7 @@ export default function NewPostPage() {
         </section>
 
         {/* 제목 및 내용 */}
-        <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 space-y-4">
+        <section className="bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-5 space-y-4">
           <div>
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">제목</p>
             <input
