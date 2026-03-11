@@ -25,7 +25,7 @@ function getDateLabel(dateStr?: string): string {
 
 function BriefingBannerSkeleton() {
   return (
-    <div className="mt-3 rounded-[24px] bg-white p-5 space-y-4 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
+    <div className="rounded-[24px] bg-white p-5 space-y-4 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
       <div className="flex items-center gap-2">
         <Skeleton className="h-3 w-36 bg-slate-100 rounded-full" />
         <Skeleton className="h-5 w-20 rounded-full bg-slate-100" />
@@ -79,7 +79,7 @@ export function BriefingBanner() {
   const briefLabel = briefing.type === "morning" ? "Morning Brief" : "Afternoon Brief"
 
   return (
-    <section className="mt-3 rounded-[24px] bg-white p-5 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
+    <section className="rounded-[24px] bg-white p-5 shadow-[0_6px_20px_rgba(0,0,0,0.05)]">
 
       {/* 상단: 날짜 + 라벨 + 토글 */}
       <div className="flex items-center justify-between mb-4">
@@ -126,7 +126,7 @@ export function BriefingBanner() {
             <img 
               src="/icon.svg" 
               alt="덕구 아이콘" 
-              className="w-10 h-10 object-contain"
+              className="w-11 h-11 object-contain"
             />
           </div>
 
@@ -135,11 +135,11 @@ export function BriefingBanner() {
           <p className="text-[12px] font-semibold text-emerald-500 leading-none">
             덕구의 오늘 시장 한입 브리핑
           </p>
-          <h2 className="text-[15px] font-bold text-[#111827] leading-[1.4] line-clamp-2">
+          <h2 className="text-[15px] font-bold text-[#111827] leading-[1.4] line-clamp-2 whitespace-pre-wrap">
             {briefing.headline}
           </h2>
           {briefing.content?.summary && (
-            <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-2">
+            <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-2 whitespace-pre-wrap">
               {briefing.content.summary}
             </p>
           )}

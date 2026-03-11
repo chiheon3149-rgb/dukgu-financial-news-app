@@ -3,6 +3,7 @@
 import { StickyHeader } from "@/components/dukgu/sticky-header"
 import { TickerBar } from "@/components/dukgu/ticker-bar"
 import { BriefingBanner } from "@/components/dukgu/briefing-banner"
+import { MarketSentimentCard } from "@/components/dukgu/market-sentiment-card"
 import { NewsSection } from "@/components/dukgu/news-section"
 import { useUser } from "@/context/user-context"
 import Link from "next/link"
@@ -13,15 +14,14 @@ export default function HomePage() {
   const isAdmin = profile?.is_admin === true
 
   return (
-    <div className="min-h-dvh pb-20 overflow-x-hidden relative">
+    <div className="min-h-dvh pb-20 relative">
       <StickyHeader />
       <TickerBar />
 
-      <main className="w-full px-4 py-5 space-y-6">
+      <main className="w-full px-4 pt-3 pb-5 space-y-4">
         <BriefingBanner />
-        <div>
-          <NewsSection />
-        </div>
+        <MarketSentimentCard />
+        <NewsSection />
       </main>
 
       {isAdmin && (

@@ -62,7 +62,7 @@ export function NewsSection() {
     <div className="flex flex-col gap-3">
 
       {/* ① 타이틀 */}
-      <div className="px-1 mt-5 mb-2">
+      <div className="px-1 mt-2 mb-2">
         <h2 className="text-[18px] font-bold text-[#111827]">🔥 지금 올라온 뉴스</h2>
       </div>
 
