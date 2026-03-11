@@ -14,7 +14,7 @@ interface SearchBarProps {
 export function SearchBar({
   value,
   onChange,
-  placeholder = "태그, 제목, 내용으로 검색",
+  placeholder = "뉴스 검색",
   onRefresh,
   isRefreshing = false,
 }: SearchBarProps) {
@@ -25,13 +25,11 @@ export function SearchBar({
   }, [])
 
   return (
-    <div className="relative w-full shadow-sm rounded-2xl">
-      {/* 돋보기 아이콘 */}
-      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center text-gray-500 pointer-events-none">
-        <Search className="w-5 h-5" />
+    <div className="relative w-full">
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center text-gray-400 pointer-events-none">
+        <Search className="w-4 h-4" />
       </div>
 
-      {/* 입력 필드 */}
       <input
         type="text"
         value={value}
@@ -39,16 +37,15 @@ export function SearchBar({
         placeholder={placeholder}
         suppressHydrationWarning
         autoComplete="off"
-        className="w-full bg-white border border-gray-300 rounded-2xl py-3.5 pl-10 pr-10 text-[15px] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400/50 focus:border-green-300 focus:shadow-sm transition-all duration-200"
+        className="w-full h-10 bg-white border border-[#E5E7EB] rounded-[10px] px-3 pl-9 pr-10 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-400 transition-all duration-200"
       />
 
-      {/* 우측: 삭제 버튼 or 새로고침 버튼 */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
         {mounted && value && (
           <button
             type="button"
             onClick={() => onChange("")}
-            className="text-gray-400 hover:text-green-500 bg-gray-100 rounded-full p-1 transition-colors"
+            className="text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full p-0.5 transition-colors"
           >
             <X className="w-[10px] h-[10px]" />
           </button>
@@ -58,9 +55,9 @@ export function SearchBar({
             type="button"
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="text-gray-400 hover:text-[#00C48C] p-1 rounded-full transition-all active:rotate-180 duration-500 disabled:opacity-30"
+            className="text-gray-400 hover:text-emerald-500 p-1 rounded-full transition-all active:rotate-180 duration-500 disabled:opacity-30"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-[#00C48C]" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-emerald-500" : ""}`} />
           </button>
         )}
       </div>

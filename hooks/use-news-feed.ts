@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 import type { NewsItem } from "@/types"
 import { supabase } from "@/lib/supabase"
 
-type SortOption = "latest" | "views"
+type SortOption = "latest" | "views" | "comments"
 export type DateFilter = "today" | "week" | "month" | "all"
 export type MarketTab = "all" | "kr" | "us"
 
@@ -135,6 +135,8 @@ export function useNewsFeed(
 
       if (sortBy === "latest") {
         query = query.order("created_at", { ascending: false })
+      } else if (sortBy === "comments") {
+        query = query.order("comment_count", { ascending: false }).order("created_at", { ascending: false })
       } else {
         query = query.order("view_count", { ascending: false }).order("created_at", { ascending: false })
       }
@@ -143,9 +145,9 @@ export function useNewsFeed(
       if (error) throw error
 
       const items = (data ?? []).map(toNewsItem)
-      
+
       _cachedNews = [...items]
-      _cachedLastValue = sortBy === "latest" ? items.at(-1)?.publishedAt : items.at(-1)?.viewCount
+      _cachedLastValue = sortBy === "latest" ? items.at(-1)?.publishedAt : sortBy === "comments" ? items.at(-1)?.commentCount : items.at(-1)?.viewCount
       _cachedHasMore = items.length === PAGE_SIZE
 
       setNews([...items])
@@ -171,6 +173,8 @@ export function useNewsFeed(
 
       if (sortBy === "latest") {
         query = query.order("created_at", { ascending: false }).lt("created_at", lastValue)
+      } else if (sortBy === "comments") {
+        query = query.order("comment_count", { ascending: false }).lt("comment_count", lastValue)
       } else {
         query = query.order("view_count", { ascending: false }).lt("view_count", lastValue)
       }
@@ -180,7 +184,7 @@ export function useNewsFeed(
 
       const items = (data ?? []).map(toNewsItem)
       _cachedNews = [..._cachedNews, ...items]
-      _cachedLastValue = sortBy === "latest" ? items.at(-1)?.publishedAt : items.at(-1)?.viewCount
+      _cachedLastValue = sortBy === "latest" ? items.at(-1)?.publishedAt : sortBy === "comments" ? items.at(-1)?.commentCount : items.at(-1)?.viewCount
       _cachedHasMore = items.length === PAGE_SIZE
 
       setNews([..._cachedNews]) 
