@@ -92,7 +92,7 @@ export function NewsInteractionBar({
     }
   }
 
-  // ── 카드 하단 이모지 액션 바 ──────────────────────────────
+  // ── 카드 하단 아이콘 액션 바 ──────────────────────────────
   if (showEmojiActions) {
     return (
       <div className="flex items-center gap-5">
@@ -100,17 +100,19 @@ export function NewsInteractionBar({
           onClick={handleLike}
           className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
         >
-          <span className={`text-[15px] leading-none inline-block ${popLike ? "animate-pop" : ""}`}>
-            👍
-          </span>
+          <ThumbsUp
+            className={`w-[15px] h-[15px] transition-colors duration-200 ${
+              popLike ? "animate-pop" : ""
+            } ${userReaction === "good" ? "fill-emerald-500 text-emerald-500" : "text-gray-400"}`}
+          />
           <span className={`text-[12px] font-medium transition-colors ${userReaction === "good" ? "text-emerald-600" : "text-gray-400"}`}>
             좋아요{good > 0 ? ` ${good}` : ""}
           </span>
         </button>
 
-        <div className="flex items-center gap-1.5">
-          <span className="text-[15px] leading-none">💬</span>
-          <span className="text-[12px] font-medium text-gray-400">
+        <div className="flex items-center gap-1.5 text-gray-400">
+          <MessageCircle className="w-[15px] h-[15px]" />
+          <span className="text-[12px] font-medium">
             댓글{commentCount > 0 ? ` ${commentCount}` : ""}
           </span>
         </div>
@@ -119,9 +121,11 @@ export function NewsInteractionBar({
           onClick={handleBookmark}
           className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
         >
-          <span className={`text-[15px] leading-none inline-block transition-colors duration-300 ${popBookmark ? "animate-pop" : ""}`}>
-            🔖
-          </span>
+          <Bookmark
+            className={`w-[15px] h-[15px] transition-colors duration-300 ${
+              popBookmark ? "animate-pop" : ""
+            } ${saved ? "fill-emerald-500 text-emerald-500" : "text-gray-400"}`}
+          />
           <span className={`text-[12px] font-semibold transition-colors duration-300 ${saved ? "text-emerald-500" : "text-gray-400"}`}>
             북마크
           </span>

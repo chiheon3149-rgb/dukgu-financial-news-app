@@ -245,7 +245,7 @@ export function TickerSettingsSheet({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
+      <div className="fixed inset-x-0 top-16 bottom-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
 
       <div
         className="fixed left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-md mx-auto animate-in slide-in-from-bottom-4 duration-300 flex flex-col overflow-hidden"

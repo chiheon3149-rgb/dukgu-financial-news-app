@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { Settings } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
@@ -187,7 +187,32 @@ export function TickerBar() {
     return () => clearInterval(interval)
   }, [settings.customTickers])
 
+  // ── 마우스 드래그 스크롤 (PC용) ──
+  const scrollRef   = useRef<HTMLDivElement>(null)
+  const isDragging  = useRef(false)
+  const startX      = useRef(0)
+  const scrollLeft  = useRef(0)
+  const hasDragged  = useRef(false)
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    isDragging.current = true
+    hasDragged.current = false
+    startX.current    = e.pageX - (scrollRef.current?.offsetLeft ?? 0)
+    scrollLeft.current = scrollRef.current?.scrollLeft ?? 0
+  }, [])
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current) return
+    const x    = e.pageX - (scrollRef.current?.offsetLeft ?? 0)
+    const walk = (x - startX.current) * 1.2
+    if (Math.abs(walk) > 4) hasDragged.current = true
+    if (scrollRef.current) scrollRef.current.scrollLeft = scrollLeft.current - walk
+  }, [])
+
+  const onMouseUp = useCallback(() => { isDragging.current = false }, [])
+
   const handleCardClick = useCallback(() => {
+    if (hasDragged.current) return
     router.push("/market")
   }, [router])
 
@@ -209,7 +234,16 @@ export function TickerBar() {
   return (
     <>
       <div className="w-full bg-[#F9FAFB] py-3 relative">
-        <div className="flex items-center gap-3 px-4 overflow-x-auto scrollbar-hide">
+        <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#F9FAFB] to-transparent z-10"/>
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#F9FAFB] to-transparent z-10"/>
+        <div
+          ref={scrollRef}
+          className="flex items-center gap-2 px-4 overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing select-none"
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}
+        >
 
           {/* 카드 목록 */}
           {!hasData ? (
