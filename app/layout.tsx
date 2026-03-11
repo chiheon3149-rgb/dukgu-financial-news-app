@@ -1,18 +1,10 @@
 import type { Metadata, Viewport } from 'next'
-import { Noto_Sans_KR } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
 import './globals.css'
 import { BottomNav } from "@/components/dukgu/bottom-nav"
 import { UserProvider } from "@/context/user-context"
 import Script from 'next/script'
-
-// 폰트 설정
-const notoSansKR = Noto_Sans_KR({ 
-  subsets: ["latin"], 
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-  variable: '--font-noto',
-});
 
 // [Metadata] 브랜딩을 '덕구의 뉴스곳간'으로 변경하고 SEO를 강화했습니다.
 export const metadata: Metadata = {
@@ -90,7 +82,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${notoSansKR.className} antialiased bg-[#F9FAFB] selection:bg-emerald-100 selection:text-emerald-900`}
+        className="antialiased bg-[#F9FAFB] selection:bg-emerald-100 selection:text-emerald-900"
         suppressHydrationWarning
       >
         {/* 구글 태그 매니저 noscript */}
