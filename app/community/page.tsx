@@ -10,8 +10,9 @@ import { AdBanner } from "@/components/dukgu/ad-banner"
 import { VoteCard } from "@/components/dukgu/vote-card"
 import { useCommunity } from "@/hooks/use-community"
 import { useUser } from "@/context/user-context"
+import { CategoryChips } from "@/components/dukgu/category-chips"
 import type { CommunityPost, CommunityCategory } from "@/types"
-import { toast } from "sonner" 
+import { toast } from "sonner"
 
 // 💡 [수정] 스포츠를 제외하고 기존 카테고리만 유지합니다.
 const TABS: { id: CommunityCategory | "all"; label: string }[] = [
@@ -68,21 +69,13 @@ export default function CommunityPage() {
         <VoteCard />
 
         {/* 1. 카테고리 탭 메뉴 */}
-        <div className="flex gap-2">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveCategory(tab.id as CommunityCategory | "all")}
-              className={`px-4 py-2 rounded-full text-[12px] font-black transition-all active:scale-95 ${
-                activeCategory === tab.id
-                  ? "bg-emerald-500 text-white shadow-sm shadow-emerald-200"
-                  : "bg-white text-slate-500 border border-slate-100"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-          <span className="ml-auto text-[11px] font-bold text-slate-400 self-center">
+        <div className="flex items-center gap-2">
+          <CategoryChips
+            chips={TABS}
+            active={activeCategory}
+            onChange={(id) => setActiveCategory(id as CommunityCategory | "all")}
+          />
+          <span className="ml-auto text-[11px] font-bold text-slate-400">
             {filteredPosts.length}개
           </span>
         </div>

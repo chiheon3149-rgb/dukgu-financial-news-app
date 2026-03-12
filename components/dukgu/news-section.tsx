@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { SearchBar } from "./search-bar"
 import { NewsFeed } from "./news-feed"
+import { CategoryChips } from "./category-chips"
 import { ChevronDown, Check } from "lucide-react"
 import { useNewsFeed, type DateFilter, type MarketTab } from "@/hooks/use-news-feed"
 
@@ -77,24 +78,12 @@ export function NewsSection() {
       {/* ③ 필터 칩 + 정렬 드롭다운 */}
       <div className="flex items-center justify-between gap-2">
 
-        {/* 칩 필터 — 가로 스크롤 */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-          {MARKET_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setMarketTab(tab.id)}
-              style={{ transition: "background 0.2s, color 0.2s" }}
-              className={`shrink-0 py-[6px] px-[14px] rounded-[999px] text-[13px] font-medium active:scale-95 ${
-                marketTab === tab.id
-                  ? "bg-[#10B981] text-white"
-                  : "bg-[#F1F5F9] text-gray-700"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* 칩 필터 */}
+        <CategoryChips
+          chips={MARKET_TABS}
+          active={marketTab}
+          onChange={setMarketTab}
+        />
 
         {/* 우측 고정: 날짜 필터 (인기순 시만) + 정렬 드롭다운 */}
         <div className="flex items-center gap-1.5 shrink-0">

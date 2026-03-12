@@ -161,6 +161,15 @@
   }
 }
 
+/* Sonner 토스트 액션 버튼 색상 (에메랄드 그린) */
+[data-sonner-toast] [data-button] {
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+}
+[data-sonner-toast] [data-button]:hover {
+  background-color: #059669 !important;
+}
+
 @layer utilities {
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .bg-surface  { background-color: var(--ds-surface); }

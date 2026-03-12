@@ -356,7 +356,7 @@ export default function AssetsPage() {
                 <p className="text-[11px] text-slate-400">아래 목록에서 첫 자산을 추가해보세요!</p>
               </div>
               <button
-                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
+                onClick={() => document.getElementById("asset-detail")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[18px] text-[13px] font-black transition-all active:scale-[0.98]"
               >
                 + 내 첫 자산 추가하기
@@ -366,7 +366,7 @@ export default function AssetsPage() {
         </section>
 
         {/* 상세 현황 */}
-        <div className="flex items-center px-1">
+        <div id="asset-detail" className="flex items-center px-1">
           <h2 className="text-[13px] font-black text-slate-800 flex items-center gap-2">
             <span className="w-1.5 h-3.5 bg-emerald-500 rounded-full" />상세 현황
           </h2>
