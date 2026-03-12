@@ -14,7 +14,7 @@
 // [F] 하단 고정 매수/매도 버튼
 // =============================================================================
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, useCallback, use } from "react"
 import dynamic                       from "next/dynamic"
 import { useRouter }                 from "next/navigation"
 import { ArrowLeft, Heart, Building2, Briefcase, User2 } from "lucide-react"
@@ -112,7 +112,7 @@ const StockAreaChart = dynamic(
                 padding: "8px 14px", fontSize: "13px", fontWeight: 900, color: upColor,
               }}
               formatter={(v: number) => [v.toLocaleString(), ""]}
-              labelFormatter={() => ""}
+              labelFormatter={(label: string) => label}   /* 💡 KST 시간 레이블 표시 */
               cursor={{ stroke: upColor, strokeWidth: 1.5, strokeDasharray: "4 4" }}
             />
             <Area
@@ -208,16 +208,23 @@ function ErrorCard({ ticker, message, onBack }: { ticker: string; message: strin
 // 기간 탭 정의
 // =============================================================================
 
-const PERIODS = ["1일", "1주", "1달", "1년"] as const
+const PERIODS = ["5분", "15분", "1시간", "1일", "1주", "1달", "1년"] as const
 type Period = typeof PERIODS[number]
 
-// 기간별로 chart_data를 몇 개나 잘라쓸지 정해요
-// 💡 yfinance는 1년치 일별 데이터를 줘요. 기간에 맞게 뒤에서 N개만 써요.
-const PERIOD_SLICE: Record<Period, number> = {
-  "1일":  5,   // 최근 5 거래일 (약 1주일)
+// 💡 인트라데이(분봉/시봉) 탭은 별도 API 호출이 필요해요.
+//    해당 탭 → interval 파라미터 매핑
+const INTRADAY_INTERVAL: Partial<Record<Period, string>> = {
+  "5분":   "5m",
+  "15분":  "15m",
+  "1시간": "1h",
+}
+
+// 💡 일봉 탭은 기존 1년치 데이터에서 슬라이싱만 해요 (추가 API 호출 없음)
+const DAILY_SLICE: Partial<Record<Period, number>> = {
+  "1일":  5,    // 최근 5 거래일
   "1주":  7,
-  "1달":  22,  // 약 22 거래일 = 1달
-  "1년":  9999 // 전체 (1년치)
+  "1달":  22,   // 약 22 거래일
+  "1년":  9999, // 전체
 }
 
 // =============================================================================
@@ -232,27 +239,28 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
   const [liked,  setLiked]  = useState(false)
   const [period, setPeriod] = useState<Period>("1년")
 
-  // ── 데이터 상태 ────────────────────────────────────────────────────────────
+  // ── 프로필 데이터 상태 (최초 1회 로드) ─────────────────────────────────────
   // 💡 이 세 가지 상태가 '데이터 요리의 흐름'을 나타내요.
   //    isLoading → 요리 중, error → 요리 실패, data → 완성된 도시락!
   const [data,      setData]      = useState<StockApiResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error,     setError]     = useState<string | null>(null)
 
-  // ── 실제 데이터 페치 ────────────────────────────────────────────────────────
-  // 💡 이 useEffect가 핵심이에요!
-  //    컴포넌트가 화면에 나타나는 순간(mount) API를 호출해서
-  //    백엔드에서 반찬통(JSON)을 받아 data 상태에 담아요.
-  //    그러면 React가 자동으로 화면을 새로 그려줘요!
+  // ── 차트 전용 상태 (기간 변경 시 별도 로드) ─────────────────────────────────
+  // 💡 기간 탭을 바꿀 때 프로필 전체를 다시 불러오면 화면이 깜빡여요.
+  //    차트 데이터만 따로 관리해서, 탭 전환 시 차트만 부드럽게 교체해요.
+  const [chartPoints,   setChartPoints]   = useState<{ time: string; price: number }[]>([])
+  const [chartLoading,  setChartLoading]  = useState(false)
+
+  // ── 프로필 데이터 최초 로드 ──────────────────────────────────────────────────
   useEffect(() => {
-    let cancelled = false   // 컴포넌트가 사라졌을 때 상태 업데이트를 막아요
+    let cancelled = false
 
     async function loadStock() {
       setIsLoading(true)
       setError(null)
 
       try {
-        // 💡 /api/stock/[ticker] → Next.js API 라우트 → 파이썬 스크립트 호출
         const res  = await fetch(`/api/stock/${encodeURIComponent(ticker)}`)
         const json = await res.json() as StockApiResponse
 
@@ -261,10 +269,9 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         if (json.error) {
           setError(json.message ?? "데이터를 불러오지 못했어요.")
         } else {
-          // 💡 받아온 반찬통을 data 그릇에 담아요. React가 화면을 새로 그려줄 거예요!
           setData(json)
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) setError("네트워크 오류가 발생했어요.")
       } finally {
         if (!cancelled) setIsLoading(false)
@@ -274,6 +281,53 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
     loadStock()
     return () => { cancelled = true }
   }, [ticker])
+
+  // ── 기간 탭 변경 시 차트 데이터 업데이트 ───────────────────────────────────
+  // 💡 이 useEffect가 '기간 선택에 따라 차트 식재료를 바꾸는' 과정이에요.
+  //    • 인트라데이(5분/15분/1시간): 야후 파이낸스에서 새로 가져와요
+  //    • 일봉(1일/1주/1달/1년):      이미 받은 1년치 데이터에서 잘라서 써요
+  const updateChart = useCallback(async (p: Period, rawData: StockApiResponse | null) => {
+    if (!rawData) return
+
+    const intradayInterval = INTRADAY_INTERVAL[p]
+
+    if (intradayInterval) {
+      // ── 인트라데이: 별도 차트 API 호출 ───────────────────────────────────
+      // 💡 /api/stock/[ticker]/chart?interval=5m 호출 → KST 시간 레이블 반환
+      setChartLoading(true)
+      try {
+        const res  = await fetch(`/api/stock/${encodeURIComponent(ticker)}/chart?interval=${intradayInterval}`)
+        const json = await res.json()
+        if (!json.error) {
+          setChartPoints(json.chart_data.map((pt: { date: string; close: number }) => ({
+            time:  pt.date,   // 이미 "HH:MM" KST 형식으로 변환되어 있어요
+            price: pt.close,
+          })))
+        }
+      } catch {
+        // 실패해도 기존 차트 유지
+      } finally {
+        setChartLoading(false)
+      }
+
+    } else {
+      // ── 일봉: 기존 1년치 데이터에서 슬라이싱 ───────────────────────────
+      // 💡 마치 '1년치 일기장에서 최근 N페이지만 펼치는' 것과 같아요.
+      const sliceCount = DAILY_SLICE[p] ?? 9999
+      setChartPoints(
+        rawData.chart_data.slice(-sliceCount).map((pt) => {
+          // "2025-03-12" → "3/12" 형식으로 변환 (KST 기준 날짜예요)
+          const [, mo, d] = pt.date.split("-")
+          return { time: `${parseInt(mo)}/${parseInt(d)}`, price: pt.close }
+        })
+      )
+    }
+  }, [ticker])
+
+  // data 로드 완료 또는 period 변경 시 차트 갱신
+  useEffect(() => {
+    updateChart(period, data)
+  }, [period, data, updateChart])
 
   // ── 로딩/에러 처리 ─────────────────────────────────────────────────────────
   if (isLoading)          return <LoadingSkeleton />
@@ -304,17 +358,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
   // 💡 거래소 이름을 한국어로 친절하게 바꿔줘요
   const marketLabel = p.currency === "KRW" ? "한국" : "미국"
 
-  // ── 차트 데이터 변환 ──────────────────────────────────────────────────────
-  // 💡 백엔드: [{ date: "2025-03-12", close: 213.5 }]
-  //    Recharts: [{ time: "03/12", price: 213.5 }]
-  //    마치 '원재료'를 '요리'로 변환하는 것과 같아요!
-  const sliceCount = PERIOD_SLICE[period]
-  const chartData  = chartRaw
-    .slice(-sliceCount)                              // 기간에 맞게 뒤에서 N개만 잘라요
-    .map((pt) => ({
-      price: pt.close,
-      time:  pt.date.slice(5),                       // "2025-03-12" → "03-12"
-    }))
+  // 💡 chartPoints는 useEffect에서 관리돼요 (인트라데이/일봉 모두 포함)
 
   // ── 주요 지표 타일 데이터 ────────────────────────────────────────────────
   // 💡 profile에서 꺼낸 포맷팅된 값들을 타일 그리드에 배치해요.
@@ -412,34 +456,43 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
             <span className="text-[11px] font-bold text-slate-300 ml-auto">전일 대비</span>
           </div>
 
-          {/* [B] 차트 — chart_data를 기간에 맞게 슬라이싱해서 넘겨줘요 */}
-          <div className="mt-6 -mx-2">
-            {chartData.length > 0
-              ? <StockAreaChart data={chartData} upColor={upColor} />
-              : (
-                <div className="w-full h-[220px] flex items-center justify-center text-[13px] font-bold text-slate-400">
-                  차트 데이터가 없어요
-                </div>
-              )
-            }
+          {/* [B] 기간 선택 버튼 — 가로 스크롤 지원 */}
+          {/* 💡 버튼이 많아서 작은 화면에서도 가로로 스크롤해서 볼 수 있어요 */}
+          <div className="mt-4 overflow-x-auto scrollbar-none -mx-1 px-1">
+            <div className="bg-slate-50 rounded-[16px] p-1 flex gap-1 w-max min-w-full">
+              {PERIODS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPeriod(p)}
+                  className={`px-3 py-2 rounded-[12px] text-[12px] font-black transition-all duration-200 active:scale-95 whitespace-nowrap ${
+                    period === p
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* [B] 기간 선택 버튼 */}
-          <div className="mt-4 bg-slate-50 rounded-[16px] p-1 flex gap-1">
-            {PERIODS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPeriod(p)}
-                className={`flex-1 py-2 rounded-[12px] text-[12px] font-black transition-all duration-200 active:scale-95 ${
-                  period === p
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+          {/* [B] 차트 — chartPoints 상태를 받아서 그려요 */}
+          <div className="mt-4 -mx-2 relative">
+            {chartLoading ? (
+              // 💡 인트라데이 전환 중: 차트 자리에 로딩 애니메이션 표시
+              <div className="w-full h-[220px] flex items-end gap-1 px-2 pb-2">
+                {[35,55,40,68,50,78,62,88,72,82,68,92,76,84].map((h, i) => (
+                  <div key={i} className="flex-1 bg-slate-100 rounded-t-md animate-pulse" style={{ height: `${h}%` }} />
+                ))}
+              </div>
+            ) : chartPoints.length > 0 ? (
+              <StockAreaChart data={chartPoints} upColor={upColor} />
+            ) : (
+              <div className="w-full h-[220px] flex items-center justify-center text-[13px] font-bold text-slate-400">
+                차트 데이터가 없어요
+              </div>
+            )}
           </div>
         </section>
 
