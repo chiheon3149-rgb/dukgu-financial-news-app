@@ -157,7 +157,7 @@ export default function StockDetailPage({
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 pb-48 space-y-4 pt-4">
+      <main className="max-w-md mx-auto px-4 pb-24 space-y-4 pt-4">
 
         {/* ══════════════════════════════════════════════════════════════
             4단계 ②: 현재가 + 등락률 — 크고 굵게!
@@ -261,33 +261,6 @@ export default function StockDetailPage({
 
       </main>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          5단계 ③: 하단 고정 버튼 — 매수(사기) / 매도(팔기)
-          💡 이 버튼들은 화면 맨 아래에 항상 고정되어 있어요.
-             마치 가게의 '결제 버튼'처럼 언제든지 누를 수 있게 배치했어요!
-      ══════════════════════════════════════════════════════════════════ */}
-      <div className="fixed bottom-[60px] left-0 right-0 z-40">
-        <div className="max-w-md mx-auto px-4 pb-3 pt-3 bg-white/95 backdrop-blur-md border-t border-slate-100">
-          <div className="flex gap-3">
-            {/* 매수(사기) 버튼 */}
-            <button
-              type="button"
-              className="flex-1 py-4 rounded-[20px] bg-emerald-500 text-white font-black text-[16px] shadow-lg shadow-emerald-200 active:scale-[0.97] transition-all hover:bg-emerald-600"
-              onClick={() => alert("💡 실제 매수 기능은 준비 중이에요!")}
-            >
-              구매하기
-            </button>
-            {/* 매도(팔기) 버튼 */}
-            <button
-              type="button"
-              className="flex-1 py-4 rounded-[20px] bg-rose-50 text-rose-500 font-black text-[16px] border border-rose-200 active:scale-[0.97] transition-all hover:bg-rose-100"
-              onClick={() => alert("💡 실제 매도 기능은 준비 중이에요!")}
-            >
-              판매하기
-            </button>
-          </div>
-        </div>
-      </div>
 
     </div>
   )
