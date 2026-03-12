@@ -13,9 +13,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import _yahooFinance from "yahoo-finance2"
+import YahooFinanceClass from "yahoo-finance2"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const yahooFinance = _yahooFinance as any
+const yahooFinance = new (YahooFinanceClass as any)()
 
 // =============================================================================
 // 🔧 숫자 포맷 헬퍼
