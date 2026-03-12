@@ -28,7 +28,7 @@ export function DiscoverTab() {
             return (
               <div
                 key={idx.name}
-                className={`rounded-[20px] p-4 border ${
+                className={`rounded-2xl p-4 border ${
                   isUp
                     ? "bg-emerald-50 border-emerald-100"
                     : "bg-rose-50 border-rose-100"
@@ -72,7 +72,7 @@ export function DiscoverTab() {
               <Link
                 key={stock.ticker}
                 href={`/assets/stock/${stock.ticker}`}
-                className={`flex items-center gap-4 bg-white rounded-[20px] px-4 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border ${medalBgs[stock.rank - 1] || "border-transparent"} active:scale-[0.98] transition-all group`}
+                className={`flex items-center gap-4 bg-white rounded-2xl px-4 py-3.5 border border-slate-100 shadow-sm active:scale-[0.98] transition-all group`}
               >
                 {/* 순위 번호 */}
                 <div className="w-7 h-7 rounded-full flex items-center justify-center font-black text-[14px] shrink-0"
@@ -83,7 +83,7 @@ export function DiscoverTab() {
 
                 {/* 로고 배지 */}
                 <div
-                  className="w-11 h-11 rounded-[14px] flex items-center justify-center text-white font-black text-[13px] shrink-0"
+                  className="w-10 h-10 rounded-[12px] flex items-center justify-center text-white font-black text-[13px] shrink-0"
                   style={{ backgroundColor: stock.color }}
                 >
                   {stock.initial}
@@ -115,7 +115,7 @@ export function DiscoverTab() {
 
       {/* ─── 오늘의 한 줄 팁 ────────────────────────────────────────────── */}
       {/* 💡 주식 초보자를 위한 짧은 경제 상식 카드예요 */}
-      <section className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-[24px] p-5 border border-emerald-100">
+      <section className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 border border-emerald-100">
         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">오늘의 경제 한 줄 팁 💡</p>
         <p className="text-[13px] font-black text-slate-800 leading-relaxed">
           "주가가 오른다는 건, 더 많은 사람들이 그 회사의 미래를 믿는다는 신호예요!"
