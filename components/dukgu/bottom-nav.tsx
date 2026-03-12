@@ -14,7 +14,7 @@ export function BottomNav() {
   const navItems = [
     { name: "홈",      path: "/",          icon: Home   },
     { name: "브리핑",  path: "/briefing",  icon: Zap    },
-    { name: "자산",    path: "/assets",    icon: Wallet },
+    { name: "증시",    path: "/assets",    icon: Wallet },
     { name: "커뮤니티", path: "/community", icon: Users  },
     { name: "마이",    path: "/mypage",    icon: User   },
   ]

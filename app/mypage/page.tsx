@@ -16,6 +16,7 @@ import { useSavedArticles } from "@/hooks/use-saved-articles"
 import { useFollow } from "@/hooks/use-follow"
 import { supabase } from "@/lib/supabase"
 import { LEVEL_TABLE } from "@/lib/mock/user"
+import { MyPortfolioBox } from "@/components/dukgu/my-portfolio-box"
 
 // 메뉴 한 줄을 그려주는 도우미 컴포넌트
 function MenuRow({
@@ -159,7 +160,10 @@ export default function MyPage() {
           <button onClick={() => updatePortfolioPublic(!profile.portfolioPublic)} className={`relative w-12 h-6 rounded-full transition-all ${profile.portfolioPublic ? "bg-emerald-500" : "bg-slate-200"}`}><span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${profile.portfolioPublic ? "translate-x-6" : "translate-x-0"}`} /></button>
         </section>
 
-        {/* 3. 메뉴 리스트 (💡 여기에 관리자 센터 추가!) */}
+        {/* 3. 나의 포트폴리오 */}
+        <MyPortfolioBox />
+
+        {/* 4. 메뉴 리스트 (💡 여기에 관리자 센터 추가!) */}
         <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
           
           {/* ⭐ [비밀의 문] 관리자(is_admin)에게만 노출되는 메뉴 */}
@@ -182,7 +186,7 @@ export default function MyPage() {
           <MenuRow icon={<MessageSquare className="w-4 h-4" />} label="문의하기" href="/mypage/inquiry" color="text-purple-400" />
         </section>
 
-        {/* 4. 하단 버튼 영역 */}
+        {/* 5. 하단 버튼 영역 */}
         <div className="pt-6 pb-2 space-y-3">
           <button onClick={() => setShowDeleteModal(true)} className="w-full py-4 rounded-2xl text-[13px] font-black text-slate-400 border border-slate-200 hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center gap-2">
             <UserX className="w-4 h-4" /> 덕구네 식구 탈퇴하기
