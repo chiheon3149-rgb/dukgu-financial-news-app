@@ -16,7 +16,7 @@ import { useSavedArticles } from "@/hooks/use-saved-articles"
 import { useFollow } from "@/hooks/use-follow"
 import { supabase } from "@/lib/supabase"
 import { LEVEL_TABLE } from "@/lib/mock/user"
-import { MyPortfolioBox } from "@/components/dukgu/my-portfolio-box"
+import { Wallet } from "lucide-react"
 
 // 메뉴 한 줄을 그려주는 도우미 컴포넌트
 function MenuRow({
@@ -151,19 +151,25 @@ export default function MyPage() {
           </div>
         </section>
 
-        {/* 2. 공개 설정 */}
-        <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {profile.portfolioPublic ? <Eye className="w-4 h-4 text-emerald-500" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
-            <div><p className="text-[13px] font-black text-slate-800">포트폴리오 공개</p><p className="text-[10px] font-bold text-slate-400">{profile.portfolioPublic ? "팔로워에게 공개됩니다" : "비공개 상태입니다"}</p></div>
+        {/* 2. 공개 설정 + 나의 포트폴리오 */}
+        <section className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
+          <div className="px-5 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {profile.portfolioPublic ? <Eye className="w-4 h-4 text-emerald-500" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
+              <div><p className="text-[13px] font-black text-slate-800">포트폴리오 공개</p><p className="text-[10px] font-bold text-slate-400">{profile.portfolioPublic ? "팔로워에게 공개됩니다" : "비공개 상태입니다"}</p></div>
+            </div>
+            <button onClick={() => updatePortfolioPublic(!profile.portfolioPublic)} className={`relative w-12 h-6 rounded-full transition-all ${profile.portfolioPublic ? "bg-emerald-500" : "bg-slate-200"}`}><span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${profile.portfolioPublic ? "translate-x-6" : "translate-x-0"}`} /></button>
           </div>
-          <button onClick={() => updatePortfolioPublic(!profile.portfolioPublic)} className={`relative w-12 h-6 rounded-full transition-all ${profile.portfolioPublic ? "bg-emerald-500" : "bg-slate-200"}`}><span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${profile.portfolioPublic ? "translate-x-6" : "translate-x-0"}`} /></button>
+          <Link href="/mypage/portfolio" className="flex items-center justify-between px-5 py-4 hover:bg-slate-50 active:bg-slate-100 transition-colors group">
+            <div className="flex items-center gap-3">
+              <span className="text-emerald-500"><Wallet className="w-4 h-4" /></span>
+              <span className="text-[14px] font-black text-slate-800">나의 포트폴리오</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-500 transition-colors" />
+          </Link>
         </section>
 
-        {/* 3. 나의 포트폴리오 */}
-        <MyPortfolioBox />
-
-        {/* 4. 메뉴 리스트 (💡 여기에 관리자 센터 추가!) */}
+        {/* 3. 메뉴 리스트 (💡 여기에 관리자 센터 추가!) */}
         <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
           
           {/* ⭐ [비밀의 문] 관리자(is_admin)에게만 노출되는 메뉴 */}
@@ -186,7 +192,7 @@ export default function MyPage() {
           <MenuRow icon={<MessageSquare className="w-4 h-4" />} label="문의하기" href="/mypage/inquiry" color="text-purple-400" />
         </section>
 
-        {/* 5. 하단 버튼 영역 */}
+        {/* 4. 하단 버튼 영역 */}
         <div className="pt-6 pb-2 space-y-3">
           <button onClick={() => setShowDeleteModal(true)} className="w-full py-4 rounded-2xl text-[13px] font-black text-slate-400 border border-slate-200 hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center gap-2">
             <UserX className="w-4 h-4" /> 덕구네 식구 탈퇴하기
