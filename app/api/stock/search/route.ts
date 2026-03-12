@@ -15,7 +15,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import yahooFinance from "yahoo-finance2"
+import _yahooFinance from "yahoo-finance2"
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const yahooFinance = _yahooFinance as any
 
 // 거래소 코드 → 사람이 읽기 좋은 이름 매핑
 // 💡 야후 파이낸스는 거래소를 영문 코드로 알려줘요.
@@ -53,12 +55,12 @@ export async function GET(req: NextRequest) {
     // 💡 야후가 준 '장부 목록'에서 주식 종목만 추려서 깔끔하게 정리해요.
     //    펀드·ETF·통화·암호화폐 등 주식이 아닌 것들은 걸러내요.
     const results = (searchResult.quotes ?? [])
-      .filter((q) =>
+      .filter((q: any) =>
         // EQUITY(주식)만 통과, 나머지(ETF, CURRENCY 등)는 제외
         q.quoteType === "EQUITY" && q.symbol
       )
       .slice(0, 5)   // 최대 5개
-      .map((q) => {
+      .map((q: any) => {
         const symbol   = q.symbol!
         const exchange = (q as any).exchange ?? ""
 

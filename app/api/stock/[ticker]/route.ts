@@ -13,7 +13,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import yahooFinance from "yahoo-finance2"
+import _yahooFinance from "yahoo-finance2"
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const yahooFinance = _yahooFinance as any
 
 // =============================================================================
 // 🔧 숫자 포맷 헬퍼
@@ -80,7 +82,7 @@ export async function GET(
     const quote = await yahooFinance.quote(sanitized)
 
     // 유효하지 않은 종목 코드 처리
-    if (!quote || !quote.quoteType) {
+    if (!quote || !(quote as any).quoteType) {
       return NextResponse.json(
         { error: true, ticker: sanitized, message: `'${sanitized}'는 존재하지 않거나 지원하지 않는 종목이에요.` },
         { status: 404 }
@@ -109,7 +111,7 @@ export async function GET(
 
         // CEO: companyOfficers 중 title에 "CEO"가 포함된 분
         const officers = ap.companyOfficers ?? []
-        const ceoObj   = officers.find((o) => o.title?.includes("CEO")) ?? officers[0]
+        const ceoObj   = officers.find((o: any) => o.title?.includes("CEO")) ?? officers[0]
         profile_extra.ceo = ceoObj?.name ?? "-"
       }
     } catch {
@@ -172,8 +174,8 @@ export async function GET(
       })
 
       chart_data = (hist.quotes ?? [])
-        .filter((q) => q.close != null)
-        .map((q) => ({
+        .filter((q: any) => q.close != null)
+        .map((q: any) => ({
           date:  q.date.toISOString().slice(0, 10),   // "2025-03-12"
           close: parseFloat((q.close as number).toFixed(4)),
         }))

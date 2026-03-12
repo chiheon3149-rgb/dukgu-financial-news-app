@@ -38,6 +38,7 @@ export interface TopGainer {
   rank: number
   ticker: string
   name: string
+  market?: "KR" | "US"
   currentPrice: number
   changeRate: number
   currency: "KRW" | "USD"
