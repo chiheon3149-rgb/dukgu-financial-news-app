@@ -13,7 +13,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import yahooFinance                   from "yahoo-finance2"
+import { YahooFinance }               from "yahoo-finance2"
+
+const yahooFinance = new YahooFinance()
 
 // =============================================================================
 // 🔧 숫자 포맷 헬퍼
