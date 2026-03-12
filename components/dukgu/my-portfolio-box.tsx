@@ -12,6 +12,8 @@ import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { useUser } from "@/context/user-context"
 import { supabase } from "@/lib/supabase"
 import { useCryptoPortfolio } from "@/hooks/use-crypto-portfolio"
+import { StockPortfolioProvider } from "@/context/stock-portfolio-context"
+import { CryptoPortfolioProvider } from "@/context/crypto-portfolio-context"
 
 const AssetPieChart = dynamic(
   () => import("recharts").then((re) => {
@@ -63,6 +65,16 @@ function calcExpectedInterest(row: any): number {
 }
 
 export function MyPortfolioBox() {
+  return (
+    <StockPortfolioProvider>
+      <CryptoPortfolioProvider>
+        <MyPortfolioBoxInner />
+      </CryptoPortfolioProvider>
+    </StockPortfolioProvider>
+  )
+}
+
+function MyPortfolioBoxInner() {
   const { user } = useUser()
   const [mounted, setMounted] = useState(false)
   const [isDataLoading, setIsDataLoading] = useState(true)
