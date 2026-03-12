@@ -2,6 +2,7 @@
 
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { MyPortfolioBox } from "@/components/dukgu/my-portfolio-box"
+import { AdBanner } from "@/components/dukgu/ad-banner"
 import { Wallet } from "lucide-react"
 
 export default function MyPortfolioPage() {
@@ -16,8 +17,9 @@ export default function MyPortfolioPage() {
           </div>
         }
       />
-      <main className="max-w-md mx-auto px-5 py-6">
+      <main className="max-w-md mx-auto px-5 py-6 space-y-4">
         <MyPortfolioBox />
+        <AdBanner />
       </main>
     </div>
   )

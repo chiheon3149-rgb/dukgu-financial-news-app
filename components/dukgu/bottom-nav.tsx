@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Zap, BarChart2, Users, User } from "lucide-react"
+import { Home, Zap, TrendingUp, Users, User } from "lucide-react"
 
 const HIDDEN_PATHS = ["/login", "/auth"]
 
@@ -14,7 +14,7 @@ export function BottomNav() {
   const navItems = [
     { name: "홈",      path: "/",          icon: Home   },
     { name: "브리핑",  path: "/briefing",  icon: Zap    },
-    { name: "증시",    path: "/assets",    icon: BarChart2 },
+    { name: "증시",    path: "/assets",    icon: TrendingUp },
     { name: "커뮤니티", path: "/community", icon: Users  },
     { name: "마이",    path: "/mypage",    icon: User   },
   ]
