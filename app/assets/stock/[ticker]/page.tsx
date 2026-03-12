@@ -157,7 +157,7 @@ export default function StockDetailPage({
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 pb-32 space-y-4 pt-4">
+      <main className="max-w-md mx-auto px-4 pb-48 space-y-4 pt-4">
 
         {/* ══════════════════════════════════════════════════════════════
             4단계 ②: 현재가 + 등락률 — 크고 굵게!
@@ -266,8 +266,8 @@ export default function StockDetailPage({
           💡 이 버튼들은 화면 맨 아래에 항상 고정되어 있어요.
              마치 가게의 '결제 버튼'처럼 언제든지 누를 수 있게 배치했어요!
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="fixed bottom-0 left-0 right-0 z-50">
-        <div className="max-w-md mx-auto px-4 pb-6 pt-3 bg-white/95 backdrop-blur-md border-t border-slate-100">
+      <div className="fixed bottom-[60px] left-0 right-0 z-40">
+        <div className="max-w-md mx-auto px-4 pb-3 pt-3 bg-white/95 backdrop-blur-md border-t border-slate-100">
           <div className="flex gap-3">
             {/* 매수(사기) 버튼 */}
             <button
