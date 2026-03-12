@@ -2,19 +2,19 @@
 
 import { useState } from "react"
 import { TrendingUp } from "lucide-react"
-import { DetailHeader }  from "@/components/dukgu/detail-header"
-import { SearchBar }     from "@/components/dukgu/search-bar"
-import { CategoryChips } from "@/components/dukgu/category-chips"
-import { HoldingsTab }   from "@/components/dukgu/sijang/holdings-tab"
-import { WatchlistTab }  from "@/components/dukgu/sijang/watchlist-tab"
-import { DiscoverTab }   from "@/components/dukgu/sijang/discover-tab"
+import { DetailHeader }   from "@/components/dukgu/detail-header"
+import { CategoryChips }  from "@/components/dukgu/category-chips"
+import { StockSearchBar } from "@/components/dukgu/sijang/stock-search-bar"
+import { HoldingsTab }    from "@/components/dukgu/sijang/holdings-tab"
+import { WatchlistTab }   from "@/components/dukgu/sijang/watchlist-tab"
+import { DiscoverTab }    from "@/components/dukgu/sijang/discover-tab"
 
 type TabId = "holdings" | "watchlist" | "discover"
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "holdings",  label: "보유"  },
-  { id: "watchlist", label: "관심"  },
-  { id: "discover",  label: "발견"  },
+  { id: "holdings",  label: "보유" },
+  { id: "watchlist", label: "관심" },
+  { id: "discover",  label: "발견" },
 ]
 
 export default function SijangPage() {
@@ -36,14 +36,10 @@ export default function SijangPage() {
 
       <main className="max-w-md mx-auto px-5 py-5 space-y-5">
 
-        {/* 검색창 — 다른 페이지와 동일한 SearchBar 컴포넌트 */}
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="종목명 · 티커 검색 (예: 삼성전자, AAPL)"
-        />
+        {/* 검색창 — 자동완성 드롭다운 포함 (종목명 클릭 시 상세 페이지로 이동) */}
+        <StockSearchBar onQueryChange={setSearchQuery} />
 
-        {/* 탭 — 커뮤니티 페이지와 동일한 CategoryChips 컴포넌트 */}
+        {/* 탭 */}
         <CategoryChips
           chips={TABS}
           active={activeTab}
