@@ -39,7 +39,7 @@ export function AdBanner({
 
   return (
     <div className={className}> 
-      <div className="group relative overflow-hidden rounded-[20px] bg-white border border-slate-100 shadow-sm transition-all hover:shadow-md">
+      <div className="group relative overflow-hidden rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)]">
         
         {/* 상단: 광고 레이블 */}
         <div className="pt-3 px-4 flex items-center gap-2">

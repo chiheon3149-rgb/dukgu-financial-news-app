@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase"
 import { useUser } from "@/context/user-context"
 import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { useStockPortfolio } from "@/hooks/use-stock-portfolio"
+import { useStockPortfolioContext } from "@/context/stock-portfolio-context"
 
 // DB 테이블 구조에 맞춘 타입
 export interface StockAccount {
@@ -29,6 +30,7 @@ export default function StocksAccountPage() {
   // 💡 전체 주식 데이터를 합산하기 위해 훅 호출 (accountId를 안 넘기면 전체를 가져옵니다!)
   const usdToKrw = useExchangeRate()
   const { rows, isLoadingPrices } = useStockPortfolio(usdToKrw)
+  const { removeHoldingsByAccount } = useStockPortfolioContext()
 
   // 💡 전체 계좌의 총 자산 및 투자원금 계산
   const { totalValueKrw, totalInvestedKrw } = useMemo(() => {
@@ -130,8 +132,9 @@ export default function StocksAccountPage() {
               .eq("id", id)
 
             if (error) throw error
-            
+
             setAccounts(accounts.filter((a) => a.id !== id))
+            removeHoldingsByAccount(id)
             toast.success("계좌가 삭제되었습니다.")
           } catch (error) {
             toast.error("삭제에 실패했습니다.")

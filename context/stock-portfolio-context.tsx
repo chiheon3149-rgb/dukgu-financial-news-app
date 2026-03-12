@@ -14,6 +14,7 @@ interface StockPortfolioContextValue {
   holdings: StockHolding[]
   addHolding: (holding: StockHolding) => void
   removeHolding: (accountId: string, ticker: string) => void
+  removeHoldingsByAccount: (accountId: string) => void
   addTrade: (accountId: string, ticker: string, trade: Omit<TradeRecord, "id">) => void
   removeTrade: (accountId: string, ticker: string, tradeId: string) => void
   updateTrade: (accountId: string, ticker: string, tradeId: string, data: { date: string; type: "buy" | "sell"; price: number; quantity: number; memo?: string }) => Promise<void>
@@ -95,6 +96,11 @@ export function StockPortfolioProvider({ children }: { children: ReactNode }) {
       setHoldings((prev) => [...prev, { ...holding, id: data.id, trades: [], dividends: [] }])
     } catch (error) { toast.error("종목 추가 중 오류가 발생했습니다.") }
   }, [profile?.id])
+
+  // 3️⃣-0 [DELETE] 계좌 전체 종목 즉시 제거 (UI 낙관적 업데이트용)
+  const removeHoldingsByAccount = useCallback((accountId: string) => {
+    setHoldings((prev) => prev.filter((h) => h.accountId !== accountId))
+  }, [])
 
   // 3️⃣ [DELETE] 종목 삭제
   const removeHolding = useCallback(async (accountId: string, ticker: string) => {
@@ -210,7 +216,7 @@ export function StockPortfolioProvider({ children }: { children: ReactNode }) {
 
   return (
     <StockPortfolioContext.Provider
-      value={{ holdings, addHolding, removeHolding, addTrade, removeTrade, updateTrade, addDividend, updateDividend, removeDividend, getHolding }}
+      value={{ holdings, addHolding, removeHolding, removeHoldingsByAccount, addTrade, removeTrade, updateTrade, addDividend, updateDividend, removeDividend, getHolding }}
     >
       {children}
     </StockPortfolioContext.Provider>

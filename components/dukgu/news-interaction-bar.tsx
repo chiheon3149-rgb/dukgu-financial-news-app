@@ -86,7 +86,6 @@ export function NewsInteractionBar({
     if (!newsId || !snapshot) return
     toggleSave(newsId, snapshot)
     if (!saved) {
-      toast.success("간식 창고(북마크)에 저장했다냥! 🐾")
       setPopBookmark(true)
       setTimeout(() => setPopBookmark(false), 450)
     }
@@ -95,10 +94,10 @@ export function NewsInteractionBar({
   // ── 카드 하단 아이콘 액션 바 ──────────────────────────────
   if (showEmojiActions) {
     return (
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-3">
         <button
           onClick={handleLike}
-          className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
+          className="flex items-center gap-1.5 py-2 pr-2 transition-all duration-200 active:scale-90"
         >
           <ThumbsUp
             className={`w-[15px] h-[15px] transition-colors duration-200 ${
@@ -110,7 +109,7 @@ export function NewsInteractionBar({
           </span>
         </button>
 
-        <div className="flex items-center gap-1.5 text-gray-400">
+        <div className="flex items-center gap-1.5 py-2 text-gray-400">
           <MessageCircle className="w-[15px] h-[15px]" />
           <span className="text-[12px] font-medium">
             댓글{commentCount > 0 ? ` ${commentCount}` : ""}
@@ -119,7 +118,7 @@ export function NewsInteractionBar({
 
         <button
           onClick={handleBookmark}
-          className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
+          className="flex items-center gap-1.5 py-2 pl-2 transition-all duration-200 active:scale-90"
         >
           <Bookmark
             className={`w-[15px] h-[15px] transition-colors duration-300 ${
@@ -173,10 +172,10 @@ export function NewsInteractionBar({
 
       {/* 오른쪽: 카드 뷰 — 좋아요+댓글+북마크 */}
       {timeAgo ? (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
           <button
             onClick={handleLike}
-            className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
+            className="flex items-center gap-1.5 p-2 transition-all duration-200 active:scale-90"
           >
             <ThumbsUp className={`w-4 h-4 transition-colors ${userReaction === "good" ? "fill-emerald-500 text-emerald-500" : "text-gray-300"}`} />
             <span className={`text-[12px] font-medium tabular-nums transition-colors ${userReaction === "good" ? "text-emerald-600" : "text-gray-400"}`}>
@@ -184,14 +183,14 @@ export function NewsInteractionBar({
             </span>
           </button>
 
-          <div className="flex items-center gap-1.5 text-gray-300">
+          <div className="flex items-center gap-1.5 p-2 text-gray-300">
             <MessageCircle className="w-4 h-4" />
             <span className="text-[12px] font-medium tabular-nums text-gray-400">{commentCount}</span>
           </div>
 
           <button
             onClick={handleBookmark}
-            className={`transition-all duration-200 active:scale-90 ${
+            className={`p-2 transition-all duration-200 active:scale-90 ${
               saved ? "text-emerald-500" : "text-gray-300 hover:text-gray-500"
             }`}
           >

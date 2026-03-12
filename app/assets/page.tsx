@@ -349,9 +349,18 @@ export default function AssetsPage() {
               </div>
             </div>
           ) : (
-            <div className="py-10 text-center space-y-2">
-              <PieIcon className="w-8 h-8 text-slate-200 mx-auto" />
-              <p className="text-[12px] font-bold text-slate-400">등록된 자산 데이터가 없습니다.</p>
+            <div className="py-6 flex flex-col items-center gap-4">
+              <img src="/place-holder.png" alt="자산 없음" className="w-[100px] h-[100px] object-contain opacity-50" />
+              <div className="text-center space-y-1">
+                <p className="text-[13px] font-bold text-slate-500">등록된 자산 데이터가 없습니다.</p>
+                <p className="text-[11px] text-slate-400">아래 목록에서 첫 자산을 추가해보세요!</p>
+              </div>
+              <button
+                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
+                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[18px] text-[13px] font-black transition-all active:scale-[0.98]"
+              >
+                + 내 첫 자산 추가하기
+              </button>
             </div>
           )}
         </section>

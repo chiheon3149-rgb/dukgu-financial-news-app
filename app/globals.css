@@ -162,6 +162,7 @@
 }
 
 @layer utilities {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .bg-surface  { background-color: var(--ds-surface); }
   .border-ds   { border-color: var(--ds-border); }
   .text-ds-primary   { color: var(--ds-text-primary); }

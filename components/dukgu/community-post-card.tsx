@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ThumbsUp, ThumbsDown, MessageCircle, MoreVertical, Pencil, Trash2, Eye } from "lucide-react"
+import { ThumbsUp, ThumbsDown, MessageCircle, MoreVertical, Pencil, Trash2, Eye, Sprout, Leaf, Star, Flame, Crown, Gem } from "lucide-react"
 import { toast } from "sonner"
 import type { CommunityPost } from "@/types"
 
@@ -17,6 +17,15 @@ interface CommunityPostCardProps {
 }
 
 const CATEGORY_LABEL: Record<string, string> = { free: "자유", economy: "경제", sports: "스포츠" }
+
+function LevelBadge({ level }: { level: number }) {
+  if (level >= 6) return <Gem    className="w-2.5 h-2.5 text-violet-400 shrink-0" />
+  if (level >= 5) return <Crown  className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+  if (level >= 4) return <Flame  className="w-2.5 h-2.5 text-orange-400 shrink-0" />
+  if (level >= 3) return <Star   className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+  if (level >= 2) return <Leaf   className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+  return <Sprout className="w-2.5 h-2.5 text-emerald-300 shrink-0" />
+}
 const CATEGORY_COLOR: Record<string, string> = {
   free: "bg-slate-100 text-slate-600",
   economy: "bg-emerald-50 text-emerald-700",
@@ -144,9 +153,15 @@ export function CommunityPostCard({ post, onReact, onDelete, currentUserId, init
             <p className={`text-[12px] font-black ${isWithdrawn ? "text-slate-400" : "text-slate-700"}`}>
               {isWithdrawn ? "탈퇴한 친구" : post.authorNickname}
             </p>
-            <p className="text-[9px] font-bold text-slate-400">
-              {isWithdrawn ? "" : `Lv.${post.authorLevel} · `}{post.timeAgo}
-            </p>
+            <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400">
+              {!isWithdrawn && (
+                <>
+                  <LevelBadge level={post.authorLevel} />
+                  <span>Lv.{post.authorLevel} · </span>
+                </>
+              )}
+              <span>{post.timeAgo}</span>
+            </div>
           </div>
         </button>
 

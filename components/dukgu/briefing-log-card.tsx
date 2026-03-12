@@ -63,7 +63,7 @@ export function BriefingLogCard({
               const colorClass = isPlus ? 'text-rose-500 bg-rose-50' : 'text-blue-500 bg-blue-50';
               
               return (
-                <div key={i} className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-100/50">
+                <div key={i} className={`flex items-center gap-2.5 p-2 rounded-xl border ${isPlus ? "bg-rose-50/60 border-rose-100/60" : "bg-blue-50/60 border-blue-100/60"}`}>
                   <div className={`p-1.5 rounded-lg ${colorClass} shrink-0`}>
                     {isPlus ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   </div>
