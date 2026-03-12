@@ -1,25 +1,90 @@
 "use client"
 
 // =============================================================================
-// 📊 주식 상세 페이지 — 전면 개편 버전
+// 📊 주식 상세 페이지 — 실제 데이터 연동 버전
+//
+// 데이터 흐름:
+//   브라우저 → GET /api/stock/[ticker] → Python fetch_stock.py → 야후 파이낸스
 //
 // [A] 헤더 + 핵심 가격 정보
 // [B] 부드러운 영역형 차트 + 기간 선택
 // [C] 회사랑 친해지기 카드
 // [D] 주요 지표 2×3 타일 그리드
-// [E] 최신 뉴스 리스트
+// [E] 최신 뉴스 리스트 (현재 API 미지원 — 향후 확장)
 // [F] 하단 고정 매수/매도 버튼
 // =============================================================================
 
-import { useState, use } from "react"
-import dynamic from "next/dynamic"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Heart, Building2, Briefcase, User2, Newspaper } from "lucide-react"
-import { MOCK_STOCK_DETAILS, MOCK_STOCK_DEFAULT } from "@/lib/mock/market"
+import { useState, useEffect, use } from "react"
+import dynamic                       from "next/dynamic"
+import { useRouter }                 from "next/navigation"
+import { ArrowLeft, Heart, Building2, Briefcase, User2 } from "lucide-react"
 
-// ─── [B] 차트 컴포넌트 ────────────────────────────────────────────────────────
-// 💡 Recharts는 브라우저에서만 동작하기 때문에 dynamic import를 써요.
+// =============================================================================
+// 📐 타입 정의
+// 💡 파이썬 백엔드가 보내주는 JSON 구조를 TypeScript 타입으로 미리 그려놔요.
+//    마치 '택배 상자의 내용물 목록'을 먼저 작성해두는 것과 같아요!
+// =============================================================================
+
+interface StockProfile {
+  name:                 string
+  currency:             string      // "USD" | "KRW"
+  exchange:             string      // "NMS", "KSC" 등
+  sector:               string
+  industry:             string
+  country:              string
+  website:              string
+  full_time_employees:  number | null
+  summary:              string      // 회사 설명 (영문)
+  ceo:                  string
+  listing_date:         string      // "1980년 12월 12일" 형식
+  // ★ 현재가 & 등락
+  current_price:        number | null
+  change_amount:        number
+  change_rate:          number      // %, 예: 1.53 → 1.53%
+  prev_close:           number | null
+  // 지표
+  market_cap_fmt:       string
+  per_fmt:              string
+  dividend_yield_fmt:   string
+  "52w_high_fmt":       string
+  "52w_low_fmt":        string
+  volume_fmt:           string
+}
+
+interface ChartPoint {
+  date:  string   // "2025-03-12"
+  close: number
+}
+
+interface StockApiResponse {
+  error:      boolean
+  ticker:     string
+  fetched_at: string
+  profile:    StockProfile
+  chart_data: ChartPoint[]
+  message?:   string
+}
+
+// =============================================================================
+// 🎨 헬퍼: 티커 → 고정 색상 (로고 배지에 사용)
+// 💡 같은 티커는 항상 같은 색이 나와요 — 마치 회사 로고 색처럼요!
+// =============================================================================
+
+const PALETTE = ["#10b981","#3b82f6","#8b5cf6","#f59e0b","#ef4444","#06b6d4","#ec4899","#f97316"]
+
+function tickerToColor(ticker: string): string {
+  let hash = 0
+  for (let i = 0; i < ticker.length; i++) hash = ticker.charCodeAt(i) + ((hash << 5) - hash)
+  return PALETTE[Math.abs(hash) % PALETTE.length]
+}
+
+// =============================================================================
+// 📈 [B] Recharts 영역 차트 — 동적 임포트 (SSR 비활성화)
+// 💡 Recharts는 브라우저 환경에서만 동작해요.
+//    서버(Node.js)에서 렌더링하면 에러가 나기 때문에 dynamic()으로 늦게 불러와요.
 //    마치 '무거운 악기는 공연 시작 직전에만 꺼낸다'는 것과 같아요!
+// =============================================================================
+
 const StockAreaChart = dynamic(
   () => import("recharts").then((re) => {
     const { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } = re
@@ -32,38 +97,28 @@ const StockAreaChart = dynamic(
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={data} margin={{ top: 10, right: 4, left: 4, bottom: 0 }}>
             <defs>
-              {/* 💡 그라데이션: 위는 색이 진하고 아래로 갈수록 투명해져요 */}
+              {/* 위는 색이 진하고 아래로 갈수록 투명해지는 그라데이션 */}
               <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%"   stopColor={upColor} stopOpacity={0.22} />
                 <stop offset="100%" stopColor={upColor} stopOpacity={0}    />
               </linearGradient>
             </defs>
-            {/* X/Y축 숫자와 눈금선을 모두 숨겨 극도로 깔끔하게 만들어요 */}
             <XAxis dataKey="time" hide />
             <YAxis hide domain={["auto", "auto"]} />
             <Tooltip
               contentStyle={{
-                background: "#fff",
-                border: "none",
-                borderRadius: "14px",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
-                padding: "8px 14px",
-                fontSize: "13px",
-                fontWeight: 900,
-                color: upColor,
+                background: "#fff", border: "none",
+                borderRadius: "14px", boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+                padding: "8px 14px", fontSize: "13px", fontWeight: 900, color: upColor,
               }}
               formatter={(v: number) => [v.toLocaleString(), ""]}
               labelFormatter={() => ""}
               cursor={{ stroke: upColor, strokeWidth: 1.5, strokeDasharray: "4 4" }}
             />
-            {/* type="monotone"이 선을 부드러운 곡선으로 만들어줘요 */}
             <Area
-              type="monotone"
-              dataKey="price"
-              stroke={upColor}
-              strokeWidth={2.8}
-              fill="url(#areaGrad)"
-              dot={false}
+              type="monotone" dataKey="price"
+              stroke={upColor} strokeWidth={2.8}
+              fill="url(#areaGrad)" dot={false}
               activeDot={{ r: 6, fill: upColor, stroke: "#fff", strokeWidth: 2.5 }}
             />
           </AreaChart>
@@ -74,7 +129,6 @@ const StockAreaChart = dynamic(
   {
     ssr: false,
     loading: () => (
-      // 로딩 중 스켈레톤 — 마치 빈 악보처럼 자리만 잡아줘요
       <div className="w-full h-[220px] flex items-end gap-1 px-2 pb-2">
         {[35,55,40,68,50,78,62,88,72,82,68,92,76,84].map((h, i) => (
           <div key={i} className="flex-1 bg-slate-100 rounded-t-md animate-pulse" style={{ height: `${h}%` }} />
@@ -84,40 +138,210 @@ const StockAreaChart = dynamic(
   }
 )
 
+// =============================================================================
+// ⏳ 로딩 스켈레톤 — 데이터를 기다리는 동안 보여줘요
+// 💡 마치 '자리 표시용 빈 그릇'처럼, 실제 음식(데이터)이 오기 전에 자리를 잡아줘요!
+// =============================================================================
+
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-dvh bg-[#F2F4F8] animate-pulse">
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-100">
+        <div className="max-w-md mx-auto px-4 h-[56px] flex items-center justify-between">
+          <div className="w-9 h-9 bg-slate-100 rounded-[12px]" />
+          <div className="w-24 h-5 bg-slate-100 rounded-full" />
+          <div className="w-9 h-9 bg-slate-100 rounded-[12px]" />
+        </div>
+      </header>
+      <main className="max-w-md mx-auto px-4 pt-4 pb-36 space-y-4">
+        <div className="bg-white rounded-[24px] p-6 space-y-4" style={{ boxShadow: "rgba(0,0,0,0.05) 0px 4px 16px" }}>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-slate-100 rounded-[18px]" />
+            <div className="space-y-2">
+              <div className="w-32 h-5 bg-slate-100 rounded-full" />
+              <div className="w-20 h-3 bg-slate-100 rounded-full" />
+            </div>
+          </div>
+          <div className="w-40 h-10 bg-slate-100 rounded-full" />
+          <div className="w-full h-[220px] bg-slate-50 rounded-[16px]" />
+        </div>
+        <div className="bg-white rounded-[24px] p-6" style={{ boxShadow: "rgba(0,0,0,0.05) 0px 4px 16px" }}>
+          <div className="w-24 h-4 bg-slate-100 rounded-full mb-4" />
+          <div className="grid grid-cols-2 gap-2.5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-slate-50 rounded-[18px] px-4 py-3.5 space-y-2">
+                <div className="w-12 h-3 bg-slate-100 rounded-full" />
+                <div className="w-16 h-5 bg-slate-100 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+// =============================================================================
+// 🚨 에러 카드
+// =============================================================================
+
+function ErrorCard({ ticker, message, onBack }: { ticker: string; message: string; onBack: () => void }) {
+  return (
+    <div className="min-h-dvh bg-[#F2F4F8] flex items-center justify-center px-6">
+      <div className="bg-white rounded-[24px] p-8 text-center max-w-sm w-full" style={{ boxShadow: "rgba(0,0,0,0.05) 0px 4px 16px" }}>
+        <div className="text-4xl mb-4">📡</div>
+        <p className="text-[16px] font-black text-slate-900 mb-2">{ticker} 데이터를 불러오지 못했어요</p>
+        <p className="text-[12px] font-bold text-slate-400 mb-6 leading-relaxed">{message}</p>
+        <button
+          type="button"
+          onClick={onBack}
+          className="px-6 py-3 bg-slate-900 text-white rounded-[14px] font-black text-[14px] active:scale-95 transition-all"
+        >
+          돌아가기
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// 기간 탭 정의
+// =============================================================================
+
 const PERIODS = ["1일", "1주", "1달", "1년"] as const
 type Period = typeof PERIODS[number]
 
-// ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
+// 기간별로 chart_data를 몇 개나 잘라쓸지 정해요
+// 💡 yfinance는 1년치 일별 데이터를 줘요. 기간에 맞게 뒤에서 N개만 써요.
+const PERIOD_SLICE: Record<Period, number> = {
+  "1일":  5,   // 최근 5 거래일 (약 1주일)
+  "1주":  7,
+  "1달":  22,  // 약 22 거래일 = 1달
+  "1년":  9999 // 전체 (1년치)
+}
+
+// =============================================================================
+// 🏠 메인 페이지 컴포넌트
+// =============================================================================
+
 export default function StockDetailPage({ params }: { params: Promise<{ ticker: string }> }) {
   const { ticker } = use(params)
-  const router = useRouter()
+  const router     = useRouter()
 
+  // ── UI 상태 ────────────────────────────────────────────────────────────────
   const [liked,  setLiked]  = useState(false)
-  const [period, setPeriod] = useState<Period>("1일")
+  const [period, setPeriod] = useState<Period>("1년")
 
-  // 💡 URL의 티커로 종목 데이터를 찾아요. 없으면 기본값을 보여줘요.
-  const stock = MOCK_STOCK_DETAILS[ticker.toUpperCase()] ?? { ...MOCK_STOCK_DEFAULT, ticker, name: ticker }
+  // ── 데이터 상태 ────────────────────────────────────────────────────────────
+  // 💡 이 세 가지 상태가 '데이터 요리의 흐름'을 나타내요.
+  //    isLoading → 요리 중, error → 요리 실패, data → 완성된 도시락!
+  const [data,      setData]      = useState<StockApiResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error,     setError]     = useState<string | null>(null)
 
-  // 한국 증시 관례: 상승=빨강, 하락=파랑
-  const isUp     = stock.changeRate >= 0
-  const upColor  = isUp ? "#f43f5e" : "#3b82f6"   // rose-500 or blue-500
+  // ── 실제 데이터 페치 ────────────────────────────────────────────────────────
+  // 💡 이 useEffect가 핵심이에요!
+  //    컴포넌트가 화면에 나타나는 순간(mount) API를 호출해서
+  //    백엔드에서 반찬통(JSON)을 받아 data 상태에 담아요.
+  //    그러면 React가 자동으로 화면을 새로 그려줘요!
+  useEffect(() => {
+    let cancelled = false   // 컴포넌트가 사라졌을 때 상태 업데이트를 막아요
 
-  const priceDisplay  = stock.currency === "USD" ? `$${stock.currentPrice.toFixed(2)}`  : `${stock.currentPrice.toLocaleString()}원`
-  const changeDisplay = stock.currency === "USD" ? `$${Math.abs(stock.changeAmount).toFixed(2)}` : `${Math.abs(stock.changeAmount).toLocaleString()}원`
-  const chartData = stock.chartData[period] ?? stock.chartData["1일"]
+    async function loadStock() {
+      setIsLoading(true)
+      setError(null)
 
-  // ── 공통 카드 스타일 (말랑말랑 + 부드러운 그림자)
-  const cardCls = "bg-white rounded-[24px] p-6"
+      try {
+        // 💡 /api/stock/[ticker] → Next.js API 라우트 → 파이썬 스크립트 호출
+        const res  = await fetch(`/api/stock/${encodeURIComponent(ticker)}`)
+        const json = await res.json() as StockApiResponse
+
+        if (cancelled) return
+
+        if (json.error) {
+          setError(json.message ?? "데이터를 불러오지 못했어요.")
+        } else {
+          // 💡 받아온 반찬통을 data 그릇에 담아요. React가 화면을 새로 그려줄 거예요!
+          setData(json)
+        }
+      } catch (e) {
+        if (!cancelled) setError("네트워크 오류가 발생했어요.")
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    loadStock()
+    return () => { cancelled = true }
+  }, [ticker])
+
+  // ── 로딩/에러 처리 ─────────────────────────────────────────────────────────
+  if (isLoading)          return <LoadingSkeleton />
+  if (error || !data)     return <ErrorCard ticker={ticker.toUpperCase()} message={error ?? "알 수 없는 오류"} onBack={() => router.back()} />
+
+  // =============================================================================
+  // 💡 여기서부터가 '반찬통을 열어 그릇에 담는 과정'이에요!
+  //    백엔드(data)에서 꺼낸 값들을 화면 변수에 하나씩 배치해요.
+  // =============================================================================
+
+  const p          = data.profile                          // 편의를 위해 profile을 p로 줄여요
+  const chartRaw   = data.chart_data                       // [{ date, close }, ...]
+  const isUp       = p.change_rate >= 0                    // 상승 여부
+  const upColor    = isUp ? "#f43f5e" : "#3b82f6"          // 한국 관례: 상승=빨강, 하락=파랑
+  const logoColor  = tickerToColor(ticker)                 // 티커 기반 로고 색
+  const initial    = (p.name || ticker)[0].toUpperCase()  // 로고 이니셜
+
+  // 💡 현재가 포맷: USD면 달러 기호, KRW면 원 단위로 표시해요
+  const priceDisplay = p.currency === "KRW"
+    ? `${Math.round(p.current_price ?? 0).toLocaleString()}원`
+    : `$${(p.current_price ?? 0).toFixed(2)}`
+
+  // 💡 등락금액 포맷
+  const changeDisplay = p.currency === "KRW"
+    ? `${Math.abs(Math.round(p.change_amount)).toLocaleString()}원`
+    : `$${Math.abs(p.change_amount).toFixed(2)}`
+
+  // 💡 거래소 이름을 한국어로 친절하게 바꿔줘요
+  const marketLabel = p.currency === "KRW" ? "한국" : "미국"
+
+  // ── 차트 데이터 변환 ──────────────────────────────────────────────────────
+  // 💡 백엔드: [{ date: "2025-03-12", close: 213.5 }]
+  //    Recharts: [{ time: "03/12", price: 213.5 }]
+  //    마치 '원재료'를 '요리'로 변환하는 것과 같아요!
+  const sliceCount = PERIOD_SLICE[period]
+  const chartData  = chartRaw
+    .slice(-sliceCount)                              // 기간에 맞게 뒤에서 N개만 잘라요
+    .map((pt) => ({
+      price: pt.close,
+      time:  pt.date.slice(5),                       // "2025-03-12" → "03-12"
+    }))
+
+  // ── 주요 지표 타일 데이터 ────────────────────────────────────────────────
+  // 💡 profile에서 꺼낸 포맷팅된 값들을 타일 그리드에 배치해요.
+  //    각 stat은 { label(이름), value(숫자), hint(초보 설명) } 구조예요.
+  const stats = [
+    { label: "시가총액",   value: p.market_cap_fmt,       hint: "이 회사 전체의 가격이에요" },
+    { label: "PER",        value: p.per_fmt,              hint: "주가 ÷ 이익, 낮을수록 싸요" },
+    { label: "배당수익률", value: p.dividend_yield_fmt,   hint: "1년에 받는 배당금 비율이에요" },
+    { label: "52주 최고",  value: p["52w_high_fmt"],      hint: "최근 1년 중 가장 비쌌던 가격" },
+    { label: "52주 최저",  value: p["52w_low_fmt"],       hint: "최근 1년 중 가장 쌌던 가격" },
+    { label: "거래량",     value: p.volume_fmt,           hint: "오늘 사고판 주식의 수예요" },
+  ]
+
+  // 공통 카드 스타일
+  const cardCls   = "bg-white rounded-[24px] p-6"
   const shadowStyle = { boxShadow: "rgba(0,0,0,0.05) 0px 4px 16px" }
 
+  // =============================================================================
+  // 🖥️ 실제 렌더링 시작
+  // =============================================================================
+
   return (
-    // 💡 이 div는 페이지 전체를 감싸는 '집' 역할이에요
     <div className="min-h-dvh bg-[#F2F4F8]">
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          [A] 헤더 — 뒤로가기 + 찜하기
-          💡 이 헤더는 집의 '현관문' 같은 역할이에요 — 항상 위에 붙어있어요
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════════════
+          [A] 헤더 — 뒤로가기 + 종목명 + 찜하기
+      ════════════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100/80">
         <div className="max-w-md mx-auto px-4 h-[56px] flex items-center justify-between">
           <button
@@ -128,13 +352,12 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
 
-          {/* 중앙: 종목명 + 티커 */}
+          {/* 💡 백엔드에서 받은 p.name(회사명)과 data.ticker를 보여줘요 */}
           <div className="text-center">
-            <p className="text-[16px] font-black text-slate-900 leading-tight">{stock.name}</p>
-            <p className="text-[10px] font-bold text-slate-400 mt-0.5">{stock.ticker} · {stock.market}</p>
+            <p className="text-[16px] font-black text-slate-900 leading-tight">{p.name}</p>
+            <p className="text-[10px] font-bold text-slate-400 mt-0.5">{data.ticker} · {marketLabel} 상장</p>
           </div>
 
-          {/* 💡 하트 버튼 — 누르면 빨갛게 채워지며 관심 종목에 추가돼요 */}
           <button
             type="button"
             onClick={() => setLiked(v => !v)}
@@ -145,40 +368,43 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         </div>
       </header>
 
-      {/* ── 본문 스크롤 영역 ────────────────────────────────────────────── */}
       <main className="max-w-md mx-auto px-4 pt-4 pb-36 space-y-4">
 
-        {/* ══════════════════════════════════════════════════════════════════
-            [A] 핵심 가격 정보 + [B] 차트 — 한 카드에 모아서 임팩트 있게!
-            💡 이 카드는 집의 '거실' — 가장 중요한 정보가 모여있는 공간이에요
-        ══════════════════════════════════════════════════════════════════ */}
+        {/* ════════════════════════════════════════════════════════════════════
+            [A+B] 가격 정보 + 차트 카드
+            💡 이 카드가 '거실'이에요 — 가장 중요한 숫자와 그래프가 모여있어요.
+               data.profile에서 꺼낸 current_price, change_rate, change_amount가
+               여기서 화면에 그려져요!
+        ════════════════════════════════════════════════════════════════════ */}
         <section className={cardCls} style={shadowStyle}>
 
           {/* 로고 배지 + 종목명 */}
           <div className="flex items-center gap-4 mb-5">
             <div
               className="w-14 h-14 rounded-[18px] flex items-center justify-center text-white font-black text-[18px] shrink-0 shadow-md"
-              style={{ backgroundColor: stock.color }}
+              style={{ backgroundColor: logoColor }}
             >
-              {stock.initial}
+              {initial}
             </div>
             <div>
-              <p className="text-[22px] font-black text-slate-900 leading-tight">{stock.name}</p>
-              <p className="text-[11px] font-bold text-slate-400">{stock.ticker} · {stock.market === "KR" ? "한국" : "미국"} 상장</p>
+              {/* 💡 p.name: 백엔드의 profile.name 값이에요 */}
+              <p className="text-[22px] font-black text-slate-900 leading-tight">{p.name}</p>
+              <p className="text-[11px] font-bold text-slate-400">{data.ticker} · {p.exchange}</p>
             </div>
           </div>
 
-          {/* 현재가 */}
+          {/* 💡 priceDisplay: p.current_price를 통화에 맞게 포맷한 값이에요 */}
           <p className="text-[38px] font-black text-slate-900 leading-none tracking-tight">{priceDisplay}</p>
 
-          {/* 등락률 뱃지 (알약 모양) */}
+          {/* 등락률 뱃지 */}
           <div className="flex items-center gap-2 mt-3">
             <span className={`inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[13px] font-black ${
               isUp
-                ? "bg-rose-50 text-rose-500 border border-rose-200"     // 상승=따뜻한 빨강 (한국 관례)
-                : "bg-blue-50 text-blue-500 border border-blue-200"     // 하락=시원한 파랑
+                ? "bg-rose-50 text-rose-500 border border-rose-200"    // 상승 = 빨강
+                : "bg-blue-50 text-blue-500 border border-blue-200"    // 하락 = 파랑
             }`}>
-              {isUp ? "▲" : "▼"} {Math.abs(stock.changeRate).toFixed(2)}%
+              {/* 💡 p.change_rate: 백엔드가 계산해준 등락률 (%)이에요 */}
+              {isUp ? "▲" : "▼"} {Math.abs(p.change_rate).toFixed(2)}%
             </span>
             <span className={`text-[13px] font-bold ${isUp ? "text-rose-400" : "text-blue-400"}`}>
               {isUp ? "+" : "-"}{changeDisplay}
@@ -186,13 +412,19 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
             <span className="text-[11px] font-bold text-slate-300 ml-auto">전일 대비</span>
           </div>
 
-          {/* [B] 차트 영역 */}
+          {/* [B] 차트 — chart_data를 기간에 맞게 슬라이싱해서 넘겨줘요 */}
           <div className="mt-6 -mx-2">
-            <StockAreaChart data={chartData} upColor={upColor} />
+            {chartData.length > 0
+              ? <StockAreaChart data={chartData} upColor={upColor} />
+              : (
+                <div className="w-full h-[220px] flex items-center justify-center text-[13px] font-bold text-slate-400">
+                  차트 데이터가 없어요
+                </div>
+              )
+            }
           </div>
 
-          {/* [B] 기간 선택 토글 버튼 그룹 */}
-          {/* 💡 이 버튼들은 '리모컨'처럼 — 누르면 해당 기간의 차트로 바뀌어요 */}
+          {/* [B] 기간 선택 버튼 */}
           <div className="mt-4 bg-slate-50 rounded-[16px] p-1 flex gap-1">
             {PERIODS.map((p) => (
               <button
@@ -211,150 +443,114 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════════════════════════════
+        {/* ════════════════════════════════════════════════════════════════════
             [C] 회사랑 친해지기 카드
-            💡 이 카드는 '회사 명함' 같은 역할이에요 — 한눈에 회사를 파악해요!
-        ══════════════════════════════════════════════════════════════════ */}
+            💡 p.listing_date, p.industry, p.ceo, p.summary 를 보여줘요.
+               모두 백엔드의 profile 객체에서 꺼낸 실제 데이터예요!
+        ════════════════════════════════════════════════════════════════════ */}
         <section className={cardCls} style={shadowStyle}>
           <h3 className="text-[13px] font-black text-slate-500 mb-4">🏢 회사랑 친해져 볼까요?</h3>
 
-          {/* 아이콘 + 텍스트 리스트 */}
           <div className="space-y-3 mb-4">
+            {/* 상장일 — p.listing_date (Python이 타임스탬프 → 날짜 변환해줬어요) */}
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-[10px] bg-amber-50 flex items-center justify-center shrink-0">
                 <Building2 className="w-4 h-4 text-amber-500" />
               </div>
               <div>
                 <p className="text-[10px] font-bold text-slate-400">상장일</p>
-                <p className="text-[13px] font-black text-slate-800">{stock.companyInfo.listingDate} <span className="text-slate-400 font-bold">(아주 오랜 전통!)</span></p>
+                <p className="text-[13px] font-black text-slate-800">
+                  {p.listing_date}
+                  {p.listing_date !== "-" && <span className="text-slate-400 font-bold"> (아주 오랜 전통!)</span>}
+                </p>
               </div>
             </div>
 
+            {/* 주요 사업 — p.industry */}
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-[10px] bg-emerald-50 flex items-center justify-center shrink-0">
                 <Briefcase className="w-4 h-4 text-emerald-500" />
               </div>
               <div>
                 <p className="text-[10px] font-bold text-slate-400">주요 사업</p>
-                <p className="text-[13px] font-black text-slate-800">{stock.companyInfo.mainBusiness} <span className="text-slate-400 font-bold">(우리가 매일 쓰는 것들)</span></p>
+                <p className="text-[13px] font-black text-slate-800">{p.industry}</p>
               </div>
             </div>
 
+            {/* CEO — p.ceo */}
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-[10px] bg-violet-50 flex items-center justify-center shrink-0">
                 <User2 className="w-4 h-4 text-violet-500" />
               </div>
               <div>
                 <p className="text-[10px] font-bold text-slate-400">CEO (대표이사)</p>
-                <p className="text-[13px] font-black text-slate-800">{stock.companyInfo.ceo}</p>
+                <p className="text-[13px] font-black text-slate-800">{p.ceo}</p>
               </div>
             </div>
           </div>
 
-          {/* 회사 설명 — 연한 배경 박스에 담아요 */}
-          {/* 💡 이 박스는 '회사 소개 팜플렛' 같은 역할이에요 */}
+          {/* 회사 설명 — p.summary (영문 원문) */}
           <div className="bg-slate-50 rounded-[16px] px-4 py-3.5">
-            <p className="text-[13px] font-bold text-slate-600 leading-relaxed">{stock.description}</p>
+            <p className="text-[12px] font-bold text-slate-500 leading-relaxed line-clamp-5">
+              {p.summary}
+            </p>
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════════════════════════════
+        {/* ════════════════════════════════════════════════════════════════════
             [D] 주요 지표 2×3 타일 그리드
-            💡 이 타일들은 회사의 '건강검진 결과지' 같은 역할이에요.
-               6개의 숫자로 회사의 상태를 한눈에 체크할 수 있어요!
-        ══════════════════════════════════════════════════════════════════ */}
+            💡 stats 배열: profile에서 꺼낸 포맷팅된 숫자들이에요.
+               각 타일 = 지표이름 + 실제값 + 초보자 설명
+        ════════════════════════════════════════════════════════════════════ */}
         <section className={cardCls} style={shadowStyle}>
           <h3 className="text-[13px] font-black text-slate-500 mb-4">📊 건강 상태 체크</h3>
 
-          {/* 2열 3행 바둑판 배열 */}
           <div className="grid grid-cols-2 gap-2.5">
-            {stock.stats.map((stat) => (
-              // 💡 각 타일은 '작은 명함' — 지표 이름, 숫자, 설명이 위아래로 들어가요
-              <div
-                key={stat.label}
-                className="bg-slate-50 rounded-[18px] px-4 py-3.5 space-y-1"
-              >
-                {/* 상단: 지표 이름 */}
+            {stats.map((stat) => (
+              <div key={stat.label} className="bg-slate-50 rounded-[18px] px-4 py-3.5 space-y-1">
+                {/* 지표 이름 */}
                 <p className="text-[10px] font-bold text-slate-400">{stat.label}</p>
-                {/* 중단: 실제 숫자 (크고 굵게) */}
+                {/* 💡 실제 값: profile에서 꺼낸 포맷팅된 문자열 (예: "3.3조", "31.5배") */}
                 <p className="text-[16px] font-black text-slate-900 leading-tight">{stat.value}</p>
-                {/* 하단: 초보자용 설명 */}
+                {/* 초보자용 힌트 */}
                 <p className="text-[9px] font-bold text-slate-400 leading-snug">{stat.hint}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════════════════════════════
-            [E] 최신 뉴스 리스트
-            💡 이 섹션은 '실시간 뉴스 게시판' 같은 역할이에요.
-               이 회사와 관련된 따끈따끈한 소식들이에요!
-        ══════════════════════════════════════════════════════════════════ */}
-        {stock.news.length > 0 && (
-          <section className={cardCls} style={shadowStyle}>
-            <h3 className="text-[13px] font-black text-slate-500 mb-4 flex items-center gap-2">
-              <Newspaper className="w-4 h-4 text-slate-400" />
-              방금 들어온 소식
-            </h3>
-
-            <div className="space-y-3">
-              {stock.news.map((item, idx) => (
-                // 💡 각 뉴스 줄은 '신문 한 줄' 같은 역할이에요
-                <div
-                  key={idx}
-                  className={`flex items-center gap-3 ${idx < stock.news.length - 1 ? "pb-3 border-b border-slate-50" : ""}`}
-                >
-                  {/* 뉴스 제목 + 시간 */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-black text-slate-800 leading-snug line-clamp-2">{item.title}</p>
-                    <p className="text-[10px] font-bold text-slate-400 mt-1">{item.timeAgo}</p>
-                  </div>
-
-                  {/* 썸네일 이미지 자리 (실제 이미지 없을 때 예쁜 placeholder) */}
-                  <div
-                    className="w-16 h-16 rounded-[14px] shrink-0 flex items-center justify-center text-2xl"
-                    style={{ backgroundColor: stock.color + "22" }}
-                  >
-                    <span style={{ filter: "grayscale(0.3)" }}>{stock.initial}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* 데이터 갱신 시각 (투명하게) */}
+        <p className="text-center text-[10px] font-bold text-slate-300">
+          데이터 기준: {new Date(data.fetched_at).toLocaleString("ko-KR")}
+        </p>
 
       </main>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          [F] 하단 고정 매수/매도 버튼 (Sticky Footer)
-          💡 이 버튼들은 '가게 계산대' 같은 역할이에요.
-             스크롤을 아무리 내려도 항상 화면 맨 아래에 붙어있어요!
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════════════
+          [F] 하단 고정 매수/매도 버튼
+      ════════════════════════════════════════════════════════════════════ */}
       <div className="fixed bottom-[60px] left-0 right-0 z-40 pointer-events-none">
         <div
           className="max-w-md mx-auto px-4 py-3 pointer-events-auto"
           style={{ background: "linear-gradient(to top, rgba(242,244,248,1) 70%, rgba(242,244,248,0))" }}
         >
           <div className="flex gap-3">
-            {/* 구매하기 — 따뜻한 코랄/빨강 */}
             <button
               type="button"
               className="flex-1 py-4 rounded-[20px] font-black text-[16px] text-white active:scale-[0.97] transition-all"
               style={{
-                background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)",
-                boxShadow: "0 6px 20px rgba(238,90,90,0.35)",
+                background:  "linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)",
+                boxShadow:   "0 6px 20px rgba(238,90,90,0.35)",
               }}
             >
               구매하기
             </button>
-
-            {/* 판매하기 — 시원한 스카이블루 */}
             <button
               type="button"
               className="flex-1 py-4 rounded-[20px] font-black text-[16px] text-white active:scale-[0.97] transition-all"
               style={{
                 background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)",
-                boxShadow: "0 6px 20px rgba(59,130,246,0.30)",
+                boxShadow:  "0 6px 20px rgba(59,130,246,0.30)",
               }}
             >
               판매하기
