@@ -15,9 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { YahooFinance }               from "yahoo-finance2"
-
-const yahooFinance = new YahooFinance()
+import yahooFinance from "yahoo-finance2"
 
 // 거래소 코드 → 사람이 읽기 좋은 이름 매핑
 // 💡 야후 파이낸스는 거래소를 영문 코드로 알려줘요.
