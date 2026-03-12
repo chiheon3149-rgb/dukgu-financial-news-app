@@ -104,7 +104,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
 
   useEffect(() => {
     supabase
-      .from("profiles")
+      .from("profiles_public")
       .select("id, nickname, avatar_emoji, total_xp, joined_at, portfolio_public")
       .eq("id", userId)
       .single()

@@ -43,7 +43,7 @@ export function useFollow(): UseFollowReturn {
         if (!followRows?.length) { setFollowing([]); return }
         const ids = followRows.map(r => r.following_id)
         const { data: profileRows } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("id, nickname, avatar_emoji, total_xp")
           .in("id", ids)
         const profileMap = Object.fromEntries((profileRows ?? []).map(p => [p.id, p]))
@@ -69,7 +69,7 @@ export function useFollow(): UseFollowReturn {
         if (!followRows?.length) { setFollowers([]); return }
         const ids = followRows.map(r => r.follower_id)
         const { data: profileRows } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("id, nickname, avatar_emoji, total_xp")
           .in("id", ids)
         const profileMap = Object.fromEntries((profileRows ?? []).map(p => [p.id, p]))

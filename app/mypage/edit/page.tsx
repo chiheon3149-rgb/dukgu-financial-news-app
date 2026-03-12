@@ -42,7 +42,7 @@ export default function ProfileEditPage() {
     setStatus("checking")
     try {
       const { data, error } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("nickname")
         .eq("nickname", trimmedName)
         .maybeSingle()

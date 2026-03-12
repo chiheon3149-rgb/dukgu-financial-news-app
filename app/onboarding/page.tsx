@@ -29,7 +29,7 @@ export default function OnboardingPage() {
     setStatus("checking")
     try {
       const { data, error } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("nickname")
         .eq("nickname", nickname.trim())
         .maybeSingle()
