@@ -10,11 +10,11 @@ export function useNewsAdmin() {
     // 뉴스 테이블에 들어갈 기본값(조회수, 좋아요 등 0으로 초기화) 세팅
     const newsData = {
       ...data,
-      view_count: 0,
-      good_count: 0,
-      bad_count: 0,
+      view_count:    0,
+      good_count:    0,
+      bad_count:     0,
       comment_count: 0,
-      published_at: new Date().toISOString(), // 작성 시간 자동 기입
+      // published_at: DB default(now()) 자동 처리
     }
 
     const { data: inserted, error } = await supabase

@@ -70,12 +70,16 @@ export interface AssetHistoryItem {
 // 📰 뉴스 (News)
 // -----------------------------------------------------------------------------
 
+/** 이슈 뱃지 타입 — DB의 issue_badge 값과 동일 */
+export type IssueBadge = "호재" | "악재" | "중립" | null
+
 /** 뉴스 피드의 단일 아이템 */
 export interface NewsItem {
   id: string
   category: NewsCategory
   market?: NewsMarket | null
   tags: string[]
+  tickers: string[]
   headline: string
   summary: string
   aiSummary?: string | null
@@ -88,6 +92,8 @@ export interface NewsItem {
   viewCount: number
   isSaved?: boolean
   source?: string | null
+  issueBadge?: IssueBadge
+  issueKeyword?: string | null
 }
 
 

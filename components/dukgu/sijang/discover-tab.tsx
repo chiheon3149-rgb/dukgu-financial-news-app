@@ -251,7 +251,7 @@ export function DiscoverTab() {
             style={{
               gridTemplateRows: "repeat(2, auto)",
               gridAutoFlow: "column",
-              gridAutoColumns: "calc((100vw - 72px) / 3)",
+              gridAutoColumns: "min(calc((100vw - 72px) / 3), 136px)",
             }}
           >
             {indicesLoading
@@ -290,7 +290,8 @@ export function DiscoverTab() {
 
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="h-[154px] w-[calc((100vw-72px)/6)] min-w-[50px] bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] flex flex-col items-center justify-center gap-2 hover:bg-slate-50 transition-colors active:scale-[0.98]"
+              className="h-[154px] min-w-[50px] bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] flex flex-col items-center justify-center gap-2 hover:bg-slate-50 transition-colors active:scale-[0.98]"
+              style={{ width: "min(calc((100vw - 72px) / 6), 68px)" }}
               style={{ gridRow: "span 2" }}
             >
               <Settings className="w-5 h-5 text-slate-400" />

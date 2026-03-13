@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Home, ExternalLink, Clock, Globe, Bookmark, Share2, Loader2, Eye, Edit2, Trash2 } from "lucide-react"
+import { Home, ExternalLink, Clock, Globe, Bookmark, Share2, Loader2, Eye, Edit2, Trash2, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { getCategoryBadgeStyle } from "@/lib/utils"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { DukguReaction } from "@/components/dukgu/dukgu-reaction"
@@ -17,26 +17,43 @@ import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
 import { useUser } from "@/context/user-context"
 import { useNewsAdmin } from "@/hooks/use-news-admin"
-
-// 💡 [추가] 우리가 만든 애드센스 배너 컴포넌트를 불러옵니다!
 import { AdBanner } from "@/components/dukgu/ad-banner"
 
+// =============================================================================
+// 타입
+// =============================================================================
+
 interface NewsDetail {
-  id: string
+  id: string | number
   category: string
-  tags: string[]
+  tags: string[] | any
+  tickers: string[] | any
   headline: string
-  summary: string
+  body_summary: string | null
   source: string | null
-  original_url: string | null
-  content: string | null
+  source_url: string | null
   ai_summary: string | null
   published_at: string
+  created_at: string
   good_count: number
   bad_count: number
   comment_count: number
   view_count: number
+  issue_badge: "호재" | "악재" | "중립" | "표시안함" | null
 }
+
+interface TickerQuote {
+  ticker: string
+  name: string
+  currentPrice: number
+  change: number
+  changePercent: number
+  currency: string
+}
+
+// =============================================================================
+// 헬퍼 함수
+// =============================================================================
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -58,22 +75,91 @@ function getTimeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}일 전`
 }
 
+/** 한국 6자리 숫자 티커 → Yahoo Finance용 .KS 추가 */
+function toYahooTicker(ticker: string): string {
+  if (/^\d{6}$/.test(ticker)) return `${ticker}.KS`
+  return ticker
+}
+
+// =============================================================================
+// 이슈 뱃지
+// =============================================================================
+
+function IssueBadge({ type }: { type: "호재" | "악재" | "중립" }) {
+  const config = {
+    호재: { emoji: "🔥", cls: "bg-red-50 text-red-600 border-red-200" },
+    악재: { emoji: "🧊", cls: "bg-blue-50 text-blue-600 border-blue-200" },
+    중립: { emoji: "💡", cls: "bg-amber-50 text-amber-600 border-amber-200" },
+  }
+  const c = config[type]
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-[3px] text-[11px] font-bold rounded-full border ${c.cls}`}>
+      {c.emoji} {type}
+    </span>
+  )
+}
+
+// =============================================================================
+// 티커 카드 (클릭 시 /assets/stock/[ticker])
+// =============================================================================
+
+function TickerCard({ ticker, quote }: { ticker: string; quote?: TickerQuote }) {
+  const isUp   = (quote?.changePercent ?? 0) > 0
+  const isDown = (quote?.changePercent ?? 0) < 0
+  const pct    = quote ? `${isUp ? "+" : ""}${quote.changePercent.toFixed(2)}%` : null
+
+  return (
+    <Link
+      href={`/assets/stock/${ticker}`}
+      className="flex items-center justify-between bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl px-3.5 py-2.5 transition-all active:scale-95"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-[13px] font-black text-slate-800 shrink-0">{ticker}</span>
+        {quote?.name && (
+          <span className="text-[11px] text-slate-400 font-medium truncate">{quote.name}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+        {quote ? (
+          <>
+            <span className="text-[12px] font-bold text-slate-600">
+              {quote.currency === "KRW"
+                ? quote.currentPrice.toLocaleString("ko-KR") + "원"
+                : "$" + quote.currentPrice.toFixed(2)}
+            </span>
+            <span className={`flex items-center gap-0.5 text-[12px] font-black ${isUp ? "text-red-500" : isDown ? "text-blue-500" : "text-slate-400"}`}>
+              {isUp ? <TrendingUp className="w-3 h-3" /> : isDown ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+              {pct}
+            </span>
+          </>
+        ) : (
+          <span className="text-[11px] text-slate-300 animate-pulse">시세 로딩 중...</span>
+        )}
+      </div>
+    </Link>
+  )
+}
+
+// =============================================================================
+// 메인 컴포넌트
+// =============================================================================
+
 export function NewsDetailClient({ id }: { id: string }) {
   const router = useRouter()
   const { profile } = useUser()
   const [news, setNews] = useState<NewsDetail | null | undefined>(undefined)
   const [liveViewCount, setLiveViewCount] = useState(0)
   const [liveCommentCount, setLiveCommentCount] = useState(0)
+  const [tickerQuotes, setTickerQuotes] = useState<Record<string, TickerQuote>>({})
   const { isSaved, toggleSave } = useSavedArticles()
-
   const { deleteNews } = useNewsAdmin()
   const isAdmin = profile?.is_admin === true
+  const hasIncremented = useRef(false)
 
-  const hasIncremented = useRef(false);
-
+  // 뉴스 로드 + 조회수 증가
   useEffect(() => {
-    if (!id || hasIncremented.current) return;
-    hasIncremented.current = true; 
+    if (!id || hasIncremented.current) return
+    hasIncremented.current = true
 
     const load = async () => {
       const { data, error } = await supabase
@@ -81,55 +167,66 @@ export function NewsDetailClient({ id }: { id: string }) {
         .select("*")
         .eq("id", id)
         .single()
-      
-      if (error || !data) {
-        setNews(null)
-        return
-      }
+
+      if (error || !data) { setNews(null); return }
 
       setNews(data)
       setLiveCommentCount(data.comment_count ?? 0)
       setLiveViewCount((data.view_count ?? 0) + 1)
-      
+
       try {
-        await supabase.rpc('increment_news_view_count', { target_news_id: id })
-      } catch (rpcError) {
-        console.error("RPC 조회수 증가 실패:", rpcError)
-      }
+        await supabase.rpc("increment_news_view_count", { target_news_id: id })
+      } catch {}
     }
 
     load()
   }, [id])
 
+  // 티커 시세 fetch
+  useEffect(() => {
+    const tickers: string[] = news?.tickers ?? []
+    if (!tickers.length) return
+
+    const yahooTickers = tickers.map(toYahooTicker).join(",")
+    fetch(`/api/market/quotes?tickers=${encodeURIComponent(yahooTickers)}`)
+      .then((r) => r.json())
+      .then((quotes: TickerQuote[]) => {
+        const map: Record<string, TickerQuote> = {}
+        quotes.forEach((q) => {
+          // Yahoo 심볼(.KS 제거)을 원본 티커로 역매핑
+          const raw = q.ticker.replace(/\.(KS|KQ)$/i, "")
+          map[raw] = { ...q, ticker: raw }
+        })
+        setTickerQuotes(map)
+      })
+      .catch(() => {})
+  }, [news?.tickers])
+
   const handleDelete = async () => {
-    if (!window.confirm("정말 이 뉴스를 삭제하시겠습니까? (복구 불가) 🚨")) return;
-    
+    if (!window.confirm("정말 이 뉴스를 삭제하시겠습니까? (복구 불가) 🚨")) return
     try {
       await deleteNews(id)
       toast.success("뉴스가 깔끔하게 삭제되었다냥! 🗑️")
-      router.replace("/") 
-    } catch (error) {
-      console.error("삭제 에러:", error)
+      router.replace("/")
+    } catch {
       toast.error("삭제 중 오류가 발생했다냥.")
     }
   }
 
-  const isBookmarked = news ? isSaved(news.id) : false
+  const newsIdStr = news ? String(news.id) : ""
+  const isBookmarked = news ? isSaved(newsIdStr) : false
 
   const toggleBookmark = () => {
     if (!profile) {
       toast("로그인이 필요한 기능이다냥! 🐾", {
         description: "기사를 저장하려면 덕구네 식구가 되어 달라냥.",
-        action: {
-          label: "로그인하기",
-          onClick: () => router.push("/login"),
-        },
+        action: { label: "로그인하기", onClick: () => router.push("/login") },
       })
       return
     }
     if (!news) return
     const tags: string[] = Array.isArray(news.tags) ? news.tags : []
-    toggleSave(news.id, {
+    toggleSave(newsIdStr, {
       headline: news.headline,
       category: news.category as any,
       timeAgo: getTimeAgo(news.published_at),
@@ -138,6 +235,7 @@ export function NewsDetailClient({ id }: { id: string }) {
     if (!isBookmarked) toast.success("간식 창고(북마크)에 저장했다냥! 🐾")
   }
 
+  // ─── 로딩 상태 ───────────────────────────────────────────
   if (news === undefined) {
     return (
       <div className="min-h-dvh bg-white">
@@ -161,9 +259,11 @@ export function NewsDetailClient({ id }: { id: string }) {
     )
   }
 
-  const tags: string[] = Array.isArray(news.tags) ? news.tags : []
-  const isDukguPick = news.source === "덕구"
+  const tags: string[]    = Array.isArray(news.tags)    ? news.tags    : []
+  const tickers: string[] = Array.isArray(news.tickers) ? news.tickers : []
+  const isDukguPick       = news.source === "덕구"
 
+  // ─── 본문 렌더링 ──────────────────────────────────────────
   return (
     <div className="min-h-dvh bg-white pb-24">
       <DetailHeader
@@ -172,24 +272,23 @@ export function NewsDetailClient({ id }: { id: string }) {
           <div className="flex items-center gap-1">
             {isAdmin && (
               <>
-                <button 
+                <button
                   onClick={() => router.push(`/news/${news.id}/edit`)}
                   className="p-1.5 hover:bg-indigo-50 rounded-full transition-colors group"
                   aria-label="뉴스 수정"
                 >
                   <Edit2 className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
                 </button>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="p-1.5 hover:bg-red-50 rounded-full transition-colors group"
                   aria-label="뉴스 삭제"
                 >
                   <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-500" />
                 </button>
-                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                <div className="w-px h-4 bg-slate-200 mx-1" />
               </>
             )}
-
             <Link href="/" className="p-1.5 hover:bg-emerald-50 rounded-full transition-colors group">
               <Home className="w-5 h-5 text-slate-800 group-hover:text-emerald-600" />
             </Link>
@@ -198,6 +297,8 @@ export function NewsDetailClient({ id }: { id: string }) {
       />
 
       <main className="max-w-md mx-auto px-5 py-6">
+
+        {/* 카테고리 + 이슈뱃지 + 태그 */}
         <div className="flex items-center gap-1.5 mb-4 flex-wrap">
           <span className={`${getCategoryBadgeStyle(news.category)} px-2.5 py-[3px] text-[11px] font-semibold rounded-full`}>
             {news.category}
@@ -207,6 +308,9 @@ export function NewsDetailClient({ id }: { id: string }) {
               덕구픽
             </span>
           )}
+          {news.issue_badge && news.issue_badge !== "표시안함" && (
+            <IssueBadge type={news.issue_badge as "호재" | "악재" | "중립"} />
+          )}
           {tags.map((tag) => (
             <span key={tag} className="text-[11px] font-medium text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">
               {tag.startsWith("#") ? tag : `#${tag}`}
@@ -214,14 +318,15 @@ export function NewsDetailClient({ id }: { id: string }) {
           ))}
         </div>
 
+        {/* 헤드라인 + 우측 버튼 */}
         <div className="flex justify-between items-start gap-4 mb-3">
           <h2 className="text-xl font-extrabold text-slate-900 leading-tight break-keep tracking-tight">
             {news.headline}
           </h2>
           <div className="flex flex-col gap-2 shrink-0">
-            {news.original_url && (
+            {news.source_url && (
               <a
-                href={news.original_url.startsWith("http") ? news.original_url : `https://${news.original_url}`}
+                href={news.source_url.startsWith("http") ? news.source_url : `https://${news.source_url}`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors border border-transparent hover:border-emerald-100"
@@ -240,10 +345,9 @@ export function NewsDetailClient({ id }: { id: string }) {
               <Bookmark className={`w-3 h-3 ${isBookmarked ? "fill-white" : ""}`} />
               {isBookmarked ? "저장됨" : "저장하기"}
             </button>
-
             <ShareButton
               title={`[덕구의 뉴스] ${news.headline}`}
-              text={news.summary || "매일 아침, 당신을 위한 금융 뉴스 브리핑"}
+              text={news.body_summary || "매일 아침, 당신을 위한 금융 뉴스 브리핑"}
               className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-white border border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-500"
             >
               <Share2 className="w-3 h-3" />
@@ -252,7 +356,8 @@ export function NewsDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium mb-8">
+        {/* 출처 + 시간 + 조회수 */}
+        <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium mb-6">
           {news.source && (
             <span className="flex items-center gap-1">
               <Globe className="w-3 h-3" /> {news.source}
@@ -267,36 +372,47 @@ export function NewsDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
+        {/* 관련 종목 티커 */}
+        {tickers.length > 0 && (
+          <section className="mb-8">
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2.5">관련 종목</p>
+            <div className="flex flex-col gap-2">
+              {tickers.map((ticker) => (
+                <TickerCard key={ticker} ticker={ticker} quote={tickerQuotes[ticker]} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* AI 요약 */}
         {news.ai_summary && (
           <div className="mb-8">
             <DukguAiSummary summary={news.ai_summary} />
           </div>
         )}
 
+        {/* 본문 */}
         <article className="text-[15px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium mb-10 break-keep">
-          {news.content ?? news.summary}
+          {news.body_summary}
         </article>
 
         <AiDisclaimer />
 
-        {/* 💡 [수정] 위아래 감싸던 선(border-t, border-b) 제거 */}
         <div className="my-8">
           <DukguReaction
             initialGood={news.good_count}
             initialBad={news.bad_count}
             viewCount={liveViewCount}
             commentCount={liveCommentCount}
-            newsId={news.id}
+            newsId={newsIdStr}
             snapshot={{ headline: news.headline, category: news.category, timeAgo: getTimeAgo(news.published_at) }}
           />
         </div>
 
-        {/* 💡 [추가] 리액션 영역과 댓글창 사이에 애드센스 배너 쏙 집어넣기 */}
         <div className="mb-8">
           <AdBanner />
         </div>
 
-        {/* 댓글 섹션 */}
         <NewsCommentSection
           newsId={id}
           onCountChange={(count) => {

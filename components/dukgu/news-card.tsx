@@ -1,23 +1,79 @@
 "use client"
 
 import { useState } from "react"
+import { TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { NewsInteractionBar } from "./news-interaction-bar"
 import { getCategoryBadgeStyle } from "@/lib/utils"
-import type { NewsCategory } from "@/types"
+import type { NewsCategory, IssueBadge } from "@/types"
 
-/** ai_summary 텍스트를 번호 기반 bullet 배열로 파싱 */
+// =============================================================================
+// 헬퍼: ai_summary → bullet 배열 파싱
+// =============================================================================
+
 function parsePoints(text: string): string[] {
-  // "1. ...\n2. ...\n3. ..." 형식 먼저 시도
   const numbered = text.match(/\d+\.\s+[^\n]+/g)
   if (numbered && numbered.length >= 2) {
     return numbered.map((s) => s.replace(/^\d+\.\s+/, "").trim())
   }
-  // 줄바꿈으로 분리
   const lines = text.split(/\n+/).map((s) => s.trim()).filter(Boolean)
   if (lines.length >= 2) return lines
-  // 마침표로 문장 분리 (최대 3개)
   return text.split(/(?<=[.!?])\s+/).slice(0, 3).map((s) => s.trim()).filter(Boolean)
 }
+
+// =============================================================================
+// 이슈 뱃지 칩
+// =============================================================================
+
+function IssueBadgeChip({ type }: { type: IssueBadge }) {
+  if (!type) return null
+  const config: Record<string, { emoji: string; cls: string }> = {
+    호재: { emoji: "🔥", cls: "bg-red-50 text-red-500 border-red-100" },
+    악재: { emoji: "🧊", cls: "bg-blue-50 text-blue-500 border-blue-100" },
+    중립: { emoji: "💡", cls: "bg-amber-50 text-amber-500 border-amber-100" },
+  }
+  const c = config[type]
+  if (!c) return null
+  return (
+    <span className={`inline-flex items-center gap-0.5 px-2 py-[2px] text-[10px] font-bold rounded-full border shrink-0 ${c.cls}`}>
+      {c.emoji} {type}
+    </span>
+  )
+}
+
+// =============================================================================
+// 티커 칩 (등락률 포함)
+// =============================================================================
+
+interface TickerPrice {
+  changePercent: number
+  currency: string
+  currentPrice: number
+}
+
+function TickerChip({ ticker, price }: { ticker: string; price?: TickerPrice }) {
+  const pct    = price?.changePercent ?? 0
+  const isUp   = pct > 0
+  const isDown = pct < 0
+  const label  = price ? `${isUp ? "+" : ""}${pct.toFixed(1)}%` : null
+
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 px-2 py-[2px] text-[10px] font-black rounded-full border ${
+        isUp   ? "bg-red-50 text-red-500 border-red-100"
+        : isDown ? "bg-blue-50 text-blue-500 border-blue-100"
+        : "bg-slate-50 text-slate-500 border-slate-200"
+      }`}
+    >
+      {isUp ? <TrendingUp className="w-2.5 h-2.5" /> : isDown ? <TrendingDown className="w-2.5 h-2.5" /> : <Minus className="w-2.5 h-2.5" />}
+      {ticker}
+      {label && <span className="ml-0.5">{label}</span>}
+    </span>
+  )
+}
+
+// =============================================================================
+// Props
+// =============================================================================
 
 interface NewsCardProps {
   id?: string
@@ -30,8 +86,16 @@ interface NewsCardProps {
   badCount: number
   commentCount: number
   tags?: string[]
+  tickers?: string[]
+  tickerPrices?: Record<string, TickerPrice>
   source?: string | null
+  issueBadge?: IssueBadge
+  issueKeyword?: string | null
 }
+
+// =============================================================================
+// NewsCard
+// =============================================================================
 
 export function NewsCard({
   id,
@@ -44,7 +108,11 @@ export function NewsCard({
   badCount,
   commentCount,
   tags = [],
+  tickers = [],
+  tickerPrices = {},
   source,
+  issueBadge,
+  issueKeyword,
 }: NewsCardProps) {
   const [whyOpen, setWhyOpen] = useState(false)
   const isDukguPick = source === "덕구"
@@ -56,9 +124,9 @@ export function NewsCard({
   return (
     <article className="rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
 
-      {/* 카테고리 칩 + 시간 */}
+      {/* 카테고리 + 이슈뱃지 + 시간 */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <span className={`${getCategoryBadgeStyle(category)} px-2.5 py-[3px] text-[11px] font-semibold rounded-full shrink-0`}>
             {category}
           </span>
@@ -66,6 +134,9 @@ export function NewsCard({
             <span className="bg-emerald-500 text-white px-2.5 py-[3px] text-[11px] font-semibold rounded-full shrink-0">
               덕구픽
             </span>
+          )}
+          {issueBadge && (
+            <IssueBadgeChip type={issueBadge} keyword={issueKeyword} />
           )}
         </div>
         <span className="text-[11px] text-gray-400 shrink-0 whitespace-nowrap">{timeAgo}</span>
@@ -76,11 +147,20 @@ export function NewsCard({
         {headline}
       </h3>
 
-      {/* 뉴스 요약 2줄 */}
+      {/* 뉴스 요약 */}
       {summary && (
         <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-2 break-keep">
           {summary}
         </p>
+      )}
+
+      {/* 티커 칩 행 */}
+      {tickers.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {tickers.map((ticker) => (
+            <TickerChip key={ticker} ticker={ticker} price={tickerPrices[ticker]} />
+          ))}
+        </div>
       )}
 
       {/* 해시태그 */}
@@ -94,7 +174,7 @@ export function NewsCard({
         </div>
       )}
 
-      {/* 왜 중요해? 버튼 */}
+      {/* 왜 중요해? */}
       {points.length > 0 && (
         <div>
           <button
@@ -106,10 +186,7 @@ export function NewsCard({
             <span>왜 중요해?</span>
           </button>
 
-          {/* 펼침 패널 */}
-          <div
-            className={`overflow-hidden transition-all duration-300 ${whyOpen ? "max-h-[200px] opacity-100 mt-2.5" : "max-h-0 opacity-0"}`}
-          >
+          <div className={`overflow-hidden transition-all duration-300 ${whyOpen ? "max-h-[200px] opacity-100 mt-2.5" : "max-h-0 opacity-0"}`}>
             <div className="rounded-[12px] bg-amber-50 px-3.5 py-3 flex flex-col gap-1.5">
               <p className="text-[11px] font-bold text-amber-700 mb-0.5">왜 중요할까?</p>
               {points.slice(0, 3).map((point, idx) => (
@@ -123,7 +200,7 @@ export function NewsCard({
         </div>
       )}
 
-      {/* 하단 액션 — 구분선 */}
+      {/* 하단 액션 바 */}
       <div className="border-t border-[#F1F5F9] pt-2.5">
         <NewsInteractionBar
           newsId={id}

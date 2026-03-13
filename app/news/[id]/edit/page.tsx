@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { X, Plus, Sparkles, ShieldCheck, Loader2, Lightbulb } from "lucide-react"
+import { X, Plus, Sparkles, ShieldCheck, Loader2, Lightbulb, BarChart2 } from "lucide-react"
 import { toast } from "sonner"
 import { DetailHeader } from "@/components/dukgu/detail-header"
 import { useNewsAdmin } from "@/hooks/use-news-admin"
@@ -39,6 +39,8 @@ export default function EditNewsPage() {
   const [originalUrl, setOriginalUrl] = useState("")
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
+  const [tickers, setTickers] = useState<string[]>([])
+  const [tickerInput, setTickerInput] = useState("")
 
   // 💡 [기획 추가] 뱃지 커스텀을 위한 새로운 상태
   const [impactType, setImpactType] = useState<"hot" | "cold" | "neutral" | "none">("none")
@@ -69,18 +71,24 @@ export default function EditNewsPage() {
         }
 
         setCategory(data.category as NewsCategory)
-        setMarket((data.market as NewsMarket) || "common")
+        // market_classification("공통"/"한국"/"미국") → NewsMarket("common"/"kr"/"us") 변환
+        const mc = data.market_classification
+        setMarket(mc === "한국" ? "kr" : mc === "미국" ? "us" : "common")
         setHeadline(data.headline || "")
-        setSummary(data.summary || "")
+        setSummary("")
         setAiSummary(data.ai_summary || "")
-        setContent(data.content || "")
+        setContent(data.body_summary || "")
         setSource(data.source || "덕구")
-        setOriginalUrl(data.original_url || "")
-        setTags(data.tags || [])
-        
-        // 💡 기존에 설정해둔 뱃지 정보 불러오기
-        setImpactType(data.impact_type || "none")
-        setImpactKeyword(data.impact_keyword || "")
+        setOriginalUrl(data.source_url || "")
+        setTags(Array.isArray(data.tags) ? data.tags : (data.tags ?? []))
+        setTickers(Array.isArray(data.tickers) ? data.tickers : (data.tickers ?? []))
+
+        // 이슈뱃지 — issue_badge: "호재"|"악재"|"중립"|"표시안함"
+        const badge = data.issue_badge
+        if (badge === "호재") { setImpactType("hot"); setImpactKeyword("") }
+        else if (badge === "악재") { setImpactType("cold"); setImpactKeyword("") }
+        else if (badge === "중립") { setImpactType("neutral"); setImpactKeyword("") }
+        else { setImpactType("none"); setImpactKeyword("") }
       } catch (e) {
         console.error("뉴스 로딩 에러:", e)
       } finally {
@@ -90,6 +98,22 @@ export default function EditNewsPage() {
 
     loadNews()
   }, [newsId, router])
+
+  const addTicker = (ticker: string) => {
+    const clean = ticker.replace(/\s/g, "").toUpperCase()
+    if (!clean || tickers.includes(clean) || tickers.length >= 5) return
+    setTickers((prev) => [...prev, clean])
+    setTickerInput("")
+  }
+
+  const removeTicker = (ticker: string) => setTickers((prev) => prev.filter((t) => t !== ticker))
+
+  const handleTickerKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " " || e.key === ",") {
+      e.preventDefault()
+      addTicker(tickerInput)
+    }
+  }
 
   const addTag = (tag: string) => {
     const clean = tag.replace(/^#/, "").trim()
@@ -112,19 +136,18 @@ export default function EditNewsPage() {
     setIsSubmitting(true)
     
     try {
+      const badgeMap: Record<string, string> = { hot: "호재", cold: "악재", neutral: "중립" }
       await updateNews(newsId, {
         category,
-        market,
+        market_classification: market === "common" ? "공통" : market === "kr" ? "한국" : "미국",
         headline: headline.trim(),
-        summary: summary.trim(),
         ai_summary: aiSummary.trim() || null,
-        content: content.trim(),
+        body_summary: content.trim(),
         source: source.trim() || null,
-        original_url: originalUrl.trim() || null,
+        source_url: originalUrl.trim() || null,
         tags,
-        // 💡 [기획 추가] 뱃지 정보 DB 저장
-        impact_type: impactType === "none" ? null : impactType,
-        impact_keyword: impactType === "none" ? null : impactKeyword.trim(),
+        tickers,
+        issue_badge: impactType === "none" ? "표시안함" : (badgeMap[impactType] ?? "표시안함"),
       })
 
       toast.success("뉴스가 성공적으로 수정되었다냥! 🛠️🐾")
@@ -275,6 +298,42 @@ export default function EditNewsPage() {
               rows={8}
               className="w-full bg-slate-50 rounded-xl py-3 px-4 text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
             />
+          </div>
+        </section>
+
+        {/* 관련 종목 티커 입력 */}
+        <section className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-5">
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1">
+            <BarChart2 className="w-3 h-3" /> 관련 종목 티커 ({tickers.length}/5)
+          </p>
+          <p className="text-[10px] text-slate-400 mb-3">예: AAPL, TSLA, 005930 (한국주식 6자리 숫자)</p>
+          {tickers.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {tickers.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => removeTicker(t)}
+                  className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-[11px] font-black border border-emerald-100 active:scale-95"
+                >
+                  {t} <X className="w-3 h-3" />
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="relative">
+            <input
+              type="text"
+              value={tickerInput}
+              onChange={(e) => setTickerInput(e.target.value)}
+              onKeyDown={handleTickerKeyDown}
+              placeholder="티커 입력 후 Enter (예: AAPL)"
+              maxLength={10}
+              disabled={tickers.length >= 5}
+              className="w-full bg-slate-50 rounded-xl py-2.5 px-4 pr-10 text-[13px] font-black uppercase focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-all disabled:opacity-40"
+            />
+            <button onClick={() => addTicker(tickerInput)} className="absolute right-3 top-2.5 text-slate-400 hover:text-emerald-500">
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
         </section>
 

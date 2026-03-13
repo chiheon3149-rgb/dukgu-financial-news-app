@@ -15,18 +15,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const { data: news } = await supabase
     .from("news")
-    .select("headline, summary")
+    .select("headline, body_summary")
     .eq("id", id)
     .single()
 
   const ogImage = "https://www.dukgu.kr/og-image.png"
+  const desc = news?.body_summary?.slice(0, 150) || "매일 아침, 당신을 위한 금융 뉴스 브리핑"
 
   return {
     title: `${news?.headline || "금융 뉴스"} | 덕구의 뉴스곳간`,
-    description: news?.summary || "매일 아침, 당신을 위한 금융 뉴스 브리핑",
+    description: desc,
     openGraph: {
       title: news?.headline,
-      description: news?.summary,
+      description: desc,
       url: `https://www.dukgu.kr/news/${id}`,
       images: [{ url: ogImage, width: 1200, height: 630 }],
       type: "article",

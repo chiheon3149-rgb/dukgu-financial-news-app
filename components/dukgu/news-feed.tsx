@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { NewsCard } from "./news-card"
 import { AdBanner } from "./ad-banner"
@@ -18,17 +18,25 @@ function matchesMarket(item: any, tab: MarketTab): boolean {
   if (tab === "all") return true
   const m = item.market as string | null | undefined
   const searchText = [item.headline ?? "", item.summary ?? "", item.category ?? "", ...(item.tags ?? [])].join(" ")
-  if (tab === "etf") {
-    return ETF_KEYWORDS.some((kw) => searchText.toLowerCase().includes(kw.toLowerCase()))
-  }
-  if (tab === "economy") {
-    return ECONOMY_KEYWORDS.some((kw) => searchText.includes(kw))
-  }
+  if (tab === "etf") return ETF_KEYWORDS.some((kw) => searchText.toLowerCase().includes(kw.toLowerCase()))
+  if (tab === "economy") return ECONOMY_KEYWORDS.some((kw) => searchText.includes(kw))
   if (m === "common") return true
   if (m === "kr") return tab === "kr"
   if (m === "us") return tab === "us"
   const keywords = tab === "kr" ? KR_KEYWORDS : US_KEYWORDS
   return keywords.some((kw) => searchText.toLowerCase().includes(kw.toLowerCase()))
+}
+
+/** 한국 6자리 숫자 티커 → Yahoo .KS 변환 */
+function toYahooTicker(ticker: string): string {
+  if (/^\d{6}$/.test(ticker)) return `${ticker}.KS`
+  return ticker
+}
+
+interface TickerPrice {
+  changePercent: number
+  currency: string
+  currentPrice: number
 }
 
 // ─── 스켈레톤 카드 ───────────────────────────────────────────
@@ -47,9 +55,7 @@ function NewsCardSkeleton() {
 function NewsSkeletonList({ count = 3 }: { count?: number }) {
   return (
     <div className="flex flex-col gap-3">
-      {Array.from({ length: count }).map((_, i) => (
-        <NewsCardSkeleton key={i} />
-      ))}
+      {Array.from({ length: count }).map((_, i) => <NewsCardSkeleton key={i} />)}
     </div>
   )
 }
@@ -82,11 +88,49 @@ export function NewsFeed({
     .filter((item) => {
       if (!keyword) return true
       const inHeadline = item.headline.toLowerCase().includes(keyword)
-      const inSummary  = item.summary.toLowerCase().includes(keyword)
-      const inTags     = item.tags.some((tag: string) => tag.toLowerCase().includes(keyword))
+      const inSummary  = (item.summary ?? "").toLowerCase().includes(keyword)
+      const inTags     = (item.tags ?? []).some((tag: string) => tag.toLowerCase().includes(keyword))
       return inHeadline || inSummary || inTags
     })
 
+  // ─── 티커 시세 배치 fetch ──────────────────────────────────
+  const [tickerPrices, setTickerPrices] = useState<Record<string, TickerPrice>>({})
+  const fetchedSet = useRef(new Set<string>())
+
+  useEffect(() => {
+    const newTickers: string[] = []
+    for (const item of filteredNews) {
+      for (const t of (item.tickers ?? []) as string[]) {
+        if (!fetchedSet.current.has(t)) {
+          newTickers.push(t)
+          fetchedSet.current.add(t)
+        }
+      }
+    }
+    if (!newTickers.length) return
+
+    const yahooTickers = newTickers.map(toYahooTicker).join(",")
+    fetch(`/api/market/quotes?tickers=${encodeURIComponent(yahooTickers)}`)
+      .then((r) => r.json())
+      .then((quotes: any[]) => {
+        setTickerPrices((prev) => {
+          const next = { ...prev }
+          quotes.forEach((q) => {
+            const raw = (q.ticker as string).replace(/\.(KS|KQ)$/i, "")
+            next[raw] = {
+              changePercent: q.changePercent ?? 0,
+              currency:      q.currency      ?? "USD",
+              currentPrice:  q.currentPrice  ?? 0,
+            }
+          })
+          return next
+        })
+      })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredNews.length])
+
+  // ─── 스크롤 복원 ────────────────────────────────────────────
   const observerTarget = useRef<HTMLDivElement>(null)
   const scrollRestored = useRef(false)
 
@@ -96,19 +140,14 @@ export function NewsFeed({
     const savedY = sessionStorage.getItem(SCROLL_KEY)
     if (savedY) {
       sessionStorage.removeItem(SCROLL_KEY)
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: parseInt(savedY, 10), behavior: "instant" })
-      })
+      requestAnimationFrame(() => window.scrollTo({ top: parseInt(savedY, 10), behavior: "instant" }))
     }
   }, [isLoading, news.length])
 
+  // ─── 무한 스크롤 ────────────────────────────────────────────
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
-          fetchNextPage()
-        }
-      },
+      (entries) => { if (entries[0].isIntersecting && !isLoadingMore && hasMore) fetchNextPage() },
       { threshold: 1.0 }
     )
     const target = observerTarget.current
@@ -116,13 +155,8 @@ export function NewsFeed({
     return () => observer.disconnect()
   }, [isLoadingMore, hasMore, fetchNextPage])
 
-  // 초기 로딩 — 스켈레톤 카드
   if (isLoading && news.length === 0) {
-    return (
-      <section className="pb-24">
-        <NewsSkeletonList count={3} />
-      </section>
-    )
+    return <section className="pb-24"><NewsSkeletonList count={3} /></section>
   }
 
   return (
@@ -135,11 +169,17 @@ export function NewsFeed({
               className="block"
               onClick={() => sessionStorage.setItem(SCROLL_KEY, String(window.scrollY))}
             >
-              <NewsCard {...item} />
+              <NewsCard
+                {...item}
+                tickers={item.tickers ?? []}
+                tickerPrices={tickerPrices}
+                issueBadge={item.issueBadge ?? null}
+                issueKeyword={item.issueKeyword ?? null}
+              />
             </Link>
 
             {(() => {
-              const isLastItem = index === filteredNews.length - 1
+              const isLastItem     = index === filteredNews.length - 1
               const isEverySeventh = (index + 1) % 7 === 0
               if (filteredNews.length >= 7) {
                 if (isEverySeventh) return <div className="py-1"><AdBanner /></div>
@@ -158,7 +198,6 @@ export function NewsFeed({
         )}
       </div>
 
-      {/* 무한 스크롤 트리거 */}
       <div ref={observerTarget} className="w-full">
         {isLoadingMore ? (
           <NewsSkeletonList count={3} />

@@ -12,6 +12,7 @@ import { useFollow } from "@/hooks/use-follow"
 import { useUser } from "@/context/user-context"
 import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { useMarketPrice } from "@/hooks/use-market-price"
+import { useKrStockNames, isTickerAsName } from "@/hooks/use-kr-stock-names"
 import { getLevelMeta } from "@/lib/mock/user"
 import { supabase } from "@/lib/supabase"
 
@@ -122,6 +123,9 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
 
   const tickers = useMemo(() => stockHoldingsList.map(h => h.ticker), [stockHoldingsList])
   const { quotes: stockQuotes } = useMarketPrice(tickers)
+  const krNames = useKrStockNames(tickers)
+  const getDisplayName = (ticker: string, name: string) =>
+    isTickerAsName(name, ticker) ? (krNames[ticker] ?? name) : name
 
   useEffect(() => {
     if (!canView || !targetProfile?.id) return
@@ -429,7 +433,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
                                       {h.ticker}
                                     </span>
                                     <div>
-                                      <p className="text-[12px] font-black text-slate-700">{h.name}</p>
+                                      <p className="text-[12px] font-black text-slate-700">{getDisplayName(h.ticker, h.name)}</p>
                                       <p className="text-[10px] font-bold text-slate-400">매입 {Math.round(h.invested).toLocaleString()}원</p>
                                     </div>
                                   </div>

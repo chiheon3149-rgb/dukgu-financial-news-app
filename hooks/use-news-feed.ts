@@ -28,24 +28,40 @@ interface UseNewsFeedReturn {
   refresh: () => Promise<void>
 }
 
-/** 데이터 변환 함수 */
+/** DB row → NewsItem 변환
+ *  새 테이블 컬럼명 기준:
+ *   market_classification (공통/한국/미국)
+ *   body_summary, source_url, issue_badge (호재/악재/중립/표시안함)
+ */
 function toNewsItem(row: any): NewsItem {
+  const badge = row.issue_badge
   return {
-    id: row.id,
-    category: row.category,
-    market: row.market,
-    tags: row.tags ?? [],
-    headline: row.headline,
-    summary: row.summary,
-    aiSummary: row.ai_summary ?? null,
-    timeAgo: formatTime(row.created_at),
-    publishedAt: row.created_at,
-    goodCount: row.good_count ?? 0,
-    badCount: row.bad_count ?? 0,
+    id:           String(row.id),   // bigint → string으로 통일
+    category:     row.category,
+    market:       classificationToMarket(row.market_classification),
+    tags:         Array.isArray(row.tags) ? row.tags : (row.tags ?? []),
+    tickers:      Array.isArray(row.tickers) ? row.tickers : (row.tickers ?? []),
+    headline:     row.headline,
+    summary:      row.body_summary ?? "",
+    aiSummary:    row.ai_summary ?? null,
+    timeAgo:      formatTime(row.published_at ?? row.created_at),
+    publishedAt:  row.published_at ?? row.created_at,
+    goodCount:    row.good_count    ?? 0,
+    badCount:     row.bad_count     ?? 0,
     commentCount: row.comment_count ?? 0,
-    source: row.source ?? null,
-    viewCount: row.view_count ?? 0,
+    source:       row.source        ?? null,
+    viewCount:    row.view_count    ?? 0,
+    issueBadge:   (badge === "표시안함" || !badge) ? null : badge as any,
+    issueKeyword: null,
   }
+}
+
+/** "공통"|"한국"|"미국" → "common"|"kr"|"us" (프론트 탭 필터용) */
+function classificationToMarket(v: string | null): "common" | "kr" | "us" | null {
+  if (v === "공통") return "common"
+  if (v === "한국") return "kr"
+  if (v === "미국") return "us"
+  return null
 }
 
 function formatTime(dateStr: string): string {
@@ -124,7 +140,8 @@ export function useNewsFeed(
 
   const applyMarketFilter = (query: any) => {
     if (marketTab === "all" || marketTab === "etf" || marketTab === "economy") return query
-    return query.or(`market.eq.common,market.eq.${marketTab}`)
+    const mc = marketTab === "kr" ? "한국" : "미국"
+    return query.or(`market_classification.eq.공통,market_classification.eq.${mc}`)
   }
 
   const fetchInitialData = async () => {

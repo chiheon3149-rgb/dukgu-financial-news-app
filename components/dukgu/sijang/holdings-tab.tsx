@@ -7,6 +7,7 @@ import { ChevronRight, Download } from "lucide-react"
 import { useStockPortfolio } from "@/hooks/use-stock-portfolio"
 import { useExchangeRate } from "@/hooks/use-exchange-rate"
 import { useKrStockNames, isTickerAsName } from "@/hooks/use-kr-stock-names"
+import { useUser } from "@/context/user-context"
 
 interface HoldingsTabProps { searchQuery: string }
 
@@ -19,6 +20,7 @@ function tickerToColor(ticker: string): string {
 }
 
 export function HoldingsTab({ searchQuery }: HoldingsTabProps) {
+  const { user } = useUser()
   const usdToKrw = useExchangeRate()
   const { rows, isLoadingPrices } = useStockPortfolio(usdToKrw)
   const krNames = useKrStockNames(rows.map((r) => r.holding.ticker))
@@ -55,7 +57,7 @@ export function HoldingsTab({ searchQuery }: HoldingsTabProps) {
           <p className="text-[12px] font-bold text-slate-300">포트폴리오에서 종목을 추가해보세요</p>
         </div>
         <Link
-          href="/assets/stocks"
+          href={user ? "/assets/stocks" : "/login"}
           className="flex items-center gap-1.5 text-[12px] font-black text-white bg-emerald-500 px-5 py-2.5 rounded-full active:scale-95 transition-all"
         >
           <Download className="w-3.5 h-3.5" /> 내 종목 불러오기
@@ -103,7 +105,7 @@ export function HoldingsTab({ searchQuery }: HoldingsTabProps) {
 
       {/* 포트폴리오 불러오기 버튼 */}
       <Link
-        href="/assets/stocks"
+        href={user ? "/assets/stocks" : "/login"}
         className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-white border border-emerald-200 text-emerald-600 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all shadow-sm"
       >
         <Download className="w-3.5 h-3.5" /> 포트폴리오 등록하고 불러오기
