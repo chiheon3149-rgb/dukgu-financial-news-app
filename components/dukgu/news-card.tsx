@@ -136,7 +136,7 @@ export function NewsCard({
             </span>
           )}
           {issueBadge && (
-            <IssueBadgeChip type={issueBadge} keyword={issueKeyword} />
+            <IssueBadgeChip type={issueBadge} />
           )}
         </div>
         <span className="text-[11px] text-gray-400 shrink-0 whitespace-nowrap">{timeAgo}</span>
