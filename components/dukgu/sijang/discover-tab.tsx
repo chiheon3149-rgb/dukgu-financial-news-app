@@ -2,19 +2,20 @@
 
 // =============================================================================
 // 🌍 [발견] 탭 - 시장 둘러보기 (리빌드)
-//
-// 섹션 구성:
-//   1. 인기검색 마키 배너 (3초 자동 전환)
-//   2. 글로벌 지수 카드 (가로 스크롤)
-//   3. TOP 주식 랭킹 (시장/정렬 필터)
 // =============================================================================
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Bookmark, ChevronRight } from "lucide-react"
+import { Bookmark, ChevronRight, Settings } from "lucide-react"
 import { MarketTreemap } from "./market-treemap"
 import { ThemeCards } from "./theme-cards"
+
+import { 
+  TickerSettingsSheet, 
+  loadTickerSettings, 
+  type TickerSettings 
+} from "../ticker-settings-sheet"
 
 // ─── 타입 정의 ───────────────────────────────────────────────────────────────
 
@@ -100,11 +101,22 @@ export function DiscoverTab() {
   // 마키 배너 자동 전환 인덱스
   const [marqueeIdx, setMarqueeIdx]         = useState(0)
 
+  // 💡 설정 시트 상태
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [tickerSettings, setTickerSettings] = useState<TickerSettings>({
+    customNames: {},
+    hiddenSymbols: [],
+    customTickers: [],
+  })
+
   const router = useRouter()
 
-  // ─── 데이터 페치 ──────────────────────────────────────────────────────────
+  // ─── 데이터 페치 및 초기 설정 로드 ──────────────────────────────────────────
 
   useEffect(() => {
+    // 로컬 스토리지에서 설정 불러오기
+    setTickerSettings(loadTickerSettings())
+
     // 글로벌 지수 조회
     fetch("/api/market/indices")
       .then((r) => r.json())
@@ -132,7 +144,6 @@ export function DiscoverTab() {
 
   // ─── 마키 배너: 3초마다 자동 전환 ────────────────────────────────────────
 
-  // 인기검색 목록은 KR 상위 종목을 사용
   const marqueeItems = topStocks.kr.slice(0, 10)
 
   useEffect(() => {
@@ -146,16 +157,14 @@ export function DiscoverTab() {
   // ─── TOP 주식 정렬 로직 ───────────────────────────────────────────────────
 
   function getSortedStocks(): TopStock[] {
-    // 시장 필터 적용
     let pool: TopStock[] = []
     if (marketFilter === "all")    pool = [...topStocks.kr, ...topStocks.us]
     else if (marketFilter === "kr") pool = [...topStocks.kr]
     else                            pool = [...topStocks.us]
 
-    // 정렬 적용
     switch (sortKey) {
       case "popular":
-        return pool.slice(0, 10) // 원래 순서 유지
+        return pool.slice(0, 10)
       case "trading":
         return [...pool].sort((a, b) => b.marketCap - a.marketCap).slice(0, 10)
       case "volume":
@@ -184,12 +193,10 @@ export function DiscoverTab() {
           onClick={() => router.push("/assets/search")}
           className="w-full bg-white rounded-[14px] px-4 py-3 flex items-center gap-3 border border-emerald-200 shadow-[0_4px_16px_rgba(16,185,129,0.10)] active:scale-[0.98] transition-all text-left"
         >
-          {/* 인기종목 뱃지 */}
           <span className="shrink-0 text-[10px] font-black bg-emerald-500 text-white rounded-full px-2 py-0.5">
             인기종목
           </span>
 
-          {/* 자동 전환 종목 정보 */}
           <div className="flex-1 min-w-0 overflow-hidden">
             {stocksLoading || marqueeItems.length === 0 ? (
               <span className="text-[13px] font-bold text-slate-300">인기종목 로딩 중...</span>
@@ -209,7 +216,6 @@ export function DiscoverTab() {
             })()}
           </div>
 
-          {/* 우측 화살표 */}
           <ChevronRight className="w-4 h-4 text-emerald-400 shrink-0" />
         </button>
       </section>
@@ -226,44 +232,57 @@ export function DiscoverTab() {
             }}
           >
             {indicesLoading
-              // 로딩 스켈레톤 6장
               ? Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="h-[72px] bg-slate-100 rounded-2xl animate-pulse" />
                 ))
-              : indices.map((idx) => {
-                  const isUp = idx.changeStatus === "up"
-                  const displayName = INDEX_DISPLAY[idx.symbol] ?? idx.name
-                  return (
-                    <div
-                      key={idx.symbol}
-                      className="h-[72px] bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] px-3 flex flex-col justify-center gap-0.5"
-                    >
-                      <p className="text-[11px] text-slate-500 truncate">{displayName}</p>
-                      <p className="text-[14px] font-black text-slate-900 leading-tight">
-                        {idx.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                      </p>
-                      <p className={`text-[11px] font-bold ${
-                        isUp ? "text-rose-500" : idx.changeStatus === "down" ? "text-blue-500" : "text-slate-400"
-                      }`}>
-                        {isUp ? "▲" : idx.changeStatus === "down" ? "▼" : ""}
-                        {Math.abs(idx.changeRate).toFixed(2)}%
-                      </p>
-                    </div>
-                  )
-                })
+              : indices
+                  .filter((idx) => !tickerSettings.hiddenSymbols?.includes(idx.symbol))
+                  .map((idx) => {
+                    const isUp = idx.changeStatus === "up"
+                    const displayName = tickerSettings.customNames?.[idx.symbol] ?? INDEX_DISPLAY[idx.symbol] ?? idx.name
+                    
+                    // 💡 JPYKRW=X(엔/원)일 경우 100엔 기준으로 100을 곱해서 보여줍니다.
+                    const displayPrice = idx.symbol === "JPYKRW=X" ? idx.price * 100 : idx.price
+
+                    return (
+                      <div
+                        key={idx.symbol}
+                        className="h-[72px] bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] px-3 flex flex-col justify-center gap-0.5"
+                      >
+                        <p className="text-[11px] text-slate-500 truncate">{displayName}</p>
+                        <p className="text-[14px] font-black text-slate-900 leading-tight">
+                          {displayPrice.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                        </p>
+                        <p className={`text-[11px] font-bold ${
+                          isUp ? "text-rose-500" : idx.changeStatus === "down" ? "text-blue-500" : "text-slate-400"
+                        }`}>
+                          {isUp ? "▲" : idx.changeStatus === "down" ? "▼" : ""}
+                          {Math.abs(idx.changeRate).toFixed(2)}%
+                        </p>
+                      </div>
+                    )
+                  })
             }
+
+            {/* 💡 폭 1/2, 높이 2칸인 세로형 설정 버튼 (진녹색 바탕 + 흰 글씨) */}
+            {/* 💡 연한 회색 바탕 + 짙은 회색 글씨 */}
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="h-[154px] w-[calc((100vw-72px)/6)] min-w-[50px] bg-slate-50 border border-slate-100 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-100 transition-colors shadow-sm active:scale-[0.98]"
+              style={{ gridRow: "span 2" }}
+            >
+              <Settings className="w-5 h-5 text-slate-400" />
+              <span className="text-[11px] font-bold text-slate-400 leading-tight text-center">지수<br/>설정</span>
+            </button>
+
           </div>
         </div>
       </section>
 
       {/* ─── 섹션 3: TOP 주식 ────────────────────────────────────────────────── */}
       <section className="bg-white rounded-2xl shadow-[0_6px_20px_rgba(0,0,0,0.05)] px-4 pt-4 pb-2">
-
-        {/* 헤더: 타이틀 + 시장 필터 */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[15px] font-black text-slate-900">TOP 주식</h3>
-
-          {/* 시장 세그먼트 필터 (전체 / 한국 / 미국) */}
           <div className="bg-slate-100 rounded-[10px] p-0.5 flex gap-0.5">
             {(["all", "kr", "us"] as MarketFilter[]).map((m) => (
               <button
@@ -281,7 +300,6 @@ export function DiscoverTab() {
           </div>
         </div>
 
-        {/* 정렬 서브탭 (인기 | 거래대금 | 거래량 | 상승 | 하락) */}
         <div className="overflow-x-auto scrollbar-none -mx-4 px-4 mb-2">
           <div className="flex gap-4 w-max border-b border-slate-100 pb-0">
             {SORT_TABS.map((tab) => (
@@ -300,9 +318,7 @@ export function DiscoverTab() {
           </div>
         </div>
 
-        {/* 종목 리스트 */}
         {stocksLoading ? (
-          // 로딩 스켈레톤 5행
           <div className="space-y-3 py-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 animate-pulse">
@@ -320,12 +336,10 @@ export function DiscoverTab() {
             ))}
           </div>
         ) : stocksError || sortedStocks.length === 0 ? (
-          // 에러 / 빈 상태
           <div className="py-8 text-center">
             <p className="text-[13px] font-bold text-slate-400">잠시 후 다시 시도해 주세요</p>
           </div>
         ) : (
-          // 종목 목록
           <div>
             {sortedStocks.map((stock, idx) => {
               const rank = idx + 1
@@ -339,7 +353,6 @@ export function DiscoverTab() {
                   href={`/assets/stock/${stock.ticker}`}
                   className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0 active:bg-slate-50/50 transition-colors"
                 >
-                  {/* 순위: 1~3위는 금/은/동 색상 */}
                   <span
                     className="w-5 text-[13px] font-black text-center shrink-0"
                     style={{ color: rankColor }}
@@ -347,7 +360,6 @@ export function DiscoverTab() {
                     {rank}
                   </span>
 
-                  {/* 로고 배지: 티커 첫 글자 */}
                   <div
                     className="w-10 h-10 rounded-[12px] flex items-center justify-center text-white font-black text-[14px] shrink-0"
                     style={{ backgroundColor: tickerToColor(stock.ticker) }}
@@ -355,13 +367,11 @@ export function DiscoverTab() {
                     {initial}
                   </div>
 
-                  {/* 종목명 + 티커 */}
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-semibold text-slate-900 truncate">{stock.name}</p>
                     <p className="text-[11px] font-medium text-slate-400">{stock.displayTicker}</p>
                   </div>
 
-                  {/* 등락률 + 가격 */}
                   <div className="flex flex-col items-end shrink-0">
                     <span className={`text-[14px] font-black ${isUp ? "text-rose-500" : "text-blue-500"}`}>
                       {isUp ? "▲" : "▼"} {Math.abs(stock.changeRate).toFixed(2)}%
@@ -373,7 +383,6 @@ export function DiscoverTab() {
                     </span>
                   </div>
 
-                  {/* 북마크 버튼 (UI only) */}
                   <Bookmark className="w-4 h-4 text-slate-200 shrink-0" />
                 </Link>
               )
@@ -387,6 +396,17 @@ export function DiscoverTab() {
 
       {/* ─── 섹션 5: 주제따라 탐색하기 ──────────────────────────────────────── */}
       <ThemeCards />
+
+      {/* 💡 설정 바텀 시트 연동 */}
+      <TickerSettingsSheet
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        symbols={Object.keys(INDEX_DISPLAY)}
+        settings={tickerSettings}
+        onSave={(newSettings) => {
+          setTickerSettings(newSettings)
+        }}
+      />
     </div>
   )
 }

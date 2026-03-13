@@ -79,7 +79,7 @@ export async function saveTickerSettingsToDb(settings: TickerSettings): Promise<
 // 컴포넌트
 // -------------------------------------------------------
 interface TickerSettingsSheetProps {
-  isOpen:   boolean
+  isOpen:  boolean
   onClose:  () => void
   symbols:  string[]
   settings: TickerSettings
@@ -110,7 +110,6 @@ export function TickerSettingsSheet({
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 시트가 열리는 순간(isOpen: false→true)에만 초기화
-  // settings를 의존성에 넣으면 DB 로드 완료 시 사용자 변경값이 덮어써짐
   useEffect(() => {
     if (!isOpen) return
     setCustomNames({ ...settings.customNames })
@@ -226,16 +225,12 @@ export function TickerSettingsSheet({
     addInputRef.current?.focus()
   }
 
-  // ── 저장: localStorage 즉시 → UI 닫기 → DB는 백그라운드 ──
+  // ── 저장 ──
   const handleSave = () => {
     const s: TickerSettings = { customNames, hiddenSymbols, customTickers }
-    // 1. 티커바 즉시 반영
     onSave(s)
-    // 2. localStorage 저장 (이벤트 발행 포함)
     saveTickerSettings(s)
-    // 3. 시트 즉시 닫기 (DB 응답 기다리지 않음)
     onClose()
-    // 4. DB 저장 (백그라운드, 로그인 시만)
     saveTickerSettingsToDb(s).catch((err) =>
       console.error("[ticker-settings] DB 저장 오류:", err)
     )
@@ -254,7 +249,6 @@ export function TickerSettingsSheet({
           maxHeight: "calc(88dvh - 4rem - env(safe-area-inset-bottom, 0px))",
         }}
       >
-        {/* 핸들 + 헤더 */}
         <div className="px-5 pt-5 pb-4 border-b border-slate-100 shrink-0">
           <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
           <div className="flex items-center justify-between">
@@ -279,9 +273,7 @@ export function TickerSettingsSheet({
           </div>
         </div>
 
-        {/* 리스트 */}
         <div className="overflow-y-auto flex-1 min-h-0 px-4 py-3 space-y-5">
-
           {/* ── 기본 지수 ── */}
           <div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
@@ -346,7 +338,6 @@ export function TickerSettingsSheet({
                           <Pencil className="w-3.5 h-3.5 text-slate-400" />
                         </button>
                       )}
-                      {/* 눈 아이콘: 표시/숨김 토글 */}
                       <button
                         onClick={() => toggleHide(sym)}
                         className="p-1.5 rounded-xl hover:bg-white hover:shadow-sm transition-all"
@@ -480,7 +471,6 @@ export function TickerSettingsSheet({
                 </button>
               </div>
 
-              {/* 자동완성 드롭다운 */}
               {showDropdown && searchResults.length > 0 && (
                 <div
                   ref={dropdownRef}
@@ -515,7 +505,6 @@ export function TickerSettingsSheet({
             로그인 시 기기간 설정 동기화됩니다
           </p>
 
-          {/* 저장 버튼 - sticky로 항상 하단에 표시 */}
           <div className="sticky bottom-0 -mx-4 px-4 pt-3 pb-4 bg-white border-t border-slate-100">
             <button
               onClick={handleSave}
