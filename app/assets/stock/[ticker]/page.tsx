@@ -18,6 +18,7 @@ import { useState, useEffect, useCallback, use } from "react"
 import dynamic                       from "next/dynamic"
 import { useRouter }                 from "next/navigation"
 import { ArrowLeft, Heart, Building2, Briefcase, User2 } from "lucide-react"
+import { supabase }                  from "@/lib/supabase"
 
 // =============================================================================
 // 📐 타입 정의
@@ -153,7 +154,7 @@ function LoadingSkeleton() {
           <div className="w-9 h-9 bg-slate-100 rounded-[12px]" />
         </div>
       </header>
-      <main className="max-w-md mx-auto px-4 pt-4 pb-36 space-y-4">
+      <main className="max-w-md mx-auto px-4 pt-4 pb-24 space-y-4">
         <div className="bg-white rounded-[24px] p-6 space-y-4" style={{ boxShadow: "rgba(0,0,0,0.05) 0px 4px 16px" }}>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-slate-100 rounded-[18px]" />
@@ -240,11 +241,11 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
   const [period, setPeriod] = useState<Period>("1년")
 
   // ── 프로필 데이터 상태 (최초 1회 로드) ─────────────────────────────────────
-  // 💡 이 세 가지 상태가 '데이터 요리의 흐름'을 나타내요.
-  //    isLoading → 요리 중, error → 요리 실패, data → 완성된 도시락!
   const [data,      setData]      = useState<StockApiResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error,     setError]     = useState<string | null>(null)
+  const [krName,    setKrName]    = useState<string | null>(null)
+  const [logoError, setLogoError] = useState(false)
 
   // ── 차트 전용 상태 (기간 변경 시 별도 로드) ─────────────────────────────────
   // 💡 기간 탭을 바꿀 때 프로필 전체를 다시 불러오면 화면이 깜빡여요.
@@ -280,6 +281,17 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
 
     loadStock()
     return () => { cancelled = true }
+  }, [ticker])
+
+  // ── 한국 종목이면 Supabase에서 한국어 이름 조회 ──────────────────────────
+  useEffect(() => {
+    if (!ticker.endsWith(".KS") && !ticker.endsWith(".KQ")) return
+    supabase
+      .from("kr_stocks")
+      .select("name")
+      .eq("ticker", ticker)
+      .single()
+      .then(({ data: row }) => { if (row?.name) setKrName(row.name) })
   }, [ticker])
 
   // ── 기간 탭 변경 시 차트 데이터 업데이트 ───────────────────────────────────
@@ -343,7 +355,18 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
   const isUp       = p.change_rate >= 0                    // 상승 여부
   const upColor    = isUp ? "#f43f5e" : "#3b82f6"          // 한국 관례: 상승=빨강, 하락=파랑
   const logoColor  = tickerToColor(ticker)                 // 티커 기반 로고 색
-  const initial    = (p.name || ticker)[0].toUpperCase()  // 로고 이니셜
+  const displayName = krName ?? p.name
+  const initial    = (displayName || ticker)[0].toUpperCase()  // 로고 이니셜
+
+  // Clearbit 로고 URL (website 도메인 기반)
+  const logoUrl = (() => {
+    if (!p.website || logoError) return null
+    try {
+      const raw = p.website.startsWith("http") ? p.website : `https://${p.website}`
+      const domain = new URL(raw).hostname
+      return `https://logo.clearbit.com/${domain}`
+    } catch { return null }
+  })()
 
   // 💡 현재가 포맷: USD면 달러 기호, KRW면 원 단위로 표시해요
   const priceDisplay = p.currency === "KRW"
@@ -396,9 +419,9 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
 
-          {/* 💡 백엔드에서 받은 p.name(회사명)과 data.ticker를 보여줘요 */}
+          {/* 💡 한국 종목이면 krName(한국어), 아니면 p.name(영문) 표시 */}
           <div className="text-center">
-            <p className="text-[16px] font-black text-slate-900 leading-tight">{p.name}</p>
+            <p className="text-[16px] font-black text-slate-900 leading-tight">{displayName}</p>
             <p className="text-[10px] font-bold text-slate-400 mt-0.5">{data.ticker} · {marketLabel} 상장</p>
           </div>
 
@@ -412,7 +435,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 pt-4 pb-36 space-y-4">
+      <main className="max-w-md mx-auto px-4 pt-4 pb-24 space-y-4">
 
         {/* ════════════════════════════════════════════════════════════════════
             [A+B] 가격 정보 + 차트 카드
@@ -424,15 +447,25 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
 
           {/* 로고 배지 + 종목명 */}
           <div className="flex items-center gap-4 mb-5">
-            <div
-              className="w-14 h-14 rounded-[18px] flex items-center justify-center text-white font-black text-[18px] shrink-0 shadow-md"
-              style={{ backgroundColor: logoColor }}
-            >
-              {initial}
+            <div className="w-14 h-14 rounded-[18px] overflow-hidden shrink-0 shadow-md flex items-center justify-center bg-white">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={displayName}
+                  className="w-10 h-10 object-contain"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <div
+                  className="w-full h-full flex items-center justify-center text-white font-black text-[18px]"
+                  style={{ backgroundColor: logoColor }}
+                >
+                  {initial}
+                </div>
+              )}
             </div>
             <div>
-              {/* 💡 p.name: 백엔드의 profile.name 값이에요 */}
-              <p className="text-[22px] font-black text-slate-900 leading-tight">{p.name}</p>
+              <p className="text-[22px] font-black text-slate-900 leading-tight">{displayName}</p>
               <p className="text-[11px] font-bold text-slate-400">{data.ticker} · {p.exchange}</p>
             </div>
           </div>
@@ -579,38 +612,6 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
 
       </main>
 
-      {/* ════════════════════════════════════════════════════════════════════
-          [F] 하단 고정 매수/매도 버튼
-      ════════════════════════════════════════════════════════════════════ */}
-      <div className="fixed bottom-[60px] left-0 right-0 z-40 pointer-events-none">
-        <div
-          className="max-w-md mx-auto px-4 py-3 pointer-events-auto"
-          style={{ background: "linear-gradient(to top, rgba(242,244,248,1) 70%, rgba(242,244,248,0))" }}
-        >
-          <div className="flex gap-3">
-            <button
-              type="button"
-              className="flex-1 py-4 rounded-[20px] font-black text-[16px] text-white active:scale-[0.97] transition-all"
-              style={{
-                background:  "linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)",
-                boxShadow:   "0 6px 20px rgba(238,90,90,0.35)",
-              }}
-            >
-              구매하기
-            </button>
-            <button
-              type="button"
-              className="flex-1 py-4 rounded-[20px] font-black text-[16px] text-white active:scale-[0.97] transition-all"
-              style={{
-                background: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)",
-                boxShadow:  "0 6px 20px rgba(59,130,246,0.30)",
-              }}
-            >
-              판매하기
-            </button>
-          </div>
-        </div>
-      </div>
 
     </div>
   )

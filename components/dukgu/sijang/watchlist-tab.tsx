@@ -44,7 +44,7 @@ export function WatchlistTab({ searchQuery }: WatchlistTabProps) {
         return (
           <div
             key={stock.ticker}
-            className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 border border-slate-100 shadow-sm"
+            className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.05)]"
           >
             <Link href={`/assets/stock/${stock.ticker}`} className="flex items-center gap-3 flex-1 min-w-0 active:scale-[0.98]">
               <div

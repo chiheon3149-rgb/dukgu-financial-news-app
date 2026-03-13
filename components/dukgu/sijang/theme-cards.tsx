@@ -43,7 +43,7 @@ export function ThemeCards() {
   const themes = market === "kr" ? KR_THEMES : US_THEMES
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+    <section className="bg-white rounded-2xl shadow-[0_6px_20px_rgba(0,0,0,0.05)] p-4">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[15px] font-black text-slate-900">주제따라 탐색하기</h3>

@@ -26,7 +26,8 @@ const PUBLIC_PREFIXES = [
   "/news",      // 뉴스 목록/상세
   "/briefing",  // 브리핑 데이터
   "/community", // 커뮤니티 목록/상세
-  "/rss",       // 👈 구글 애드센스 크롤러용 RSS 피드 추가!
+  "/rss",       // 구글 애드센스 크롤러용 RSS 피드
+  "/assets",    // 증시 전체 (종목 상세·검색 포함) — 비로그인도 열람 허용
 ]
 
 function isPublicPath(pathname: string): boolean {

@@ -50,7 +50,7 @@ export function HoldingsTab({ searchQuery }: HoldingsTabProps) {
               <Link
                 key={stock.ticker}
                 href={`/assets/stock/${stock.ticker}`}
-                className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 border border-slate-100 shadow-sm active:scale-[0.98] transition-all group"
+                className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.05)] active:scale-[0.98] transition-all group"
               >
                 <div
                   className="w-10 h-10 rounded-[12px] flex items-center justify-center text-white font-black text-[13px] shrink-0"

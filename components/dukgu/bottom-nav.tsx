@@ -39,12 +39,9 @@ function SijangSubNavBar() {
       {/* 뒤로가기 */}
       <button
         onClick={() => router.push("/")}
-        className="flex flex-col items-center justify-center w-[52px] h-full gap-0.5 shrink-0 text-[#6B7280] hover:text-slate-800 active:scale-90 transition-all duration-150"
+        className="flex items-center justify-center w-[52px] h-full shrink-0 text-[#6B7280] hover:text-slate-800 active:scale-90 transition-all duration-150"
       >
-        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center">
-          <ChevronLeft className="w-4 h-4 text-slate-500" />
-        </div>
-        <span className="text-[9px] font-bold text-slate-400">뒤로</span>
+        <ChevronLeft className="w-5 h-5 text-slate-500" />
       </button>
 
       {/* 탭들 */}
@@ -129,7 +126,7 @@ function BottomNavContent() {
 
   if (HIDDEN_PATHS.some((p) => pathname.startsWith(p))) return null
 
-  const isSijangMain = pathname === "/assets"
+  const isSijangMain = pathname.startsWith("/assets")
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full max-w-[420px] mx-auto bg-white/95 backdrop-blur-md border-t border-[#E5E7EB] z-50 pb-safe overflow-hidden">
