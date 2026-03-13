@@ -12,6 +12,8 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Bookmark, ChevronRight } from "lucide-react"
+import { MarketTreemap } from "./market-treemap"
+import { ThemeCards } from "./theme-cards"
 
 // ─── 타입 정의 ───────────────────────────────────────────────────────────────
 
@@ -374,6 +376,12 @@ export function DiscoverTab() {
           </div>
         )}
       </section>
+
+      {/* ─── 섹션 4: 한 눈에 보기 Treemap ───────────────────────────────────── */}
+      <MarketTreemap krStocks={topStocks.kr} usStocks={topStocks.us} />
+
+      {/* ─── 섹션 5: 주제따라 탐색하기 ──────────────────────────────────────── */}
+      <ThemeCards />
     </div>
   )
 }
