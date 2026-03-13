@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { Home, Zap, TrendingUp, Users, User, ChevronLeft, Wallet, Star, Compass } from "lucide-react"
+import { Home, Zap, TrendingUp, Users, User, Wallet, Star, Compass } from "lucide-react"
 import { Suspense } from "react"
 
 const HIDDEN_PATHS = ["/login", "/auth"]
@@ -36,15 +36,15 @@ function SijangSubNavBar() {
 
   return (
     <div className="flex items-center h-[60px]">
-      {/* 뒤로가기 */}
+      {/* 홈 버튼 */}
       <button
         onClick={() => router.push("/")}
-        className="flex flex-col items-center justify-center w-[52px] h-full gap-0.5 shrink-0 text-[#6B7280] hover:text-slate-800 active:scale-90 transition-all duration-150"
+        className="relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-all duration-200 active:scale-90 text-[#6B7280] hover:text-slate-800"
       >
-        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center">
-          <ChevronLeft className="w-4 h-4 text-slate-500" />
+        <div className="p-1.5 rounded-xl">
+          <Home className="w-[20px] h-[20px]" />
         </div>
-        <span className="text-[9px] font-bold text-slate-400">뒤로</span>
+        <span className="text-[10px] font-semibold">홈</span>
       </button>
 
       {/* 탭들 */}
