@@ -1,28 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
+import { Suspense } from "react"
 import { TrendingUp } from "lucide-react"
 import { DetailHeader }   from "@/components/dukgu/detail-header"
-import { CategoryChips }  from "@/components/dukgu/category-chips"
 import { StockSearchBar } from "@/components/dukgu/sijang/stock-search-bar"
 import { HoldingsTab }    from "@/components/dukgu/sijang/holdings-tab"
 import { WatchlistTab }   from "@/components/dukgu/sijang/watchlist-tab"
 import { DiscoverTab }    from "@/components/dukgu/sijang/discover-tab"
+import { useState }       from "react"
 
 type TabId = "holdings" | "watchlist" | "discover"
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "holdings",  label: "보유" },
-  { id: "watchlist", label: "관심" },
-  { id: "discover",  label: "발견" },
-]
-
-export default function SijangPage() {
-  const [activeTab,   setActiveTab]   = useState<TabId>("discover")
+function SijangContent() {
+  const searchParams = useSearchParams()
+  const tab = (searchParams.get("tab") as TabId) ?? "discover"
   const [searchQuery, setSearchQuery] = useState("")
 
   return (
-    <div className="min-h-dvh bg-[#F9FAFB] pb-20">
+    <div className="min-h-dvh bg-[#F9FAFB] pb-[120px]">
 
       <DetailHeader
         showBack={false}
@@ -35,23 +31,20 @@ export default function SijangPage() {
       />
 
       <main className="max-w-md mx-auto px-5 py-5 space-y-5">
-
-        {/* 검색창 — 자동완성 드롭다운 포함 (종목명 클릭 시 상세 페이지로 이동) */}
         <StockSearchBar onQueryChange={setSearchQuery} />
 
-        {/* 탭 */}
-        <CategoryChips
-          chips={TABS}
-          active={activeTab}
-          onChange={setActiveTab}
-        />
-
-        {/* 탭 컨텐츠 */}
-        {activeTab === "holdings"  && <HoldingsTab  searchQuery={searchQuery} />}
-        {activeTab === "watchlist" && <WatchlistTab searchQuery={searchQuery} />}
-        {activeTab === "discover"  && <DiscoverTab />}
-
+        {tab === "holdings"  && <HoldingsTab  searchQuery={searchQuery} />}
+        {tab === "watchlist" && <WatchlistTab searchQuery={searchQuery} />}
+        {tab === "discover"  && <DiscoverTab />}
       </main>
     </div>
+  )
+}
+
+export default function SijangPage() {
+  return (
+    <Suspense>
+      <SijangContent />
+    </Suspense>
   )
 }

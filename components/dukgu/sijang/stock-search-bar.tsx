@@ -133,7 +133,7 @@ export function StockSearchBar({ onQueryChange }: StockSearchBarProps) {
           type="text"
           value={inputValue}
           onChange={(e) => handleChange(e.target.value)}
-          onFocus={() => { if (results.length > 0) setShowDropdown(true) }}
+          onFocus={() => router.push("/assets/search")}
           placeholder="종목명 · 티커 검색 (예: 삼성전자, AAPL)"
           autoComplete="off"
           className="w-full h-10 bg-white border border-[#E5E7EB] rounded-[10px] px-3 pl-9 pr-10 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-400 transition-all duration-200"
