@@ -2,17 +2,22 @@
 
 import Link from "next/link"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { Home, Zap, TrendingUp, Users, User, ChevronLeft } from "lucide-react"
+import { Home, Zap, TrendingUp, Users, User, ChevronLeft, Wallet, Star, Compass } from "lucide-react"
 import { Suspense } from "react"
 
 const HIDDEN_PATHS = ["/login", "/auth"]
 
 type SijangTab = "holdings" | "watchlist" | "discover"
 
-const SIJANG_TABS: { id: SijangTab; label: string }[] = [
-  { id: "holdings",  label: "보유" },
-  { id: "watchlist", label: "관심" },
-  { id: "discover",  label: "발견" },
+const SIJANG_TABS: {
+  id: SijangTab
+  label: string
+  Icon: React.ElementType
+  ActiveIcon: React.ElementType
+}[] = [
+  { id: "holdings",  label: "보유", Icon: Wallet,  ActiveIcon: Wallet  },
+  { id: "watchlist", label: "관심", Icon: Star,    ActiveIcon: Star    },
+  { id: "discover",  label: "발견", Icon: Compass, ActiveIcon: Compass },
 ]
 
 const NAV_ITEMS = [
@@ -30,42 +35,56 @@ function SijangSubNavBar() {
   const activeTab = (searchParams.get("tab") as SijangTab) ?? "discover"
 
   return (
-    <div className="flex items-center h-[60px] px-2">
-      {/* 뒤로가기 버튼 */}
+    <div className="flex items-center h-[60px]">
+      {/* 뒤로가기 */}
       <button
         onClick={() => router.push("/")}
-        className="flex flex-col items-center justify-center w-14 h-full gap-0.5 text-[#6B7280] hover:text-slate-900 active:scale-95 transition-all duration-200"
+        className="flex flex-col items-center justify-center w-[52px] h-full gap-0.5 shrink-0 text-[#6B7280] hover:text-slate-800 active:scale-90 transition-all duration-150"
       >
-        <div className="p-1.5 rounded-xl">
-          <ChevronLeft className="w-[20px] h-[20px]" />
+        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center">
+          <ChevronLeft className="w-4 h-4 text-slate-500" />
         </div>
-        <span className="text-[10px] font-semibold">뒤로</span>
+        <span className="text-[9px] font-bold text-slate-400">뒤로</span>
       </button>
 
       {/* 탭들 */}
-      <div className="flex flex-1 justify-around items-center h-full">
-        {SIJANG_TABS.map((tab) => {
-          const isActive = activeTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => router.replace(`/assets?tab=${tab.id}`)}
-              className={`relative flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-200 active:scale-95 ${
-                isActive ? "text-emerald-600" : "text-[#6B7280]"
-              }`}
-            >
-              {isActive && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2.5px] rounded-full bg-emerald-500" />
-              )}
-              <div className={`px-4 py-1 rounded-xl transition-colors ${isActive ? "bg-emerald-50" : ""}`}>
-                <span className={`text-[13px] font-black ${isActive ? "text-emerald-600" : "text-[#6B7280]"}`}>
-                  {tab.label}
-                </span>
-              </div>
-            </button>
-          )
-        })}
-      </div>
+      {SIJANG_TABS.map((tab) => {
+        const isActive = activeTab === tab.id
+        const Icon = tab.Icon
+        return (
+          <button
+            key={tab.id}
+            onClick={() => router.replace(`/assets?tab=${tab.id}`)}
+            className="relative flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-200 active:scale-90"
+          >
+            {/* 활성 인디케이터 */}
+            {isActive && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[2.5px] rounded-full bg-emerald-500" />
+            )}
+
+            {/* 아이콘 */}
+            <div className={`p-1.5 rounded-xl transition-all duration-200 ${
+              isActive ? "bg-emerald-50 scale-110" : ""
+            }`}>
+              <Icon
+                className={`w-[22px] h-[22px] transition-all duration-200 ${
+                  isActive
+                    ? "stroke-emerald-600 stroke-[2.5px]"
+                    : "stroke-[#9CA3AF] stroke-2"
+                }`}
+                fill={isActive ? "rgba(16,185,129,0.12)" : "none"}
+              />
+            </div>
+
+            {/* 라벨 */}
+            <span className={`text-[10px] font-bold transition-colors duration-200 ${
+              isActive ? "text-emerald-600" : "text-[#9CA3AF]"
+            }`}>
+              {tab.label}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -84,7 +103,7 @@ function MainNavBar({ pathname }: { pathname: string }) {
           <Link
             key={item.name}
             href={item.path}
-            className={`relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-all duration-200 active:scale-95 ${
+            className={`relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-all duration-200 active:scale-90 ${
               isActive ? "text-emerald-600" : "text-[#6B7280]"
             }`}
           >
@@ -110,22 +129,21 @@ function BottomNavContent() {
 
   if (HIDDEN_PATHS.some((p) => pathname.startsWith(p))) return null
 
-  // 증시 메인 페이지일 때 서브탭으로 교체 (상세/검색 페이지는 메인 네비 유지)
   const isSijangMain = pathname === "/assets"
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full max-w-[420px] mx-auto bg-white/95 backdrop-blur-md border-t border-[#E5E7EB] z-50 pb-safe overflow-hidden">
 
       {/*
-        두 개의 네비바를 겹쳐 놓고 translateY로 슬라이드:
-          - 메인: isSijangMain → 아래로 숨김 (translateY +100%)
-          - 서브: isSijangMain → 위로 등장 (translateY 0)
+        오른쪽에서 왼쪽으로 슬라이드:
+          - 메인: isSijangMain → 왼쪽으로 퇴장 (-translateX 100%)
+          - 서브: isSijangMain → 오른쪽에서 등장 (translateX 0)
       */}
 
       {/* 메인 네비 */}
       <div
         className={`absolute inset-0 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-          isSijangMain ? "translate-y-full" : "translate-y-0"
+          isSijangMain ? "-translate-x-full" : "translate-x-0"
         }`}
       >
         <MainNavBar pathname={pathname} />
@@ -134,7 +152,7 @@ function BottomNavContent() {
       {/* 증시 서브 네비 */}
       <div
         className={`absolute inset-0 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-          isSijangMain ? "translate-y-0" : "-translate-y-full"
+          isSijangMain ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <Suspense fallback={null}>
