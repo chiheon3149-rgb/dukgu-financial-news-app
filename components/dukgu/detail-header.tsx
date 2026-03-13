@@ -1,8 +1,9 @@
 "use client"
 
 import React from "react"
-import { ChevronLeft } from "lucide-react"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { ChevronLeft, Home } from "lucide-react"
+import { useRouter, usePathname } from "next/navigation"
 
 interface DetailHeaderProps {
   title: React.ReactNode
@@ -24,6 +25,11 @@ export function DetailHeader({
   onBack,
 }: DetailHeaderProps) {
   const router = useRouter()
+  const pathname = usePathname()
+
+  // 경로 depth가 3 이상이면 홈 버튼 자동 표시 (rightElement가 없을 때)
+  const depth = pathname.split("/").filter(Boolean).length
+  const showHomeBtn = depth >= 3 && !rightElement
 
   const handleBack = () => {
     if (onBack) onBack()
@@ -57,7 +63,18 @@ export function DetailHeader({
         )}
       </div>
 
-      {rightElement && <div className="shrink-0">{rightElement}</div>}
+      {showHomeBtn ? (
+        <Link
+          href="/"
+          className={`shrink-0 p-1.5 rounded-xl transition-colors ${
+            isDark ? "hover:bg-white/10 text-white/70" : "hover:bg-slate-100 text-slate-400"
+          }`}
+        >
+          <Home className="w-5 h-5" />
+        </Link>
+      ) : rightElement ? (
+        <div className="shrink-0">{rightElement}</div>
+      ) : null}
     </header>
   )
 }

@@ -105,9 +105,13 @@ export function TickerSettingsSheet({
   const [searchResults,  setSearchResults]  = useState<Array<{ symbol: string; shortname: string; exchDisp: string; typeDisp: string }>>([])
   const [isSearching,    setIsSearching]    = useState(false)
   const [showDropdown,   setShowDropdown]   = useState(false)
+  
   const addInputRef    = useRef<HTMLInputElement>(null)
   const dropdownRef    = useRef<HTMLDivElement>(null)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  
+  // 💡 추가: 자동완성 클릭 시 불필요한 API 재호출을 막기 위한 방어막
+  const isSelectingRef = useRef(false)
 
   // 시트가 열리는 순간(isOpen: false→true)에만 초기화
   useEffect(() => {
@@ -118,6 +122,7 @@ export function TickerSettingsSheet({
     setEditingSymbol(null)
     setAddInput("")
     setAddError("")
+    isSelectingRef.current = false
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getDisplayName = (sym: string) =>
@@ -179,14 +184,25 @@ export function TickerSettingsSheet({
     const q = addInput.trim()
     if (!q) { setSearchResults([]); setShowDropdown(false); return }
 
+    // 💡 방어막 확인: 사용자가 드롭다운 항목을 '클릭'해서 인풋값이 바뀐 거라면 검색 생략!
+    if (isSelectingRef.current) {
+      isSelectingRef.current = false
+      return
+    }
+
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     searchTimerRef.current = setTimeout(async () => {
       setIsSearching(true)
       try {
-        const res = await fetch(`/api/market/search?q=${encodeURIComponent(q)}`)
+        const res = await fetch(`/api/stock/search?q=${encodeURIComponent(q)}`)
         if (res.ok) {
           const json = await res.json()
-          setSearchResults(json.quotes ?? [])
+          const formattedResults = (json.results ?? []).map((r: any) => ({
+            symbol: r.ticker,
+            shortname: r.name,
+            exchDisp: r.exchange
+          }))
+          setSearchResults(formattedResults)
           setShowDropdown(true)
         }
       } catch { /* ignore */ } finally {
@@ -197,12 +213,14 @@ export function TickerSettingsSheet({
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
   }, [addInput])
 
+  // 💡 목록에서 클릭했을 때 실행되는 함수
   const selectSuggestion = useCallback((sym: string, name: string) => {
+    isSelectingRef.current = true // 클릭해서 입력하는 것임을 명시 (재검색 방지)
     setAddInput(sym)
     setCustomNames((prev) => ({ ...prev, [sym]: name }))
     setShowDropdown(false)
     setSearchResults([])
-    addInputRef.current?.focus()
+    addInputRef.current?.focus() // 다시 인풋창에 포커스
   }, [])
 
   // ── 새 티커 추가 ──
@@ -452,8 +470,8 @@ export function TickerSettingsSheet({
                       if (e.key === "Enter") handleAdd()
                       if (e.key === "Escape") { setShowDropdown(false); setSearchResults([]) }
                     }}
-                    onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-                    placeholder="예: TSLA, NVDA, 005930.KS"
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                    placeholder="예: TSLA, NVDA, 삼성전자"
                     maxLength={20}
                     className="w-full text-[13px] font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 pr-8 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 placeholder:text-slate-300 placeholder:font-normal"
                   />
@@ -479,7 +497,11 @@ export function TickerSettingsSheet({
                   {searchResults.map((result) => (
                     <button
                       key={result.symbol}
-                      onMouseDown={(e) => { e.preventDefault(); selectSuggestion(result.symbol, result.shortname) }}
+                      // 💡 1차 방어: onMouseDown, onTouchStart로 포커스 잃음(Blur) 방지
+                      onMouseDown={(e) => e.preventDefault()}
+                      onTouchStart={(e) => e.preventDefault()}
+                      // 💡 2차 방어: 확실한 클릭 액션
+                      onClick={() => selectSuggestion(result.symbol, result.shortname)}
                       className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-emerald-50 transition-colors text-left"
                     >
                       <div className="flex-1 min-w-0">
@@ -497,7 +519,7 @@ export function TickerSettingsSheet({
               <p className="text-[11px] text-rose-500 font-bold mt-1.5 px-1">{addError}</p>
             )}
             <p className="text-[10px] text-slate-300 font-medium mt-2 px-1">
-              종목명·심볼 입력 시 자동완성 · 야후 파이낸스 기준
+              종목명·심볼 입력 시 자동완성 · 한글 검색 지원!
             </p>
           </div>
 

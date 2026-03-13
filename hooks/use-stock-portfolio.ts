@@ -49,8 +49,23 @@ export function useStockPortfolio(usdToKrw: number, accountId?: string) {
   
   // 1. 해당 계좌(혹은 전체)의 종목들만 필터링
   const accountHoldings = useMemo(() => {
-    if (!accountId) return context.holdings
-    return context.holdings.filter((h) => h.accountId === accountId)
+    if (accountId) return context.holdings.filter((h) => h.accountId === accountId)
+
+    // accountId 없음 (홀딩스 탭): 같은 티커가 여러 계좌에 있을 경우 거래내역 머지
+    const map = new Map<string, StockHolding>()
+    context.holdings.forEach((h) => {
+      const existing = map.get(h.ticker)
+      if (existing) {
+        map.set(h.ticker, {
+          ...existing,
+          trades: [...existing.trades, ...h.trades],
+          dividends: [...existing.dividends, ...h.dividends],
+        })
+      } else {
+        map.set(h.ticker, { ...h })
+      }
+    })
+    return Array.from(map.values())
   }, [context.holdings, accountId])
 
   const tickers = useMemo(() => accountHoldings.map((h) => h.ticker), [accountHoldings])

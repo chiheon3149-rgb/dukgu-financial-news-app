@@ -92,8 +92,13 @@ function MainNavBar({ pathname }: { pathname: string }) {
     <div className="flex justify-around items-center h-[60px] px-1">
       {NAV_ITEMS.map((item) => {
         const isActive =
-          pathname === item.path ||
-          (pathname.startsWith(`${item.path}/`) && item.path !== "/")
+          item.path === "/assets"
+            // 증시: /assets 정확 일치 또는 /assets/stock/... (종목상세)만 활성
+            // /assets/stocks/... (포트폴리오 관리)는 제외
+            ? pathname === "/assets" ||
+              (pathname.startsWith("/assets/stock/") && !pathname.startsWith("/assets/stocks/"))
+            : pathname === item.path ||
+              (pathname.startsWith(`${item.path}/`) && item.path !== "/")
         const Icon = item.icon
 
         return (
@@ -126,7 +131,7 @@ function BottomNavContent() {
 
   if (HIDDEN_PATHS.some((p) => pathname.startsWith(p))) return null
 
-  const isSijangMain = pathname.startsWith("/assets")
+  const isSijangMain = pathname === "/assets"
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full max-w-[420px] mx-auto bg-white/95 backdrop-blur-md border-t border-[#E5E7EB] z-50 pb-safe overflow-hidden">

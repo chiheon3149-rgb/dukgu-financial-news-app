@@ -4,14 +4,13 @@ import { useState, useEffect, useRef } from "react"
 import { X, Search, Plus, Loader2, TrendingUp, TrendingDown } from "lucide-react"
 import type { StockHolding, MarketQuote } from "@/types"
 
-// 💡 가격 정보를 포함하도록 확장된 검색 결과 타입
 interface SearchResult {
-  symbol: string
-  shortname: string
-  exchDisp: string
-  typeDisp: string
-  price?: number       // 💡 실시간 가격
-  changeRate?: number  // 💡 등락률
+  ticker:    string
+  name:      string
+  exchange:  string
+  isKorean:  boolean
+  price?:    number
+  changeRate?: number
 }
 
 interface AddTickerSheetProps {
@@ -53,10 +52,10 @@ export function AddTickerSheet({ isOpen, onClose, onAdd }: AddTickerSheetProps) 
     debounceRef.current = setTimeout(async () => {
       setSearchError(null)
       try {
-        // 1단계: 티커/회사명 검색 실행
-        const res = await fetch(`/api/market/search?q=${encodeURIComponent(query.trim())}`)
+        // 1단계: 티커/회사명 검색
+        const res = await fetch(`/api/stock/search?q=${encodeURIComponent(query.trim())}`)
         const data = await res.json()
-        
+
         if (data.error) {
           setSearchError(data.error)
           setResults([])
@@ -64,22 +63,17 @@ export function AddTickerSheet({ isOpen, onClose, onAdd }: AddTickerSheetProps) 
           return
         }
 
-        const searchItems: SearchResult[] = data.quotes ?? []
-        
-        // 2단계: 검색된 티커들의 실시간 시세를 서버(/api/market/quotes)에 한꺼번에 요청
+        const searchItems: SearchResult[] = data.results ?? []
+
+        // 2단계: 실시간 시세 병합
         if (searchItems.length > 0) {
-          const tickers = searchItems.map(item => item.symbol).join(",")
+          const tickers = searchItems.map(item => item.ticker).join(",")
           const priceRes = await fetch(`/api/market/quotes?tickers=${tickers}`)
           const prices: MarketQuote[] = await priceRes.json()
 
-          // 3단계: 검색 결과 리스트에 가격과 등락률 데이터를 챡! 붙여줍니다.
           const mergedResults = searchItems.map(item => {
-            const priceInfo = prices.find(p => p.ticker === item.symbol)
-            return {
-              ...item,
-              price: priceInfo?.currentPrice,
-              changeRate: priceInfo?.changePercent // types/index.ts 수정이 선행되어야 함
-            }
+            const priceInfo = prices.find(p => p.ticker === item.ticker)
+            return { ...item, price: priceInfo?.currentPrice, changeRate: priceInfo?.changePercent }
           })
           setResults(mergedResults)
         } else {
@@ -94,20 +88,17 @@ export function AddTickerSheet({ isOpen, onClose, onAdd }: AddTickerSheetProps) 
   }, [query])
 
   const handleAdd = (result: SearchResult) => {
-    const isKrw = result.symbol.endsWith(".KS") || result.symbol.endsWith(".KQ")
     onAdd({
-      ticker: result.symbol,
-      name: result.shortname,
-      currency: isKrw ? "KRW" : "USD",
+      ticker:   result.ticker,
+      name:     result.name,
+      currency: result.isKorean ? "KRW" : "USD",
     })
     onClose()
   }
 
-  // 💡 [기획 준수] 화폐별 가격 포맷팅 함수
-  const formatPrice = (price: number | undefined, symbol: string) => {
+  const formatPrice = (price: number | undefined, isKorean: boolean) => {
     if (price === undefined || price === 0) return "---"
-    const isKrw = symbol.endsWith(".KS") || symbol.endsWith(".KQ")
-    if (isKrw) return `${Math.round(price).toLocaleString()}원`
+    if (isKorean) return `${Math.round(price).toLocaleString()}원`
     return `$${price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
@@ -165,22 +156,24 @@ export function AddTickerSheet({ isOpen, onClose, onAdd }: AddTickerSheetProps) 
             <div className="space-y-1">
               {results.map((result) => (
                 <button
-                  key={result.symbol}
+                  key={result.ticker}
                   onClick={() => handleAdd(result)}
                   className="w-full flex items-center justify-between px-3 py-4 rounded-2xl hover:bg-slate-50 active:bg-emerald-50 transition-all group"
                 >
                   <div className="text-left min-w-0 flex-1 pr-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-[15px] font-black text-slate-800">{result.symbol}</span>
-                      <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md uppercase shrink-0">{result.typeDisp}</span>
+                      <span className="text-[15px] font-black text-slate-800">{result.ticker}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase shrink-0 ${result.isKorean ? "bg-blue-50 text-blue-500" : "bg-emerald-50 text-emerald-600"}`}>
+                        {result.exchange || (result.isKorean ? "KR" : "US")}
+                      </span>
                     </div>
-                    <p className="text-[12px] font-bold text-slate-500 mt-0.5 truncate">{result.shortname}</p>
+                    <p className="text-[12px] font-bold text-slate-500 mt-0.5 truncate">{result.name}</p>
                   </div>
 
                   {/* 우측 가격 및 등락률 영역 */}
                   <div className="text-right shrink-0 flex flex-col items-end gap-1">
                     <p className="text-[14px] font-black text-slate-800 whitespace-nowrap">
-                      {formatPrice(result.price, result.symbol)}
+                      {formatPrice(result.price, result.isKorean)}
                     </p>
                     {result.changeRate !== undefined && (
                       <div className={`text-[10px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${

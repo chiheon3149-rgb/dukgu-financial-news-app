@@ -3,12 +3,19 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Search, X, Clock, TrendingUp, Loader2 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import type { User } from "@supabase/supabase-js"
 
 interface SearchResult {
   ticker:   string
   name:     string
   exchange: string
   isKorean: boolean
+}
+
+interface RecentItem {
+  ticker: string
+  name:   string
 }
 
 // 인기 종목: 종목명 → 티커 매핑 (목업 순위, 실시간 가격은 API로 fetch)
@@ -30,57 +37,64 @@ interface PopularQuote {
   changeRate: number
 }
 
-const STORAGE_KEY = "dukgu_recent_searches"
+// ─── localStorage 유틸 (비로그인 fallback) ────────────────────────────────────
 
-function loadRecentSearches(): string[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
+const LS_KEY = "dukgu_recent_tickers"
+
+function lsLoad(): RecentItem[] {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]") } catch { return [] }
 }
 
-function saveRecentSearch(name: string, ticker: string) {
+function lsSave(name: string, ticker: string) {
   try {
-    const key = "dukgu_recent_tickers"
-    const prev: { name: string; ticker: string }[] = JSON.parse(localStorage.getItem(key) ?? "[]")
+    const prev = lsLoad()
     const next = [{ name, ticker }, ...prev.filter((r) => r.ticker !== ticker)].slice(0, 10)
-    localStorage.setItem(key, JSON.stringify(next))
-    // 이름도 기존 키에 저장 (하위 호환)
-    const prevNames = loadRecentSearches()
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([name, ...prevNames.filter((n) => n !== name)].slice(0, 10)))
+    localStorage.setItem(LS_KEY, JSON.stringify(next))
   } catch { /* ignore */ }
 }
 
-function loadRecentTickers(): { name: string; ticker: string }[] {
+function lsRemove(ticker: string) {
   try {
-    return JSON.parse(localStorage.getItem("dukgu_recent_tickers") ?? "[]")
-  } catch { return [] }
-}
-
-function removeRecentTicker(ticker: string) {
-  try {
-    const prev = loadRecentTickers()
-    localStorage.setItem("dukgu_recent_tickers", JSON.stringify(prev.filter((r) => r.ticker !== ticker)))
-    const prevNames = loadRecentSearches()
-    const name = prev.find((r) => r.ticker === ticker)?.name
-    if (name) localStorage.setItem(STORAGE_KEY, JSON.stringify(prevNames.filter((n) => n !== name)))
+    localStorage.setItem(LS_KEY, JSON.stringify(lsLoad().filter((r) => r.ticker !== ticker)))
   } catch { /* ignore */ }
 }
+
+function lsClear() {
+  try { localStorage.removeItem(LS_KEY) } catch { /* ignore */ }
+}
+
+// =============================================================================
 
 export default function SearchPage() {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [user,          setUser]          = useState<User | null>(null)
   const [query,         setQuery]         = useState("")
   const [results,       setResults]       = useState<SearchResult[]>([])
   const [isLoading,     setIsLoading]     = useState(false)
-  const [recentItems,   setRecentItems]   = useState<{ name: string; ticker: string }[]>([])
+  const [recentItems,   setRecentItems]   = useState<RecentItem[]>([])
   const [popularQuotes, setPopularQuotes] = useState<Record<string, PopularQuote>>({})
 
+  // ─── 마운트: 유저 확인 + 히스토리 로드 ──────────────────────────────────────
+
   useEffect(() => {
-    setRecentItems(loadRecentTickers())
     setTimeout(() => inputRef.current?.focus(), 100)
+
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      setUser(u)
+      if (u) {
+        // 로그인: DB에서 로드
+        fetch("/api/search/history")
+          .then((r) => r.json())
+          .then((data: { history: RecentItem[] }) => setRecentItems(data.history ?? []))
+          .catch(() => setRecentItems([]))
+      } else {
+        // 비로그인: localStorage
+        setRecentItems(lsLoad())
+      }
+    })
 
     // 인기 종목 가격 fetch
     const tickers = POPULAR_STOCKS.map((s) => s.ticker).join(",")
@@ -93,6 +107,8 @@ export default function SearchPage() {
       })
       .catch(() => {/* 조용히 실패 */})
   }, [])
+
+  // ─── 검색 ─────────────────────────────────────────────────────────────────
 
   const search = useCallback(async (q: string) => {
     if (q.trim().length < 1) { setResults([]); return }
@@ -114,28 +130,68 @@ export default function SearchPage() {
     debounceRef.current = setTimeout(() => search(val), 350)
   }
 
-  const handleSelectResult = (result: SearchResult) => {
-    saveRecentSearch(result.name, result.ticker)
-    setRecentItems(loadRecentTickers())
+  // ─── 히스토리 저장/삭제 ───────────────────────────────────────────────────
+
+  async function saveHistory(name: string, ticker: string) {
+    if (user) {
+      await fetch("/api/search/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker, name }),
+      })
+      // DB에서 최신 목록 갱신
+      const res = await fetch("/api/search/history")
+      const data: { history: RecentItem[] } = await res.json()
+      setRecentItems(data.history ?? [])
+    } else {
+      lsSave(name, ticker)
+      setRecentItems(lsLoad())
+    }
+  }
+
+  async function removeHistory(ticker: string) {
+    if (user) {
+      await fetch(`/api/search/history?ticker=${encodeURIComponent(ticker)}`, { method: "DELETE" })
+      setRecentItems((prev) => prev.filter((r) => r.ticker !== ticker))
+    } else {
+      lsRemove(ticker)
+      setRecentItems(lsLoad())
+    }
+  }
+
+  async function clearHistory() {
+    if (user) {
+      await fetch("/api/search/history", { method: "DELETE" })
+    } else {
+      lsClear()
+    }
+    setRecentItems([])
+  }
+
+  // ─── 이벤트 핸들러 ────────────────────────────────────────────────────────
+
+  const handleSelectResult = async (result: SearchResult) => {
+    await saveHistory(result.name, result.ticker)
     router.push(`/assets/stock/${encodeURIComponent(result.ticker)}`)
   }
 
-  const handleSelectPopular = (stock: { name: string; ticker: string }) => {
-    saveRecentSearch(stock.name, stock.ticker)
+  const handleSelectPopular = async (stock: { name: string; ticker: string }) => {
+    await saveHistory(stock.name, stock.ticker)
     router.push(`/assets/stock/${encodeURIComponent(stock.ticker)}`)
   }
 
-  const handleSelectRecent = (item: { name: string; ticker: string }) => {
+  const handleSelectRecent = (item: RecentItem) => {
     router.push(`/assets/stock/${encodeURIComponent(item.ticker)}`)
   }
 
   const handleRemoveRecent = (ticker: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    removeRecentTicker(ticker)
-    setRecentItems(loadRecentTickers())
+    removeHistory(ticker)
   }
 
   const showResults = query.trim().length > 0
+
+  // ==========================================================================
 
   return (
     <div className="min-h-dvh bg-[#F9FAFB] pb-20">
@@ -225,11 +281,7 @@ export default function SearchPage() {
                 최근 검색
               </h2>
               <button
-                onClick={() => {
-                  localStorage.removeItem("dukgu_recent_tickers")
-                  localStorage.removeItem(STORAGE_KEY)
-                  setRecentItems([])
-                }}
+                onClick={clearHistory}
                 className="text-[11px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
               >
                 전체 삭제

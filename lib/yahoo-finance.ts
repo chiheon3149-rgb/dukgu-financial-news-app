@@ -82,6 +82,30 @@ export async function yahooFetch(symbols: string[], retried = false): Promise<an
 }
 
 /**
+ * Yahoo Finance 트렌딩 종목 API (crumb 인증 포함)
+ * region: "KR" | "US"
+ */
+export async function yahooTrending(region: "KR" | "US", count = 15): Promise<string[]> {
+  const { crumb, cookies } = await getCrumb()
+  const url = `https://query1.finance.yahoo.com/v1/finance/trending/${region}?count=${count}&crumb=${encodeURIComponent(crumb)}`
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": UA,
+      "Accept": "application/json",
+      "Cookie": cookies,
+      "Referer": "https://finance.yahoo.com/",
+    },
+    cache: "no-store",
+  })
+
+  if (!res.ok) throw new Error(`Yahoo Finance trending 오류: ${res.status}`)
+  const data = await res.json()
+  const quotes: { symbol: string }[] = data?.finance?.result?.[0]?.quotes ?? []
+  return quotes.map((q) => q.symbol).filter(Boolean)
+}
+
+/**
  * Yahoo Finance 검색 API (crumb 인증 포함)
  */
 export async function yahooSearch(query: string): Promise<any[]> {

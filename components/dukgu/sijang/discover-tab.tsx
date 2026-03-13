@@ -10,6 +10,7 @@ import Link from "next/link"
 import { Bookmark, ChevronRight, Settings } from "lucide-react"
 import { MarketTreemap } from "./market-treemap"
 import { ThemeCards } from "./theme-cards"
+import { useWatchlist } from "@/hooks/use-watchlist"
 
 import { 
   TickerSettingsSheet, 
@@ -36,7 +37,7 @@ interface TopStock {
   price: number
   currency: "KRW" | "USD"
   volume: number
-  marketCap: number
+  tradingValue: number // volume × price
 }
 
 // ─── 유틸: 티커 → 배지 색상 ──────────────────────────────────────────────────
@@ -94,14 +95,20 @@ export function DiscoverTab() {
   const [topStocks, setTopStocks]           = useState<{ kr: TopStock[]; us: TopStock[] }>({ kr: [], us: [] })
   const [stocksLoading, setStocksLoading]   = useState(true)
   const [stocksError, setStocksError]       = useState(false)
+  const [fetchedAt, setFetchedAt]           = useState<Date | null>(null)
 
-  const [marketFilter, setMarketFilter]     = useState<MarketFilter>("all")
+  const [marketFilter, setMarketFilter]     = useState<MarketFilter>(() => {
+    // KST(UTC+9) 기준 08:30~18:00 → 한국, 그 외 → 미국 자동 선택
+    const nowKST = new Date(Date.now() + 9 * 60 * 60 * 1000)
+    const h = nowKST.getUTCHours()
+    const m = nowKST.getUTCMinutes()
+    const total = h * 60 + m
+    return total >= 8 * 60 + 30 && total < 18 * 60 ? "kr" : "us"
+  })
   const [sortKey, setSortKey]               = useState<SortKey>("popular")
 
-  // 마키 배너 자동 전환 인덱스
   const [marqueeIdx, setMarqueeIdx]         = useState(0)
 
-  // 💡 설정 시트 상태
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [tickerSettings, setTickerSettings] = useState<TickerSettings>({
     customNames: {},
@@ -110,14 +117,13 @@ export function DiscoverTab() {
   })
 
   const router = useRouter()
+  const { toggle: toggleWatchlist, isWatched } = useWatchlist()
 
   // ─── 데이터 페치 및 초기 설정 로드 ──────────────────────────────────────────
 
   useEffect(() => {
-    // 로컬 스토리지에서 설정 불러오기
     setTickerSettings(loadTickerSettings())
 
-    // 글로벌 지수 조회
     fetch("/api/market/indices")
       .then((r) => r.json())
       .then((data: { indices: IndexQuote[] }) => {
@@ -127,30 +133,41 @@ export function DiscoverTab() {
       .finally(() => setIndicesLoading(false))
   }, [])
 
-  useEffect(() => {
-    // TOP 주식 조회
+  const fetchTopStocks = () => {
     fetch("/api/market/top-stocks")
       .then((r) => r.json())
-      .then((data: { kr: TopStock[]; us: TopStock[]; error?: boolean }) => {
+      .then((data: { kr: TopStock[]; us: TopStock[]; fetchedAt?: string; error?: boolean }) => {
         if (data.error) {
           setStocksError(true)
         } else {
           setTopStocks({ kr: data.kr ?? [], us: data.us ?? [] })
+          setFetchedAt(data.fetchedAt ? new Date(data.fetchedAt) : new Date())
+          setStocksError(false)
         }
       })
       .catch(() => setStocksError(true))
       .finally(() => setStocksLoading(false))
+  }
+
+  useEffect(() => {
+    fetchTopStocks()
+    const interval = setInterval(fetchTopStocks, 15 * 60 * 1000) // 15분마다 갱신
+    return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ─── 마키 배너: 3초마다 자동 전환 ────────────────────────────────────────
+  // ─── 마키 배너 ────────────────────────────────────────
 
-  const marqueeItems = topStocks.kr.slice(0, 10)
+  // 마키: 현재 마켓 필터에 맞는 종목 표시
+  const marqueeItems = marketFilter === "us"
+    ? topStocks.us.slice(0, 10)
+    : topStocks.kr.slice(0, 10)
 
   useEffect(() => {
     if (marqueeItems.length === 0) return
     const timer = setInterval(() => {
       setMarqueeIdx((prev) => (prev + 1) % marqueeItems.length)
-    }, 3000)
+    }, 1500)
     return () => clearInterval(timer)
   }, [marqueeItems.length])
 
@@ -164,9 +181,15 @@ export function DiscoverTab() {
 
     switch (sortKey) {
       case "popular":
+        // "전체" 선택 시 KR/US 교차 배치 (KR 1위, US 1위, KR 2위, US 2위...)
+        if (marketFilter === "all") {
+          const kr = topStocks.kr.slice(0, 5)
+          const us = topStocks.us.slice(0, 5)
+          return kr.flatMap((k, i) => (us[i] ? [k, us[i]] : [k])).slice(0, 10)
+        }
         return pool.slice(0, 10)
       case "trading":
-        return [...pool].sort((a, b) => b.marketCap - a.marketCap).slice(0, 10)
+        return [...pool].sort((a, b) => b.tradingValue - a.tradingValue).slice(0, 10)
       case "volume":
         return [...pool].sort((a, b) => b.volume - a.volume).slice(0, 10)
       case "gainers":
@@ -205,7 +228,7 @@ export function DiscoverTab() {
               const rank = marqueeIdx + 1
               const isUp = item.changeRate >= 0
               return (
-                <span key={marqueeIdx} className="text-[13px] font-black truncate block animate-in slide-in-from-bottom-2 duration-300">
+                <span key={marqueeIdx} className="text-[13px] font-black truncate block animate-in slide-in-from-bottom-2 duration-150">
                   <span className="text-slate-400 mr-1">{rank}.</span>
                   <span className="text-slate-900 mr-2">{item.name}</span>
                   <span className={isUp ? "text-rose-500" : "text-blue-500"}>
@@ -241,13 +264,14 @@ export function DiscoverTab() {
                     const isUp = idx.changeStatus === "up"
                     const displayName = tickerSettings.customNames?.[idx.symbol] ?? INDEX_DISPLAY[idx.symbol] ?? idx.name
                     
-                    // 💡 JPYKRW=X(엔/원)일 경우 100엔 기준으로 100을 곱해서 보여줍니다.
                     const displayPrice = idx.symbol === "JPYKRW=X" ? idx.price * 100 : idx.price
 
                     return (
-                      <div
+                      // 💡 변경됨: div에서 Link로 교체하여 클릭 시 /market 페이지로 이동
+                      <Link
                         key={idx.symbol}
-                        className="h-[72px] bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] px-3 flex flex-col justify-center gap-0.5"
+                        href="/market"
+                        className="h-[72px] bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] px-3 flex flex-col justify-center gap-0.5 hover:bg-slate-50 transition-colors active:scale-[0.98] text-left block"
                       >
                         <p className="text-[11px] text-slate-500 truncate">{displayName}</p>
                         <p className="text-[14px] font-black text-slate-900 leading-tight">
@@ -259,16 +283,14 @@ export function DiscoverTab() {
                           {isUp ? "▲" : idx.changeStatus === "down" ? "▼" : ""}
                           {Math.abs(idx.changeRate).toFixed(2)}%
                         </p>
-                      </div>
+                      </Link>
                     )
                   })
             }
 
-            {/* 💡 폭 1/2, 높이 2칸인 세로형 설정 버튼 (진녹색 바탕 + 흰 글씨) */}
-            {/* 💡 연한 회색 바탕 + 짙은 회색 글씨 */}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="h-[154px] w-[calc((100vw-72px)/6)] min-w-[50px] bg-slate-50 border border-slate-100 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-100 transition-colors shadow-sm active:scale-[0.98]"
+              className="h-[154px] w-[calc((100vw-72px)/6)] min-w-[50px] bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] flex flex-col items-center justify-center gap-2 hover:bg-slate-50 transition-colors active:scale-[0.98]"
               style={{ gridRow: "span 2" }}
             >
               <Settings className="w-5 h-5 text-slate-400" />
@@ -282,7 +304,17 @@ export function DiscoverTab() {
       {/* ─── 섹션 3: TOP 주식 ────────────────────────────────────────────────── */}
       <section className="bg-white rounded-2xl shadow-[0_6px_20px_rgba(0,0,0,0.05)] px-4 pt-4 pb-2">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[15px] font-black text-slate-900">TOP 주식</h3>
+          <div className="flex flex-col gap-0.5">
+            <h3 className="text-[15px] font-black text-slate-900">실시간 TOP 10</h3>
+            {fetchedAt && (
+              <p className="text-[10px] font-medium text-slate-400">
+                {(() => {
+                  const diffMin = Math.floor((Date.now() - fetchedAt.getTime()) / 60000)
+                  return diffMin < 1 ? "방금 업데이트" : `${diffMin}분 전 업데이트 · 15분마다 갱신`
+                })()}
+              </p>
+            )}
+          </div>
           <div className="bg-slate-100 rounded-[10px] p-0.5 flex gap-0.5">
             {(["all", "kr", "us"] as MarketFilter[]).map((m) => (
               <button
@@ -347,6 +379,10 @@ export function DiscoverTab() {
               const isUp = stock.changeRate >= 0
               const initial = (stock.displayTicker || stock.ticker).charAt(0).toUpperCase()
 
+              const isKorean = stock.ticker.endsWith(".KS") || stock.ticker.endsWith(".KQ")
+              const cleanTicker = isKorean ? stock.ticker.split(".")[0] : stock.ticker
+              const logoUrl = `https://static.toss.im/png-icons/securities/icn-sec-fill-${cleanTicker}.png`
+
               return (
                 <Link
                   key={stock.ticker}
@@ -360,14 +396,25 @@ export function DiscoverTab() {
                     {rank}
                   </span>
 
-                  <div
-                    className="w-10 h-10 rounded-[12px] flex items-center justify-center text-white font-black text-[14px] shrink-0"
-                    style={{ backgroundColor: tickerToColor(stock.ticker) }}
-                  >
-                    {initial}
+                  <div className="relative w-10 h-10 shrink-0 rounded-[12px] overflow-hidden bg-slate-50 flex items-center justify-center shadow-[inset_0_1px_4px_rgba(0,0,0,0.05)]">
+                    <img
+                      src={logoUrl}
+                      alt={stock.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 flex items-center justify-center text-white font-black text-[14px] hidden"
+                      style={{ backgroundColor: tickerToColor(stock.ticker) }}
+                    >
+                      {initial}
+                    </div>
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pl-1">
                     <p className="text-[14px] font-semibold text-slate-900 truncate">{stock.name}</p>
                     <p className="text-[11px] font-medium text-slate-400">{stock.displayTicker}</p>
                   </div>
@@ -377,13 +424,29 @@ export function DiscoverTab() {
                       {isUp ? "▲" : "▼"} {Math.abs(stock.changeRate).toFixed(2)}%
                     </span>
                     <span className="text-[11px] font-bold text-slate-500">
-                      {stock.currency === "KRW"
+                      {sortKey === "trading"
+                        ? stock.currency === "KRW"
+                          ? `${Math.round(stock.tradingValue / 1_0000_0000).toLocaleString()}억원`
+                          : `$${(stock.tradingValue / 1_000_000).toFixed(0)}M`
+                        : sortKey === "volume"
+                        ? stock.currency === "KRW"
+                          ? `${Math.round(stock.volume / 10000).toLocaleString()}만주`
+                          : `${(stock.volume / 1_000_000).toFixed(1)}M주`
+                        : stock.currency === "KRW"
                         ? `${Math.round(stock.price).toLocaleString()}원`
                         : `$${stock.price.toFixed(2)}`}
                     </span>
                   </div>
 
-                  <Bookmark className="w-4 h-4 text-slate-200 shrink-0" />
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); toggleWatchlist(stock.ticker, stock.name) }}
+                    className="shrink-0 p-0.5 active:scale-90 transition-all"
+                  >
+                    <Bookmark className={`w-4 h-4 transition-colors ${
+                      isWatched(stock.ticker) ? "fill-emerald-500 text-emerald-500" : "text-slate-200"
+                    }`} />
+                  </button>
                 </Link>
               )
             })}

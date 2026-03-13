@@ -4,7 +4,7 @@
 // 한 눈에 보기 - 시장 트리맵 (Recharts Treemap)
 // =============================================================================
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 
 // ─── 타입 정의 ───────────────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ interface TopStock {
   price: number
   currency: "KRW" | "USD"
   volume: number
-  marketCap: number
+  tradingValue: number
 }
 
 interface TreemapLeaf {
@@ -70,13 +70,36 @@ function buildTreemapData(stocks: TopStock[], sectors: Record<string, string>): 
     sectorMap[sectorKey].push({
       name: stock.name,
       displayTicker: stock.displayTicker,
-      value: stock.marketCap > 0 ? stock.marketCap : 1e10,
+      value: stock.tradingValue > 0 ? stock.tradingValue : 1e10,
       changeRate: stock.changeRate,
       ticker: stock.ticker,
     })
   }
 
   return Object.entries(sectorMap).map(([name, children]) => ({ name, children }))
+}
+
+// ─── 섹터별 평균 등락률 계산 ──────────────────────────────────────────────────
+
+interface SectorStat {
+  name: string
+  avgRate: number
+  count: number
+}
+
+function buildSectorStats(stocks: TopStock[], sectors: Record<string, string>): SectorStat[] {
+  const map: Record<string, { sum: number; count: number }> = {}
+
+  for (const stock of stocks) {
+    const sector = sectors[stock.ticker] ?? "기타"
+    if (!map[sector]) map[sector] = { sum: 0, count: 0 }
+    map[sector].sum += stock.changeRate
+    map[sector].count++
+  }
+
+  return Object.entries(map)
+    .map(([name, { sum, count }]) => ({ name, avgRate: sum / count, count }))
+    .sort((a, b) => b.avgRate - a.avgRate)
 }
 
 // ─── CustomCell (recharts content prop) ──────────────────────────────────────
@@ -86,7 +109,6 @@ function CustomCell(props: any) {
   const { x, y, width, height, depth, name, changeRate } = props
 
   if (depth === 1) {
-    // 섹터 레이어: 투명 배경 + 섹터명 레이블
     return (
       <g>
         <rect
@@ -171,7 +193,7 @@ const TreemapChart = dynamic(
       const { Treemap, ResponsiveContainer } = re
       return function Chart({ data }: { data: TreemapData[] }) {
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <ResponsiveContainer width="100%" height={280}>
             <Treemap
               data={data}
               dataKey="value"
@@ -185,7 +207,7 @@ const TreemapChart = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-[320px] bg-slate-800 rounded-xl animate-pulse" />
+      <div className="w-full h-[280px] bg-slate-800 rounded-xl animate-pulse" />
     ),
   }
 )
@@ -196,11 +218,22 @@ const TreemapChart = dynamic(
 
 export function MarketTreemap({ krStocks, usStocks }: MarketTreemapProps) {
   const [market, setMarket] = useState<"kr" | "us">("kr")
+  const [selectedSector, setSelectedSector] = useState<string | null>(null)
 
-  const data = buildTreemapData(
-    market === "kr" ? krStocks : usStocks,
-    market === "kr" ? KR_SECTORS : US_SECTORS
-  )
+  // 마켓 전환 시 섹터 필터 초기화
+  useEffect(() => { setSelectedSector(null) }, [market])
+
+  const stocks  = market === "kr" ? krStocks : usStocks
+  const sectors = market === "kr" ? KR_SECTORS : US_SECTORS
+
+  const sectorStats = buildSectorStats(stocks, sectors)
+  const sectorNames = sectorStats.map((s) => s.name)
+
+  const filteredStocks = selectedSector
+    ? stocks.filter((s) => (sectors[s.ticker] ?? "기타") === selectedSector)
+    : stocks
+
+  const data = buildTreemapData(filteredStocks, sectors)
 
   return (
     <section className="bg-white rounded-2xl shadow-[0_6px_20px_rgba(0,0,0,0.05)] p-4">
@@ -210,7 +243,6 @@ export function MarketTreemap({ krStocks, usStocks }: MarketTreemapProps) {
           <h3 className="text-[15px] font-black text-slate-900">한 눈에 보기</h3>
           <p className="text-[10px] font-bold text-slate-400 mt-0.5">시가총액 기준 · 색상은 등락률</p>
         </div>
-        {/* 한국/미국 토글 */}
         <div className="bg-slate-100 rounded-[10px] p-0.5 flex gap-0.5">
           <button
             onClick={() => setMarket("kr")}
@@ -241,16 +273,82 @@ export function MarketTreemap({ krStocks, usStocks }: MarketTreemapProps) {
         </span>
       </div>
 
-      {/* 다크 컨테이너 */}
+      {/* 섹터 필터 칩 */}
+      {sectorNames.length > 0 && (
+        <div className="overflow-x-auto scrollbar-none -mx-4 px-4 mb-3">
+          <div className="flex gap-1.5 w-max">
+            <button
+              onClick={() => setSelectedSector(null)}
+              className={`text-[11px] font-black px-3 py-1 rounded-full border transition-colors shrink-0 ${
+                selectedSector === null
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-500 border-slate-200"
+              }`}
+            >
+              전체
+            </button>
+            {sectorNames.map((name) => (
+              <button
+                key={name}
+                onClick={() => setSelectedSector(selectedSector === name ? null : name)}
+                className={`text-[11px] font-black px-3 py-1 rounded-full border transition-colors shrink-0 ${
+                  selectedSector === name
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-white text-slate-500 border-slate-200"
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 다크 트리맵 */}
       <div className="bg-slate-900 rounded-xl overflow-hidden">
         {data.length > 0 ? (
           <TreemapChart data={data} />
         ) : (
-          <div className="h-[320px] flex items-center justify-center text-slate-500 text-[13px] font-bold">
+          <div className="h-[280px] flex items-center justify-center text-slate-500 text-[13px] font-bold">
             데이터 로딩 중...
           </div>
         )}
       </div>
+
+      {/* 섹터별 평균 등락률 */}
+      {sectorStats.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[11px] font-black text-slate-500 mb-2">섹터별 평균 등락률</p>
+          <div className="space-y-2">
+            {sectorStats.map((s) => {
+              const isUp = s.avgRate >= 0
+              const barWidth = Math.min(100, Math.abs(s.avgRate) * 15)
+              return (
+                <button
+                  key={s.name}
+                  type="button"
+                  onClick={() => setSelectedSector(selectedSector === s.name ? null : s.name)}
+                  className={`w-full flex items-center gap-3 py-1.5 px-2 rounded-xl transition-colors text-left ${
+                    selectedSector === s.name ? "bg-slate-100" : "hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="text-[12px] font-semibold text-slate-700 w-16 shrink-0">{s.name}</span>
+                  <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${isUp ? "bg-rose-400" : "bg-blue-400"}`}
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                  <span className={`text-[12px] font-black w-14 text-right shrink-0 ${isUp ? "text-rose-500" : "text-blue-500"}`}>
+                    {isUp ? "▲" : "▼"}{Math.abs(s.avgRate).toFixed(2)}%
+                  </span>
+                  <span className="text-[10px] text-slate-400 shrink-0">{s.count}종목</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </section>
   )
 }
