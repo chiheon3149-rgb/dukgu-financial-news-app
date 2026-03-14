@@ -17,6 +17,7 @@ import { updateCachedCommentCountInFeed } from "@/hooks/use-news-feed"
 import { useSavedArticles } from "@/hooks/use-saved-articles"
 import { useUser } from "@/context/user-context"
 import { useNewsAdmin } from "@/hooks/use-news-admin"
+import { useKrStockNames } from "@/hooks/use-kr-stock-names"
 import { AdBanner } from "@/components/dukgu/ad-banner"
 
 // =============================================================================
@@ -103,37 +104,40 @@ function IssueBadge({ type }: { type: "호재" | "악재" | "중립" }) {
 // 티커 카드 (클릭 시 /assets/stock/[ticker])
 // =============================================================================
 
-function TickerCard({ ticker, quote }: { ticker: string; quote?: TickerQuote }) {
+function TickerCard({ ticker, displayName, quote }: { ticker: string; displayName?: string; quote?: TickerQuote }) {
   const isUp   = (quote?.changePercent ?? 0) > 0
   const isDown = (quote?.changePercent ?? 0) < 0
   const pct    = quote ? `${isUp ? "+" : ""}${quote.changePercent.toFixed(2)}%` : null
+  const name   = displayName || quote?.name || ticker
 
   return (
     <Link
       href={`/assets/stock/${ticker}`}
-      className="flex items-center justify-between bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl px-3.5 py-2.5 transition-all active:scale-95"
+      className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 transition-all active:scale-95 border-l-[3px] bg-slate-50 hover:bg-slate-100 border border-slate-100 ${
+        isUp ? "border-l-red-400" : isDown ? "border-l-blue-400" : "border-l-slate-300"
+      }`}
     >
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="text-[13px] font-black text-slate-800 shrink-0">{ticker}</span>
-        {quote?.name && (
-          <span className="text-[11px] text-slate-400 font-medium truncate">{quote.name}</span>
-        )}
+      <div className="flex flex-col min-w-0 gap-0.5">
+        <span className="text-[13px] font-extrabold text-slate-800 leading-none">{name}</span>
+        <span className="text-[10px] text-slate-400 font-medium">{ticker}</span>
       </div>
       <div className="flex items-center gap-1.5 shrink-0 ml-2">
         {quote ? (
           <>
-            <span className="text-[12px] font-bold text-slate-600">
+            <span className="text-[13px] font-bold text-slate-700">
               {quote.currency === "KRW"
                 ? quote.currentPrice.toLocaleString("ko-KR") + "원"
                 : "$" + quote.currentPrice.toFixed(2)}
             </span>
-            <span className={`flex items-center gap-0.5 text-[12px] font-black ${isUp ? "text-red-500" : isDown ? "text-blue-500" : "text-slate-400"}`}>
+            <span className={`flex items-center gap-0.5 text-[12px] font-black px-1.5 py-0.5 rounded-md ${
+              isUp ? "bg-red-50 text-red-500" : isDown ? "bg-blue-50 text-blue-500" : "bg-slate-100 text-slate-400"
+            }`}>
               {isUp ? <TrendingUp className="w-3 h-3" /> : isDown ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
               {pct}
             </span>
           </>
         ) : (
-          <span className="text-[11px] text-slate-300 animate-pulse">시세 로딩 중...</span>
+          <span className="text-[11px] text-slate-300 animate-pulse">로딩 중</span>
         )}
       </div>
     </Link>
@@ -213,6 +217,11 @@ export function NewsDetailClient({ id }: { id: string }) {
     }
   }
 
+  // 한국 주식 티커 → 한국어 기업명 매핑 (early return 전에 선언해야 Rules of Hooks 준수)
+  const rawTickers: string[] = Array.isArray(news?.tickers) ? news.tickers : []
+  const ksTickers = rawTickers.filter((t) => /^\d{6}$/.test(t)).map((t) => `${t}.KS`)
+  const krNames = useKrStockNames(ksTickers)
+
   const newsIdStr = news ? String(news.id) : ""
   const isBookmarked = news ? isSaved(newsIdStr) : false
 
@@ -263,6 +272,11 @@ export function NewsDetailClient({ id }: { id: string }) {
   const tickers: string[] = Array.isArray(news.tickers) ? news.tickers : []
   const isDukguPick       = news.source === "덕구"
 
+  const getTickerDisplay = (ticker: string) => {
+    if (/^\d{6}$/.test(ticker)) return krNames[`${ticker}.KS`] ?? tickerQuotes[ticker]?.name ?? ticker
+    return tickerQuotes[ticker]?.name ?? ticker
+  }
+
   // ─── 본문 렌더링 ──────────────────────────────────────────
   return (
     <div className="min-h-dvh bg-white pb-24">
@@ -298,8 +312,8 @@ export function NewsDetailClient({ id }: { id: string }) {
 
       <main className="max-w-md mx-auto px-5 py-6">
 
-        {/* 카테고리 + 이슈뱃지 + 태그 */}
-        <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+        {/* 카테고리 + 이슈뱃지 */}
+        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
           <span className={`${getCategoryBadgeStyle(news.category)} px-2.5 py-[3px] text-[11px] font-semibold rounded-full`}>
             {news.category}
           </span>
@@ -311,12 +325,18 @@ export function NewsDetailClient({ id }: { id: string }) {
           {news.issue_badge && news.issue_badge !== "표시안함" && (
             <IssueBadge type={news.issue_badge as "호재" | "악재" | "중립"} />
           )}
-          {tags.map((tag) => (
-            <span key={tag} className="text-[11px] font-medium text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">
-              {tag.startsWith("#") ? tag : `#${tag}`}
-            </span>
-          ))}
         </div>
+
+        {/* 해시태그 */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {tags.map((tag) => (
+              <span key={tag} className="text-[12px] font-semibold text-emerald-600">
+                {tag.startsWith("#") ? tag : `#${tag}`}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* 헤드라인 + 우측 버튼 */}
         <div className="flex justify-between items-start gap-4 mb-3">
@@ -378,7 +398,7 @@ export function NewsDetailClient({ id }: { id: string }) {
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2.5">관련 종목</p>
             <div className="flex flex-col gap-2">
               {tickers.map((ticker) => (
-                <TickerCard key={ticker} ticker={ticker} quote={tickerQuotes[ticker]} />
+                <TickerCard key={ticker} ticker={ticker} displayName={getTickerDisplay(ticker)} quote={tickerQuotes[ticker]} />
               ))}
             </div>
           </section>

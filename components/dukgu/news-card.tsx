@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { NewsInteractionBar } from "./news-interaction-bar"
 import { getCategoryBadgeStyle } from "@/lib/utils"
 import type { NewsCategory, IssueBadge } from "@/types"
+import { useKrStockNames } from "@/hooks/use-kr-stock-names"
 
 // =============================================================================
 // 헬퍼: ai_summary → bullet 배열 파싱
@@ -50,11 +51,12 @@ interface TickerPrice {
   currentPrice: number
 }
 
-function TickerChip({ ticker, price }: { ticker: string; price?: TickerPrice }) {
+function TickerChip({ ticker, displayName, price }: { ticker: string; displayName?: string; price?: TickerPrice }) {
   const pct    = price?.changePercent ?? 0
   const isUp   = pct > 0
   const isDown = pct < 0
   const label  = price ? `${isUp ? "+" : ""}${pct.toFixed(1)}%` : null
+  const name   = displayName || ticker
 
   return (
     <span
@@ -65,7 +67,7 @@ function TickerChip({ ticker, price }: { ticker: string; price?: TickerPrice }) 
       }`}
     >
       {isUp ? <TrendingUp className="w-2.5 h-2.5" /> : isDown ? <TrendingDown className="w-2.5 h-2.5" /> : <Minus className="w-2.5 h-2.5" />}
-      {ticker}
+      {name}
       {label && <span className="ml-0.5">{label}</span>}
     </span>
   )
@@ -121,6 +123,14 @@ export function NewsCard({
   const explanationText = aiSummary || summary || ""
   const points = explanationText ? parsePoints(explanationText) : []
 
+  // 한국 주식 티커 → 한국어 기업명 매핑
+  const ksTickers = tickers.filter((t) => /^\d{6}$/.test(t)).map((t) => `${t}.KS`)
+  const krNames = useKrStockNames(ksTickers)
+  const getTickerDisplay = (ticker: string) => {
+    if (/^\d{6}$/.test(ticker)) return krNames[`${ticker}.KS`] ?? ticker
+    return ticker
+  }
+
   return (
     <article className="rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
 
@@ -158,45 +168,45 @@ export function NewsCard({
       {tickers.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {tickers.map((ticker) => (
-            <TickerChip key={ticker} ticker={ticker} price={tickerPrices[ticker]} />
+            <TickerChip key={ticker} ticker={ticker} displayName={getTickerDisplay(ticker)} price={tickerPrices[ticker]} />
           ))}
         </div>
       )}
 
-      {/* 해시태그 */}
-      {uniqueTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {uniqueTags.slice(0, 2).map((tag, idx) => (
-            <span key={idx} className="text-[11px] font-medium text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">
-              {tag.startsWith("#") ? tag : `#${tag}`}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* 왜 중요해? */}
-      {points.length > 0 && (
+      {/* 왜 중요해? + 해시태그 인라인 */}
+      {(points.length > 0 || uniqueTags.length > 0) && (
         <div>
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWhyOpen((v) => !v) }}
-            className="flex items-center gap-1.5 py-[5px] px-3 rounded-full bg-amber-50 text-amber-700 text-[12px] font-semibold transition-all duration-200 hover:bg-amber-100 active:scale-95"
-          >
-            <span>👀</span>
-            <span>왜 중요해?</span>
-          </button>
-
-          <div className={`overflow-hidden transition-all duration-300 ${whyOpen ? "max-h-[200px] opacity-100 mt-2.5" : "max-h-0 opacity-0"}`}>
-            <div className="rounded-[12px] bg-amber-50 px-3.5 py-3 flex flex-col gap-1.5">
-              <p className="text-[11px] font-bold text-amber-700 mb-0.5">왜 중요할까?</p>
-              {points.slice(0, 3).map((point, idx) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <span className="text-[11px] font-bold text-amber-500 mt-[1px] shrink-0">{idx + 1}.</span>
-                  <span className="text-[12px] text-amber-900 leading-[1.5]">{point}</span>
-                </div>
-              ))}
-            </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {points.length > 0 && (
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWhyOpen((v) => !v) }}
+                className="flex items-center gap-1.5 py-[5px] px-3 rounded-full bg-amber-50 text-amber-700 text-[12px] font-semibold transition-all duration-200 hover:bg-amber-100 active:scale-95 shrink-0"
+              >
+                <span>👀</span>
+                <span>왜 중요해?</span>
+              </button>
+            )}
+            {uniqueTags.slice(0, 2).map((tag, idx) => (
+              <span key={idx} className="text-[11px] font-medium text-gray-400">
+                {tag.startsWith("#") ? tag : `#${tag}`}
+              </span>
+            ))}
           </div>
+
+          {points.length > 0 && (
+            <div className={`overflow-hidden transition-all duration-300 ${whyOpen ? "max-h-[200px] opacity-100 mt-2.5" : "max-h-0 opacity-0"}`}>
+              <div className="rounded-[12px] bg-amber-50 px-3.5 py-3 flex flex-col gap-1.5">
+                <p className="text-[11px] font-bold text-amber-700 mb-0.5">왜 중요할까?</p>
+                {points.slice(0, 3).map((point, idx) => (
+                  <div key={idx} className="flex items-start gap-2">
+                    <span className="text-[11px] font-bold text-amber-500 mt-[1px] shrink-0">{idx + 1}.</span>
+                    <span className="text-[12px] text-amber-900 leading-[1.5]">{point}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
