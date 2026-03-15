@@ -24,11 +24,22 @@ import { AdBanner } from "@/components/dukgu/ad-banner"
 // 타입
 // =============================================================================
 
+interface TickerSnapshot {
+  symbol:     string
+  price:      number
+  price_fmt:  string
+  change_pct: string
+  is_up:      boolean
+  is_down:    boolean
+  currency:   string
+}
+
 interface NewsDetail {
   id: string | number
   category: string
   tags: string[] | any
   tickers: string[] | any
+  ticker_snapshots: TickerSnapshot[] | null
   headline: string
   body_summary: string | null
   source: string | null
@@ -101,46 +112,91 @@ function IssueBadge({ type }: { type: "호재" | "악재" | "중립" }) {
 }
 
 // =============================================================================
-// 티커 카드 (클릭 시 /assets/stock/[ticker])
+// 티커 카드 — 발행 시점 스냅샷 기본, 현재가 토글 지원
 // =============================================================================
 
-function TickerCard({ ticker, displayName, quote }: { ticker: string; displayName?: string; quote?: TickerQuote }) {
-  const isUp   = (quote?.changePercent ?? 0) > 0
-  const isDown = (quote?.changePercent ?? 0) < 0
-  const pct    = quote ? `${isUp ? "+" : ""}${quote.changePercent.toFixed(2)}%` : null
-  const name   = displayName || quote?.name || ticker
+function TickerCard({
+  ticker,
+  displayName,
+  snapshot,
+  liveQuote,
+  isLoadingLive,
+  showLive,
+  onToggleLive,
+}: {
+  ticker: string
+  displayName?: string
+  snapshot?: TickerSnapshot
+  liveQuote?: TickerQuote
+  isLoadingLive: boolean
+  showLive: boolean
+  onToggleLive: () => void
+}) {
+  const active = showLive && liveQuote ? {
+    priceStr:  liveQuote.currency === "KRW"
+      ? liveQuote.currentPrice.toLocaleString("ko-KR") + "원"
+      : "$" + liveQuote.currentPrice.toFixed(2),
+    changePct: `${liveQuote.changePercent >= 0 ? "+" : ""}${liveQuote.changePercent.toFixed(2)}%`,
+    isUp:      liveQuote.changePercent > 0,
+    isDown:    liveQuote.changePercent < 0,
+    isLive:    true,
+  } : snapshot ? {
+    priceStr:  snapshot.price_fmt,
+    changePct: snapshot.change_pct,
+    isUp:      snapshot.is_up,
+    isDown:    snapshot.is_down,
+    isLive:    false,
+  } : null
+
+  const isUp   = active?.isUp   ?? false
+  const isDown = active?.isDown ?? false
+  const name   = displayName || liveQuote?.name || ticker
 
   return (
-    <Link
-      href={`/assets/stock/${ticker}`}
-      className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 transition-all active:scale-95 border-l-[3px] bg-slate-50 hover:bg-slate-100 border border-slate-100 ${
-        isUp ? "border-l-red-400" : isDown ? "border-l-blue-400" : "border-l-slate-300"
-      }`}
-    >
-      <div className="flex flex-col min-w-0 gap-0.5">
+    <div className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 border-l-[3px] bg-slate-50 border border-slate-100 ${
+      isUp ? "border-l-red-400" : isDown ? "border-l-blue-400" : "border-l-slate-300"
+    }`}>
+      {/* 종목 정보 — 클릭 시 상세 페이지 (한국 종목은 .KS 접미사 필요) */}
+      <Link href={`/assets/stock/${toYahooTicker(ticker)}`} className="flex flex-col min-w-0 gap-0.5 flex-1 active:opacity-70">
         <span className="text-[13px] font-extrabold text-slate-800 leading-none">{name}</span>
         <span className="text-[10px] text-slate-400 font-medium">{ticker}</span>
-      </div>
-      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-        {quote ? (
-          <>
-            <span className="text-[13px] font-bold text-slate-700">
-              {quote.currency === "KRW"
-                ? quote.currentPrice.toLocaleString("ko-KR") + "원"
-                : "$" + quote.currentPrice.toFixed(2)}
-            </span>
+      </Link>
+
+      <div className="flex items-center gap-2 shrink-0 ml-2">
+        {/* 가격 표시 */}
+        {active ? (
+          <div className="flex items-center gap-1.5">
+            {active.isLive && (
+              <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded-full">실시간</span>
+            )}
+            <span className="text-[13px] font-bold text-slate-700">{active.priceStr}</span>
             <span className={`flex items-center gap-0.5 text-[12px] font-black px-1.5 py-0.5 rounded-md ${
               isUp ? "bg-red-50 text-red-500" : isDown ? "bg-blue-50 text-blue-500" : "bg-slate-100 text-slate-400"
             }`}>
               {isUp ? <TrendingUp className="w-3 h-3" /> : isDown ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
-              {pct}
+              {active.changePct}
             </span>
-          </>
+          </div>
         ) : (
-          <span className="text-[11px] text-slate-300 animate-pulse">로딩 중</span>
+          <span className="text-[11px] text-slate-300">-</span>
         )}
+
+        {/* 현재가 / 발행시 토글 버튼 */}
+        <button
+          onClick={onToggleLive}
+          className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all flex items-center gap-0.5 ${
+            showLive
+              ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              : "bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 shadow-sm"
+          }`}
+        >
+          {isLoadingLive
+            ? <Loader2 className="w-3 h-3 animate-spin" />
+            : showLive ? "발행시" : "현재가"
+          }
+        </button>
       </div>
-    </Link>
+    </div>
   )
 }
 
@@ -154,7 +210,10 @@ export function NewsDetailClient({ id }: { id: string }) {
   const [news, setNews] = useState<NewsDetail | null | undefined>(undefined)
   const [liveViewCount, setLiveViewCount] = useState(0)
   const [liveCommentCount, setLiveCommentCount] = useState(0)
-  const [tickerQuotes, setTickerQuotes] = useState<Record<string, TickerQuote>>({})
+  // 현재가 토글 상태 (per-ticker)
+  const [showLiveTickers, setShowLiveTickers] = useState<Set<string>>(new Set())
+  const [liveQuotes, setLiveQuotes] = useState<Record<string, TickerQuote>>({})
+  const [loadingTickers, setLoadingTickers] = useState<Set<string>>(new Set())
   const { isSaved, toggleSave } = useSavedArticles()
   const { deleteNews } = useNewsAdmin()
   const isAdmin = profile?.is_admin === true
@@ -186,25 +245,29 @@ export function NewsDetailClient({ id }: { id: string }) {
     load()
   }, [id])
 
-  // 티커 시세 fetch
-  useEffect(() => {
-    const tickers: string[] = news?.tickers ?? []
-    if (!tickers.length) return
+  // 현재가 토글 핸들러 — 클릭 시 해당 티커만 실시간 fetch
+  const toggleLiveTicker = async (ticker: string) => {
+    if (showLiveTickers.has(ticker)) {
+      // 이미 실시간 모드 → 발행시로 복귀
+      setShowLiveTickers((prev) => { const s = new Set(prev); s.delete(ticker); return s })
+      return
+    }
+    // 실시간 모드 ON
+    setShowLiveTickers((prev) => new Set([...prev, ticker]))
+    if (liveQuotes[ticker]) return // 이미 캐시됨
 
-    const yahooTickers = tickers.map(toYahooTicker).join(",")
-    fetch(`/api/market/quotes?tickers=${encodeURIComponent(yahooTickers)}`)
-      .then((r) => r.json())
-      .then((quotes: TickerQuote[]) => {
-        const map: Record<string, TickerQuote> = {}
-        quotes.forEach((q) => {
-          // Yahoo 심볼(.KS 제거)을 원본 티커로 역매핑
-          const raw = q.ticker.replace(/\.(KS|KQ)$/i, "")
-          map[raw] = { ...q, ticker: raw }
-        })
-        setTickerQuotes(map)
-      })
-      .catch(() => {})
-  }, [news?.tickers])
+    setLoadingTickers((prev) => new Set([...prev, ticker]))
+    try {
+      const yahooTicker = toYahooTicker(ticker)
+      const r = await fetch(`/api/market/quotes?tickers=${encodeURIComponent(yahooTicker)}`)
+      const quotes: TickerQuote[] = await r.json()
+      if (quotes.length > 0) {
+        const raw = { ...quotes[0], ticker }
+        setLiveQuotes((prev) => ({ ...prev, [ticker]: raw }))
+      }
+    } catch {}
+    setLoadingTickers((prev) => { const s = new Set(prev); s.delete(ticker); return s })
+  }
 
   const handleDelete = async () => {
     if (!window.confirm("정말 이 뉴스를 삭제하시겠습니까? (복구 불가) 🚨")) return
@@ -221,6 +284,12 @@ export function NewsDetailClient({ id }: { id: string }) {
   const rawTickers: string[] = Array.isArray(news?.tickers) ? news.tickers : []
   const ksTickers = rawTickers.filter((t) => /^\d{6}$/.test(t)).map((t) => `${t}.KS`)
   const krNames = useKrStockNames(ksTickers)
+
+  // 스냅샷 맵 (symbol → TickerSnapshot)
+  const snapshotMap = (news?.ticker_snapshots ?? []).reduce<Record<string, TickerSnapshot>>(
+    (acc, s) => { acc[s.symbol] = s; return acc },
+    {}
+  )
 
   const newsIdStr = news ? String(news.id) : ""
   const isBookmarked = news ? isSaved(newsIdStr) : false
@@ -273,8 +342,8 @@ export function NewsDetailClient({ id }: { id: string }) {
   const isDukguPick       = news.source === "덕구"
 
   const getTickerDisplay = (ticker: string) => {
-    if (/^\d{6}$/.test(ticker)) return krNames[`${ticker}.KS`] ?? tickerQuotes[ticker]?.name ?? ticker
-    return tickerQuotes[ticker]?.name ?? ticker
+    if (/^\d{6}$/.test(ticker)) return krNames[`${ticker}.KS`] ?? liveQuotes[ticker]?.name ?? ticker
+    return liveQuotes[ticker]?.name ?? ticker
   }
 
   // ─── 본문 렌더링 ──────────────────────────────────────────
@@ -392,13 +461,25 @@ export function NewsDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* 관련 종목 티커 */}
+        {/* 관련 종목 티커 — 발행 시점 스냅샷 기본, 현재가 토글 */}
         {tickers.length > 0 && (
           <section className="mb-8">
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2.5">관련 종목</p>
+            <div className="flex items-center justify-between mb-2.5">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">관련 종목</p>
+              <span className="text-[10px] text-slate-300 font-medium">발행 시점 기준 · 현재가 버튼으로 전환</span>
+            </div>
             <div className="flex flex-col gap-2">
               {tickers.map((ticker) => (
-                <TickerCard key={ticker} ticker={ticker} displayName={getTickerDisplay(ticker)} quote={tickerQuotes[ticker]} />
+                <TickerCard
+                  key={ticker}
+                  ticker={ticker}
+                  displayName={getTickerDisplay(ticker)}
+                  snapshot={snapshotMap[ticker]}
+                  liveQuote={liveQuotes[ticker]}
+                  isLoadingLive={loadingTickers.has(ticker)}
+                  showLive={showLiveTickers.has(ticker)}
+                  onToggleLive={() => toggleLiveTicker(ticker)}
+                />
               ))}
             </div>
           </section>

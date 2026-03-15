@@ -45,6 +45,7 @@ export default function EditNewsPage() {
   // 💡 [기획 추가] 뱃지 커스텀을 위한 새로운 상태
   const [impactType, setImpactType] = useState<"hot" | "cold" | "neutral" | "none">("none")
   const [impactKeyword, setImpactKeyword] = useState("")
+  const [isBreaking, setIsBreaking] = useState(false)
 
   useEffect(() => {
     if (!isUserLoading && (!profile || !profile.is_admin)) {
@@ -89,6 +90,8 @@ export default function EditNewsPage() {
         else if (badge === "악재") { setImpactType("cold"); setImpactKeyword("") }
         else if (badge === "중립") { setImpactType("neutral"); setImpactKeyword("") }
         else { setImpactType("none"); setImpactKeyword("") }
+
+        setIsBreaking(data.is_breaking ?? false)
       } catch (e) {
         console.error("뉴스 로딩 에러:", e)
       } finally {
@@ -148,6 +151,7 @@ export default function EditNewsPage() {
         tags,
         tickers,
         issue_badge: impactType === "none" ? "표시안함" : (badgeMap[impactType] ?? "표시안함"),
+        is_breaking: isBreaking,
       })
 
       toast.success("뉴스가 성공적으로 수정되었다냥! 🛠️🐾")
@@ -245,6 +249,23 @@ export default function EditNewsPage() {
                 </span>
               </button>
             ))}
+          </div>
+        </section>
+
+        {/* 속보 토글 */}
+        <section className="bg-white rounded-[20px] border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">속보 여부</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">활성화 시 🚨 속보 탭에 노출됩니다</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsBreaking((v) => !v)}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${isBreaking ? "bg-red-500" : "bg-slate-200"}`}
+            >
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${isBreaking ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
           </div>
         </section>
 

@@ -10,9 +10,10 @@ import { useNewsFeed, type DateFilter, type MarketTab } from "@/hooks/use-news-f
 export type SortOption = "latest" | "views" | "comments"
 
 const MARKET_TABS: { id: MarketTab; label: string }[] = [
-  { id: "all", label: "전체" },
-  { id: "kr",  label: "한국" },
-  { id: "us",  label: "미국" },
+  { id: "all",      label: "전체" },
+  { id: "kr",       label: "한국" },
+  { id: "us",       label: "미국" },
+  { id: "breaking", label: "속보" },
 ]
 
 const SORT_OPTIONS: { id: SortOption; label: string }[] = [

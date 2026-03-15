@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 
 type SortOption = "latest" | "views" | "comments"
 export type DateFilter = "today" | "week" | "month" | "all"
-export type MarketTab = "all" | "kr" | "us" | "etf" | "economy"
+export type MarketTab = "all" | "kr" | "us" | "etf" | "economy" | "breaking"
 
 const PAGE_SIZE = 10
 
@@ -53,6 +53,8 @@ function toNewsItem(row: any): NewsItem {
     viewCount:    row.view_count    ?? 0,
     issueBadge:   (badge === "표시안함" || !badge) ? null : badge as any,
     issueKeyword: null,
+    isBreaking:   row.is_breaking ?? false,
+    tickerSnapshots: Array.isArray(row.ticker_snapshots) ? row.ticker_snapshots : [],
   }
 }
 
@@ -140,6 +142,7 @@ export function useNewsFeed(
 
   const applyMarketFilter = (query: any) => {
     if (marketTab === "all" || marketTab === "etf" || marketTab === "economy") return query
+    if (marketTab === "breaking") return query.eq("is_breaking", true)
     const mc = marketTab === "kr" ? "한국" : "미국"
     return query.or(`market_classification.eq.공통,market_classification.eq.${mc}`)
   }

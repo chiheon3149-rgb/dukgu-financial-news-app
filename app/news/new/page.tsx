@@ -33,6 +33,7 @@ export default function NewNewsPage() {
   const [tagInput, setTagInput] = useState("")
   const [tickers, setTickers] = useState<string[]>([])
   const [tickerInput, setTickerInput] = useState("")
+  const [isBreaking, setIsBreaking] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // 💡 [보안] 관리자가 아니면 이 페이지에서 쫓아냅니다!
@@ -89,6 +90,7 @@ export default function NewNewsPage() {
         source: source.trim() || "덕구",
         source_url: originalUrl.trim() || null,
         issue_badge: "표시안함",
+        is_breaking: isBreaking,
         tags,
         tickers,
       })
@@ -183,6 +185,23 @@ export default function NewNewsPage() {
                 </span>
               </button>
             ))}
+          </div>
+        </section>
+
+        {/* 속보 토글 */}
+        <section className="bg-white rounded-[20px] border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">속보 여부</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">활성화 시 🚨 속보 탭에 노출됩니다</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsBreaking((v) => !v)}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${isBreaking ? "bg-red-500" : "bg-slate-200"}`}
+            >
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${isBreaking ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
           </div>
         </section>
 

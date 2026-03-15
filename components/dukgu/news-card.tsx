@@ -42,20 +42,24 @@ function IssueBadgeChip({ type }: { type: IssueBadge }) {
 }
 
 // =============================================================================
-// 티커 칩 (등락률 포함)
+// 티커 칩 (발행 시점 스냅샷 기반)
 // =============================================================================
 
-interface TickerPrice {
-  changePercent: number
-  currency: string
-  currentPrice: number
+interface TickerSnapshotChip {
+  symbol:     string
+  change_pct: string
+  is_up:      boolean
+  is_down:    boolean
 }
 
-function TickerChip({ ticker, displayName, price }: { ticker: string; displayName?: string; price?: TickerPrice }) {
-  const pct    = price?.changePercent ?? 0
-  const isUp   = pct > 0
-  const isDown = pct < 0
-  const label  = price ? `${isUp ? "+" : ""}${pct.toFixed(1)}%` : null
+function TickerChip({ ticker, displayName, snapshot }: {
+  ticker: string
+  displayName?: string
+  snapshot?: TickerSnapshotChip
+}) {
+  const isUp   = snapshot?.is_up   ?? false
+  const isDown = snapshot?.is_down ?? false
+  const label  = snapshot?.change_pct ?? null
   const name   = displayName || ticker
 
   return (
@@ -89,10 +93,12 @@ interface NewsCardProps {
   commentCount: number
   tags?: string[]
   tickers?: string[]
-  tickerPrices?: Record<string, TickerPrice>
+  /** 발행 시점 주가 스냅샷 (뉴스봇이 DB에 저장한 정적 데이터) */
+  ticker_snapshots?: TickerSnapshotChip[]
   source?: string | null
   issueBadge?: IssueBadge
   issueKeyword?: string | null
+  isBreaking?: boolean
 }
 
 // =============================================================================
@@ -111,10 +117,11 @@ export function NewsCard({
   commentCount,
   tags = [],
   tickers = [],
-  tickerPrices = {},
+  ticker_snapshots = [],
   source,
   issueBadge,
   issueKeyword,
+  isBreaking = false,
 }: NewsCardProps) {
   const [whyOpen, setWhyOpen] = useState(false)
   const isDukguPick = source === "덕구"
@@ -131,8 +138,16 @@ export function NewsCard({
     return ticker
   }
 
+  // 스냅샷 맵 (symbol → snapshot)
+  const snapshotMap = ticker_snapshots.reduce<Record<string, TickerSnapshotChip>>(
+    (acc, s) => { acc[s.symbol] = s; return acc },
+    {}
+  )
+
   return (
-    <article className="rounded-[18px] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
+    <article className={`rounded-[18px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 ${
+      isBreaking ? "bg-amber-50 border border-amber-200" : "bg-white"
+    }`}>
 
       {/* 카테고리 + 이슈뱃지 + 시간 */}
       <div className="flex items-center justify-between gap-2">
@@ -140,6 +155,11 @@ export function NewsCard({
           <span className={`${getCategoryBadgeStyle(category)} px-2.5 py-[3px] text-[11px] font-semibold rounded-full shrink-0`}>
             {category}
           </span>
+          {isBreaking && (
+            <span className="bg-red-500 text-white px-2.5 py-[3px] text-[11px] font-bold rounded-full shrink-0 animate-pulse">
+              🚨 속보
+            </span>
+          )}
           {isDukguPick && (
             <span className="bg-emerald-500 text-white px-2.5 py-[3px] text-[11px] font-semibold rounded-full shrink-0">
               덕구픽
@@ -164,11 +184,11 @@ export function NewsCard({
         </p>
       )}
 
-      {/* 티커 칩 행 */}
+      {/* 티커 칩 행 (발행 시점 스냅샷) */}
       {tickers.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {tickers.map((ticker) => (
-            <TickerChip key={ticker} ticker={ticker} displayName={getTickerDisplay(ticker)} price={tickerPrices[ticker]} />
+            <TickerChip key={ticker} ticker={ticker} displayName={getTickerDisplay(ticker)} snapshot={snapshotMap[ticker]} />
           ))}
         </div>
       )}

@@ -73,6 +73,20 @@ export interface AssetHistoryItem {
 /** 이슈 뱃지 타입 — DB의 issue_badge 값과 동일 */
 export type IssueBadge = "호재" | "악재" | "중립" | null
 
+/**
+ * 기사 발행 시점의 주가 스냅샷.
+ * 뉴스봇이 기사 수집 시 yfinance로 수집하여 DB에 저장합니다.
+ */
+export interface TickerSnapshot {
+  symbol:     string            // 원본 티커 (예: "AAPL", "005930")
+  price:      number            // 발행 시 주가
+  price_fmt:  string            // 포맷된 가격 (예: "$182.50", "71,000원")
+  change_pct: string            // 등락률 문자열 (예: "+2.34%", "-1.23%")
+  is_up:      boolean
+  is_down:    boolean
+  currency:   "KRW" | "USD"
+}
+
 /** 뉴스 피드의 단일 아이템 */
 export interface NewsItem {
   id: string
@@ -80,6 +94,8 @@ export interface NewsItem {
   market?: NewsMarket | null
   tags: string[]
   tickers: string[]
+  /** 발행 시점 주가 스냅샷 (뉴스봇 수집본) */
+  tickerSnapshots?: TickerSnapshot[]
   headline: string
   summary: string
   aiSummary?: string | null
@@ -94,6 +110,7 @@ export interface NewsItem {
   source?: string | null
   issueBadge?: IssueBadge
   issueKeyword?: string | null
+  isBreaking?: boolean
 }
 
 

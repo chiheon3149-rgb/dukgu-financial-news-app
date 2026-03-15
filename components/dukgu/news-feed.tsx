@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef } from "react"
 import Link from "next/link"
 import { NewsCard } from "./news-card"
 import { AdBanner } from "./ad-banner"
@@ -16,6 +16,7 @@ const ECONOMY_KEYWORDS = ["금리", "기준금리", "인플레이션", "물가",
 
 function matchesMarket(item: any, tab: MarketTab): boolean {
   if (tab === "all") return true
+  if (tab === "breaking") return item.isBreaking === true
   const m = item.market as string | null | undefined
   const searchText = [item.headline ?? "", item.summary ?? "", item.category ?? "", ...(item.tags ?? [])].join(" ")
   if (tab === "etf") return ETF_KEYWORDS.some((kw) => searchText.toLowerCase().includes(kw.toLowerCase()))
@@ -27,17 +28,6 @@ function matchesMarket(item: any, tab: MarketTab): boolean {
   return keywords.some((kw) => searchText.toLowerCase().includes(kw.toLowerCase()))
 }
 
-/** 한국 6자리 숫자 티커 → Yahoo .KS 변환 */
-function toYahooTicker(ticker: string): string {
-  if (/^\d{6}$/.test(ticker)) return `${ticker}.KS`
-  return ticker
-}
-
-interface TickerPrice {
-  changePercent: number
-  currency: string
-  currentPrice: number
-}
 
 // ─── 스켈레톤 카드 ───────────────────────────────────────────
 function NewsCardSkeleton() {
@@ -93,43 +83,6 @@ export function NewsFeed({
       return inHeadline || inSummary || inTags
     })
 
-  // ─── 티커 시세 배치 fetch ──────────────────────────────────
-  const [tickerPrices, setTickerPrices] = useState<Record<string, TickerPrice>>({})
-  const fetchedSet = useRef(new Set<string>())
-
-  useEffect(() => {
-    const newTickers: string[] = []
-    for (const item of filteredNews) {
-      for (const t of (item.tickers ?? []) as string[]) {
-        if (!fetchedSet.current.has(t)) {
-          newTickers.push(t)
-          fetchedSet.current.add(t)
-        }
-      }
-    }
-    if (!newTickers.length) return
-
-    const yahooTickers = newTickers.map(toYahooTicker).join(",")
-    fetch(`/api/market/quotes?tickers=${encodeURIComponent(yahooTickers)}`)
-      .then((r) => r.json())
-      .then((quotes: any[]) => {
-        setTickerPrices((prev) => {
-          const next = { ...prev }
-          quotes.forEach((q) => {
-            const raw = (q.ticker as string).replace(/\.(KS|KQ)$/i, "")
-            next[raw] = {
-              changePercent: q.changePercent ?? 0,
-              currency:      q.currency      ?? "USD",
-              currentPrice:  q.currentPrice  ?? 0,
-            }
-          })
-          return next
-        })
-      })
-      .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredNews.length])
-
   // ─── 스크롤 복원 ────────────────────────────────────────────
   const observerTarget = useRef<HTMLDivElement>(null)
   const scrollRestored = useRef(false)
@@ -172,9 +125,10 @@ export function NewsFeed({
               <NewsCard
                 {...item}
                 tickers={item.tickers ?? []}
-                tickerPrices={tickerPrices}
+                ticker_snapshots={item.ticker_snapshots ?? item.tickerSnapshots ?? []}
                 issueBadge={item.issueBadge ?? null}
                 issueKeyword={item.issueKeyword ?? null}
+                isBreaking={item.isBreaking ?? false}
               />
             </Link>
 
