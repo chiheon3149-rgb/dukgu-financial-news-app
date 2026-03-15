@@ -192,7 +192,7 @@ function TickerCard({
         >
           {isLoadingLive
             ? <Loader2 className="w-3 h-3 animate-spin" />
-            : showLive ? "발행시" : "현재가"
+            : showLive ? "발행시 주가" : "현재 주가"
           }
         </button>
       </div>
