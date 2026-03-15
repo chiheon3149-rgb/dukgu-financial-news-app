@@ -35,7 +35,6 @@ export function NewsSection() {
   const [dateFilter, setDateFilter]       = useState<DateFilter>("today")
   const [marketTab, setMarketTab]         = useState<MarketTab>("all")
   const [sortOpen, setSortOpen]           = useState(false)
-  const [dateOpen, setDateOpen]           = useState(false)
   const sortRef                           = useRef<HTMLDivElement>(null)
   const dateRef                           = useRef<HTMLDivElement>(null)
 
@@ -46,7 +45,6 @@ export function NewsSection() {
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false)
-      if (dateRef.current && !dateRef.current.contains(e.target as Node)) setDateOpen(false)
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
@@ -86,43 +84,8 @@ export function NewsSection() {
           onChange={setMarketTab}
         />
 
-        {/* 우측 고정: 날짜 필터 (인기순 시만) + 정렬 드롭다운 */}
+        {/* 우측 고정: 정렬 드롭다운 */}
         <div className="flex items-center gap-1.5 shrink-0">
-
-          {/* 날짜 필터 드롭다운 (인기순 선택 시만 노출) */}
-          {sortBy === "views" && (
-            <div className="relative" ref={dateRef}>
-              <button
-                type="button"
-                onClick={() => setDateOpen((v) => !v)}
-                className="flex items-center gap-1 py-[6px] px-[14px] rounded-[999px] bg-[#F1F5F9] text-[13px] font-medium text-gray-700 active:scale-95"
-                style={{ transition: "background 0.2s" }}
-              >
-                {currentDateFilter.label}
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${dateOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {dateOpen && (
-                <div className="absolute right-0 top-9 z-30 bg-white border border-[#E5E7EB] rounded-xl shadow-lg overflow-hidden min-w-[88px] animate-in fade-in slide-in-from-top-1 duration-150">
-                  {DATE_FILTER_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => { setDateFilter(opt.id); setDateOpen(false) }}
-                      className={`flex items-center justify-between w-full px-4 py-2.5 text-[13px] transition-colors ${
-                        dateFilter === opt.id
-                          ? "text-emerald-600 font-semibold bg-emerald-50"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      {opt.label}
-                      {dateFilter === opt.id && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* 정렬 드롭다운 */}
           <div className="relative" ref={sortRef}>
@@ -159,6 +122,26 @@ export function NewsSection() {
 
         </div>
       </div>
+
+      {/* ③-b 날짜 필터 (인기순 선택 시만, 별도 줄) */}
+      {sortBy === "views" && (
+        <div className="flex items-center gap-1.5" ref={dateRef}>
+          {DATE_FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setDateFilter(opt.id)}
+              className={`py-[5px] px-[14px] rounded-[999px] text-[12px] font-medium transition-colors ${
+                dateFilter === opt.id
+                  ? "bg-emerald-500 text-white"
+                  : "bg-[#F1F5F9] text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ④ 뉴스 카드 목록 */}
       <NewsFeed

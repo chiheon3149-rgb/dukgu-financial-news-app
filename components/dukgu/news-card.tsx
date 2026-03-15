@@ -146,7 +146,7 @@ export function NewsCard({
 
   return (
     <article className={`rounded-[18px] shadow-[0_2px_10px_rgba(0,0,0,0.07)] p-4 flex flex-col gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 ${
-      isBreaking ? "bg-amber-50 border border-amber-200" : "bg-white"
+      isBreaking ? "bg-amber-50/60 border border-amber-100" : "bg-white"
     }`}>
 
       {/* 카테고리 + 이슈뱃지 + 시간 */}
@@ -156,8 +156,8 @@ export function NewsCard({
             {category}
           </span>
           {isBreaking && (
-            <span className="bg-red-500 text-white px-2.5 py-[3px] text-[11px] font-bold rounded-full shrink-0 animate-pulse">
-              🚨 속보
+            <span className="bg-red-100 text-red-400 px-2.5 py-[3px] text-[11px] font-bold rounded-full shrink-0">
+              속보
             </span>
           )}
           {isDukguPick && (
